@@ -44,6 +44,7 @@ obj-y				+= $(sw-y)
 
 obj-$(CONFIG_CPU_R4K_FPU)	+= r4k_fpu.o
 obj-$(CONFIG_CPU_R3000)		+= r2300_fpu.o
+obj-$(CONFIG_CPU_R5900)		+= r5900_fpu.o
 obj-$(CONFIG_CPU_TX39XX)	+= r2300_fpu.o
 
 obj-$(CONFIG_SMP)		+= smp.o
