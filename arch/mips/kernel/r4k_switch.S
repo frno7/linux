@@ -183,7 +183,7 @@ LEAF(_init_fpu)
 1:
 #endif
 
-#ifdef CONFIG_CPU_MIPS32
+#if defined(CONFIG_CPU_MIPS32) || defined(CONFIG_CPU_R5900)
 	mtc1	t1, $f0
 	mtc1	t1, $f1
 	mtc1	t1, $f2
