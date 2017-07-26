@@ -926,13 +926,15 @@ static void __init resource_init(void)
 		switch (boot_mem_map.map[i].type) {
 		case BOOT_MEM_RAM:
 		case BOOT_MEM_INIT_RAM:
-		case BOOT_MEM_ROM_DATA:
 			res->name = "System RAM";
 			res->flags |= IORESOURCE_SYSRAM;
 			break;
+		case BOOT_MEM_ROM_DATA:
+			res->name = "System ROM";
+			break;
 		case BOOT_MEM_RESERVED:
 		default:
-			res->name = "reserved";
+			res->name = "Reserved";
 		}
 
 		request_resource(&iomem_resource, res);

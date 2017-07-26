@@ -30,7 +30,6 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/ps2/dev.h>
-#include <linux/ps2/gs.h>
 #include <linux/semaphore.h>
 #include <linux/slab.h>
 #include <linux/string.h>

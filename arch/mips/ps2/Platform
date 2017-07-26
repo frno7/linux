@@ -4,3 +4,5 @@
 platform-$(CONFIG_SONY_PS2)	+= ps2/
 cflags-$(CONFIG_SONY_PS2)	+= -I$(srctree)/arch/mips/include/asm/mach-ps2
 load-$(CONFIG_SONY_PS2)		+= 0x80010000
+zload-$(CONFIG_SONY_PS2)	+= 0x00800000
+# zload-$(CONFIG_SONY_PS2)	+= 0x01000000

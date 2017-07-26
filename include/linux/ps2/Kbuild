@@ -1,0 +1,5 @@
+header-y += dev.h
+header-y += ee.h
+header-y += gs.h
+header-y += mcio.h
+header-y += pad.h
