@@ -169,7 +169,11 @@ long compat_arch_ptrace(struct task_struct *child, compat_long_t request,
 			preempt_enable();
 			break;
 		}
+#ifdef CONFIG_CPU_R5900
+		case DSP_BASE ... DSP_BASE + 1: {
+#else
 		case DSP_BASE ... DSP_BASE + 5: {
+#endif
 			dspreg_t *dregs;
 
 			if (!cpu_has_dsp) {
@@ -181,6 +185,7 @@ long compat_arch_ptrace(struct task_struct *child, compat_long_t request,
 			tmp = (unsigned long) (dregs[addr - DSP_BASE]);
 			break;
 		}
+#ifndef CONFIG_CPU_R5900
 		case DSP_CONTROL:
 			if (!cpu_has_dsp) {
 				tmp = 0;
@@ -189,6 +194,7 @@ long compat_arch_ptrace(struct task_struct *child, compat_long_t request,
 			}
 			tmp = child->thread.dsp.dspcontrol;
 			break;
+#endif
 		default:
 			tmp = 0;
 			ret = -EIO;
@@ -273,7 +279,11 @@ long compat_arch_ptrace(struct task_struct *child, compat_long_t request,
 		case FPC_CSR:
 			child->thread.fpu.fcr31 = data;
 			break;
+#ifdef CONFIG_CPU_R5900
+		case DSP_BASE ... DSP_BASE + 1: {
+#else
 		case DSP_BASE ... DSP_BASE + 5: {
+#endif
 			dspreg_t *dregs;
 
 			if (!cpu_has_dsp) {
@@ -285,6 +295,7 @@ long compat_arch_ptrace(struct task_struct *child, compat_long_t request,
 			dregs[addr - DSP_BASE] = data;
 			break;
 		}
+#ifndef CONFIG_CPU_R5900
 		case DSP_CONTROL:
 			if (!cpu_has_dsp) {
 				ret = -EIO;
@@ -292,6 +303,7 @@ long compat_arch_ptrace(struct task_struct *child, compat_long_t request,
 			}
 			child->thread.dsp.dspcontrol = data;
 			break;
+#endif
 		default:
 			/* The rest are not allowed. */
 			ret = -EIO;

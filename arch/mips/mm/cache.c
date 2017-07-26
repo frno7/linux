@@ -22,6 +22,7 @@
 
 /* Cache operations. */
 void (*flush_cache_all)(void);
+EXPORT_SYMBOL(flush_cache_all);
 void (*__flush_cache_all)(void);
 void (*flush_cache_mm)(struct mm_struct *mm);
 void (*flush_cache_range)(struct vm_area_struct *vma, unsigned long start,
@@ -57,6 +58,8 @@ void (*_dma_cache_wback)(unsigned long start, unsigned long size);
 void (*_dma_cache_inv)(unsigned long start, unsigned long size);
 
 EXPORT_SYMBOL(_dma_cache_wback_inv);
+EXPORT_SYMBOL(_dma_cache_wback);
+EXPORT_SYMBOL(_dma_cache_inv);
 
 #endif /* CONFIG_DMA_NONCOHERENT */
 
@@ -134,6 +137,15 @@ void __update_cache(struct vm_area_struct *vma, unsigned long address,
 		if (exec || pages_do_alias(addr, address & PAGE_MASK))
 			flush_data_cache_page(addr);
 		ClearPageDcacheDirty(page);
+	} else {
+		/* Cache can be dirty when page is not writeable, because
+		 * data is copied to page in kernel.
+		 */
+		addr = (unsigned long) page_address(page);
+		if (exec) {
+			flush_data_cache_page(addr);
+			/* TBD: Flush instruction cache also? */
+		}
 	}
 }
 
