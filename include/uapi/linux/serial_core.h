@@ -261,4 +261,8 @@
 /* STM32 USART */
 #define PORT_STM32	113
 
+/* PS2 ports */
+#define PORT_PS2_SBIOS 114
+#define PORT_PS2_UART  115
+
 #endif /* _UAPILINUX_SERIAL_CORE_H */

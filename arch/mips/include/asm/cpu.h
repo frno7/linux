@@ -79,6 +79,7 @@
 #define PRID_IMP_R4650		0x2200		/* Same as R4640 */
 #define PRID_IMP_R5000		0x2300
 #define PRID_IMP_TX49		0x2d00
+#define PRID_IMP_R5900		0x2e00		/* Playstation 2 */
 #define PRID_IMP_SONIC		0x2400
 #define PRID_IMP_MAGIC		0x2500
 #define PRID_IMP_RM7000		0x2700
@@ -318,6 +319,11 @@ enum cpu_type_enum {
 	CPU_CAVIUM_OCTEON2, CPU_CAVIUM_OCTEON3, CPU_XLR, CPU_XLP,
 
 	CPU_QEMU_GENERIC,
+
+	/*
+	 * Playstation 2 processors
+	 */
+	CPU_R5900,
 
 	CPU_LAST
 };
