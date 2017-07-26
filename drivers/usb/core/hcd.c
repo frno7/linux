@@ -2545,7 +2545,7 @@ struct usb_hcd *usb_create_shared_hcd(const struct hc_driver *driver,
 	usb_bus_init(&hcd->self);
 	hcd->self.controller = dev;
 	hcd->self.bus_name = bus_name;
-	hcd->self.uses_dma = (dev->dma_mask != NULL);
+	hcd->self.uses_dma = (dev->dma_mask != NULL) && !(driver->flags & HCD_LOCAL_DMA);
 
 	init_timer(&hcd->rh_timer);
 	hcd->rh_timer.function = rh_timer_func;

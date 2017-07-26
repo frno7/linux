@@ -87,6 +87,9 @@
 #include <asm/setup.h>
 #include <asm/sections.h>
 #include <asm/cacheflush.h>
+#ifdef CONFIG_SONY_PS2
+#include <asm/mach-ps2/ps2.h>
+#endif
 
 static int kernel_init(void *);
 
@@ -1017,6 +1020,11 @@ static noinline void __init kernel_init_freeable(void)
 	 * check if there is an early userspace init.  If yes, let it do all
 	 * the work
 	 */
+
+#ifdef CONFIG_SONY_PS2
+	/* Disable auto off when pressing the power button, because file system could be damaged. */
+	ps2_powerbutton_enable_auto_shutoff(0);
+#endif
 
 	if (!ramdisk_execute_command)
 		ramdisk_execute_command = "/init";

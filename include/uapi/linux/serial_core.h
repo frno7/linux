@@ -264,4 +264,8 @@
 /* MVEBU UART */
 #define PORT_MVEBU	114
 
+/* PS2 ports */
+#define PORT_PS2_SBIOS 115
+#define PORT_PS2_UART  116
+
 #endif /* _UAPILINUX_SERIAL_CORE_H */

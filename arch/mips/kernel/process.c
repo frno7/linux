@@ -70,7 +70,7 @@ void start_thread(struct pt_regs * regs, unsigned long pc, unsigned long sp)
 	clear_used_math();
 	init_dsp();
 	regs->cp0_epc = pc;
-	regs->regs[29] = sp;
+	MIPS_WRITE_REG(regs->regs[29]) = sp;
 }
 
 void exit_thread(void)
@@ -128,10 +128,10 @@ int copy_thread(unsigned long clone_flags, unsigned long usp,
 		unsigned long status = p->thread.cp0_status;
 		memset(childregs, 0, sizeof(struct pt_regs));
 		ti->addr_limit = KERNEL_DS;
-		p->thread.reg16 = usp; /* fn */
-		p->thread.reg17 = kthread_arg;
-		p->thread.reg29 = childksp;
-		p->thread.reg31 = (unsigned long) ret_from_kernel_thread;
+		MIPS_WRITE_REG(p->thread.reg16) = usp; /* fn */
+		MIPS_WRITE_REG(p->thread.reg17) = kthread_arg;
+		MIPS_WRITE_REG(p->thread.reg29) = childksp;
+		MIPS_WRITE_REG(p->thread.reg31) = (unsigned long) ret_from_kernel_thread;
 #if defined(CONFIG_CPU_R3000) || defined(CONFIG_CPU_TX39XX)
 		status = (status & ~(ST0_KUP | ST0_IEP | ST0_IEC)) |
 			 ((status & (ST0_KUC | ST0_IEC)) << 2);
@@ -144,14 +144,14 @@ int copy_thread(unsigned long clone_flags, unsigned long usp,
 
 	/* user thread */
 	*childregs = *regs;
-	childregs->regs[7] = 0; /* Clear error flag */
-	childregs->regs[2] = 0; /* Child gets zero as return value */
+	MIPS_WRITE_REG(childregs->regs[7]) = 0;	/* Clear error flag */
+	MIPS_WRITE_REG(childregs->regs[2]) = 0;	/* Child gets zero as return value */
 	if (usp)
-		childregs->regs[29] = usp;
+		MIPS_WRITE_REG(childregs->regs[29]) = usp;
 	ti->addr_limit = USER_DS;
 
-	p->thread.reg29 = (unsigned long) childregs;
-	p->thread.reg31 = (unsigned long) ret_from_fork;
+	MIPS_WRITE_REG(p->thread.reg29) = (unsigned long) childregs;
+	MIPS_WRITE_REG(p->thread.reg31) = (unsigned long) ret_from_fork;
 
 	/*
 	 * New tasks lose permission to use the fpu. This accelerates context
@@ -168,7 +168,7 @@ int copy_thread(unsigned long clone_flags, unsigned long usp,
 #endif /* CONFIG_MIPS_MT_FPAFF */
 
 	if (clone_flags & CLONE_SETTLS)
-		ti->tp_value = regs->regs[7];
+		ti->tp_value = MIPS_READ_REG(regs->regs[7]);
 
 	return 0;
 }
@@ -420,11 +420,11 @@ unsigned long thread_saved_pc(struct task_struct *tsk)
 	struct thread_struct *t = &tsk->thread;
 
 	/* New born processes are a special case */
-	if (t->reg31 == (unsigned long) ret_from_fork)
-		return t->reg31;
+	if (MIPS_READ_REG_L(t->reg31) == (unsigned long) ret_from_fork)
+		return MIPS_READ_REG_L(t->reg31);
 	if (schedule_mfi.pc_offset < 0)
 		return 0;
-	return ((unsigned long *)t->reg29)[schedule_mfi.pc_offset];
+	return ((unsigned long *)MIPS_READ_REG_L(t->reg29))[schedule_mfi.pc_offset];
 }
 
 
@@ -456,8 +456,8 @@ unsigned long notrace unwind_stack_by_address(unsigned long stack_page,
 			regs = (struct pt_regs *)*sp;
 			pc = regs->cp0_epc;
 			if (__kernel_text_address(pc)) {
-				*sp = regs->regs[29];
-				*ra = regs->regs[31];
+				*sp = MIPS_READ_REG_L(regs->regs[29]);
+				*ra = MIPS_READ_REG_L(regs->regs[31]);
 				return pc;
 			}
 		}
@@ -529,7 +529,7 @@ unsigned long get_wchan(struct task_struct *task)
 	pc = thread_saved_pc(task);
 
 #ifdef CONFIG_KALLSYMS
-	sp = task->thread.reg29 + schedule_mfi.frame_size;
+	sp = MIPS_READ_REG_L(task->thread.reg29) + schedule_mfi.frame_size;
 
 	while (in_sched_functions(pc))
 		pc = unwind_stack(task, &sp, pc, &ra);
