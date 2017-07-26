@@ -697,7 +697,8 @@ int fb_find_mode(struct fb_var_screeninfo *var,
 		unsigned int namelen = strlen(name);
 		int res_specified = 0, bpp_specified = 0, refresh_specified = 0;
 		unsigned int xres = 0, yres = 0, bpp = default_bpp, refresh = 0;
-		int yres_specified = 0, cvt = 0, rb = 0, interlace = 0;
+		int yres_specified = 0, cvt = 0, rb = 0;
+		int interlace_specified = 0, interlace = 0;
 		int margins = 0;
 		u32 best, diff, tdiff;
 
@@ -748,9 +749,17 @@ int fb_find_mode(struct fb_var_screeninfo *var,
 				if (!cvt)
 					margins = 1;
 				break;
+			case 'p':
+				if (!cvt) {
+					interlace = 0;
+					interlace_specified = 1;
+				}
+				break;
 			case 'i':
-				if (!cvt)
+				if (!cvt) {
 					interlace = 1;
+					interlace_specified = 1;
+				}
 				break;
 			default:
 				goto done;
@@ -819,11 +828,21 @@ done:
 			if ((name_matches(db[i], name, namelen) ||
 			     (res_specified && res_matches(db[i], xres, yres))) &&
 			    !fb_try_mode(var, info, &db[i], bpp)) {
-				if (refresh_specified && db[i].refresh == refresh)
-					return 1;
+				const int db_interlace = (db[i].vmode &
+					FB_VMODE_INTERLACED ? 1 : 0);
+				int score = abs(db[i].refresh - refresh);
 
-				if (abs(db[i].refresh - refresh) < diff) {
-					diff = abs(db[i].refresh - refresh);
+				if (interlace_specified)
+					score += abs(db_interlace - interlace);
+
+				if (!interlace_specified ||
+				    db_interlace == interlace)
+					if (refresh_specified &&
+					    db[i].refresh == refresh)
+						return 1;
+
+				if (score < diff) {
+					diff = score;
 					best = i;
 				}
 			}
