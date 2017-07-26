@@ -25,10 +25,24 @@ start:
 	move	s2, a2
 	move	s3, a3
 
+	# kernel loader: COP0 status 30010000 config 00073443
+	#    ELF loader: COP0 status 70030c11 config 00073443
+	li	k0, 0x30010000
+	mtc0	k0, $12
+	sync.p
+
 	/* Clear BSS */
 	PTR_LA	a0, _edata
 	PTR_LA	a2, _end
 1:	sw	zero, 0(a0)
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
 	bne	a2, a0, 1b
 	 addiu	a0, a0, 4
 
@@ -39,6 +53,13 @@ start:
 	PTR_LA	k0, decompress_kernel
 	jr	k0
 	 nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
 2:
 	move	a0, s0
 	move	a1, s1
@@ -48,6 +69,14 @@ start:
 	jr	k0
 	 nop
 3:
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
 	b	3b
 	 nop
 	END(start)

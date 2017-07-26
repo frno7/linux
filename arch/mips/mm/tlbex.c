@@ -1504,8 +1504,8 @@ static void build_r4000_tlb_refill_handler(void)
 	pr_debug("Wrote TLB refill handler (%u instructions).\n",
 		 final_len);
 
-	memcpy((void *)ebase, final_handler, 0x100);
-	local_flush_icache_range(ebase, ebase + 0x100);
+	memcpy((void *)ebase, final_handler, 4 * final_len);
+	local_flush_icache_range(ebase, ebase + 4 * final_len);
 	dump_handler("r4000_tlb_refill", (u32 *)ebase, (u32 *)(ebase + 0x100));
 }
 

@@ -14,9 +14,8 @@
 /* Base address for hardware. */
 #define PS2_HW_BASE 0x10000000
 
-extern int ps2_pccard_present;
-extern int ps2_pcic_type;
-extern struct ps2_sysconf *ps2_sysconf;
+#define INTC_STAT	0x1000f000	/* Flags are cleared by writing 1. */
+#define INTC_MASK	0x1000f010	/* Bits are reversed by writing 1. */
 
 int ps2rtc_init(void);
 
