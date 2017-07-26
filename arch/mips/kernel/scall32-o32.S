@@ -25,18 +25,40 @@
 /* Highest syscall used of any syscall flavour */
 #define MAX_SYSCALL_NO	__NR_O32_Linux + __NR_O32_Linux_syscalls
 
+#ifdef CONFIG_MIPS_N32
+/* There is already an n32 syscall handler installed. */
+#define handle_sys handle_sys32
+#endif
+
+
 	.align	5
 NESTED(handle_sys, PT_SIZE, sp)
+#ifndef CONFIG_MIPS_N32
 	.set	noat
+#ifdef CONFIG_CPU_R5900
+	nop
+	nop
+#endif
 	SAVE_SOME
 	TRACE_IRQS_ON_RELOAD
 	STI
 	.set	at
+#endif
 
+	subu	v0, v0, __NR_O32_Linux	# check syscall number
+	sltiu	t0, v0, __NR_O32_Linux_syscalls + 1
+#ifndef CONFIG_MIPS_N32
 	lw	t1, PT_EPC(sp)		# skip syscall on return
-
 	addiu	t1, 4			# skip to next instruction
 	sw	t1, PT_EPC(sp)
+#endif
+	beqz	t0, illegal_syscall
+
+	sll	t0, v0, 2
+	la	t1, sys_call_table
+	addu	t1, t0
+	lw	t2, (t1)		# syscall routine
+	beqz	t2, illegal_syscall
 
 	sw	a3, PT_R26(sp)		# save a3 for syscall restarting
 
@@ -87,29 +109,26 @@ loads_done:
 	li	t1, _TIF_WORK_SYSCALL_ENTRY
 	and	t0, t1
 	bnez	t0, syscall_trace_entry # -> yes
-syscall_common:
-	subu	v0, v0, __NR_O32_Linux	# check syscall number
-	sltiu	t0, v0, __NR_O32_Linux_syscalls + 1
-	beqz	t0, illegal_syscall
 
-	sll	t0, v0, 2
-	la	t1, sys_call_table
-	addu	t1, t0
-	lw	t2, (t1)		# syscall routine
-
-	beqz	t2, illegal_syscall
+#ifdef CONFIG_R5900_128BIT_SUPPORT
+	SAVE_STATIC
+#endif
 
 	jalr	t2			# Do The Real Thing (TM)
 
+#ifdef CONFIG_R5900_128BIT_SUPPORT
+	RESTORE_STATIC
+#endif
+
 	li	t0, -EMAXERRNO - 1	# error?
 	sltu	t0, t0, v0
-	sw	t0, PT_R7(sp)		# set error flag
+	LONGH_S	t0, PT_R7(sp)		# set error flag
 	beqz	t0, 1f
 
 	lw	t1, PT_R2(sp)		# syscall number
 	negu	v0			# error
-	sw	t1, PT_R0(sp)		# save it for syscall restarting
-1:	sw	v0, PT_R2(sp)		# result
+	LONGH_S	t1, PT_R0(sp)		# save it for syscall restarting
+1:	LONGH_S	v0, PT_R2(sp)		# result
 
 o32_syscall_exit:
 	j	syscall_exit_partial
@@ -118,30 +137,44 @@ o32_syscall_exit:
 
 syscall_trace_entry:
 	SAVE_STATIC
+	move	s0, t2
 	move	a0, sp
 
 	/*
 	 * syscall number is in v0 unless we called syscall(__NR_###)
 	 * where the real syscall number is in a0
 	 */
-	move	a1, v0
-	subu	t2, v0,  __NR_O32_Linux
-	bnez	t2, 1f /* __NR_syscall at offset 0 */
+	addiu	a1, v0,  __NR_O32_Linux
+	bnez	v0, 1f /* __NR_syscall at offset 0 */
 	lw	a1, PT_R4(sp)
 
 1:	jal	syscall_trace_enter
 
-	bltz	v0, 1f			# seccomp failed? Skip syscall
+	bltz	v0, 2f			# seccomp failed? Skip syscall
 
+	move	t0, s0
 	RESTORE_STATIC
-	lw	v0, PT_R2(sp)		# Restore syscall (maybe modified)
-	lw	a0, PT_R4(sp)		# Restore argument registers
-	lw	a1, PT_R5(sp)
-	lw	a2, PT_R6(sp)
-	lw	a3, PT_R7(sp)
-	j	syscall_common
+	LONGD_L	a0, PT_R4(sp)		# Restore argument registers
+	LONGD_L	a1, PT_R5(sp)
+	LONGD_L	a2, PT_R6(sp)
+	LONGD_L	a3, PT_R7(sp)
+	jalr	t0
 
-1:	j	syscall_exit
+#ifdef CONFIG_R5900_128BIT_SUPPORT
+	RESTORE_STATIC
+#endif
+
+	li	t0, -EMAXERRNO - 1	# error?
+	sltu	t0, t0, v0
+	LONGH_S	t0, PT_R7(sp)		# set error flag
+	beqz	t0, 1f
+
+	lw	t1, PT_R2(sp)		# syscall number
+	negu	v0			# error
+	LONGH_S	t1, PT_R0(sp)		# save it for syscall restarting
+1:	LONGH_S	v0, PT_R2(sp)		# result
+
+2:	j	syscall_exit
 
 /* ------------------------------------------------------------------------ */
 
@@ -151,9 +184,9 @@ syscall_trace_entry:
 	 */
 bad_stack:
 	li	v0, EFAULT
-	sw	v0, PT_R2(sp)
+	LONGH_S	v0, PT_R2(sp)
 	li	t0, 1				# set error flag
-	sw	t0, PT_R7(sp)
+	LONGH_S	t0, PT_R7(sp)
 	j	o32_syscall_exit
 
 bad_stack_a4:
@@ -177,9 +210,9 @@ bad_stack_a7:
 	 */
 illegal_syscall:
 	li	v0, ENOSYS			# error
-	sw	v0, PT_R2(sp)
+	LONGH_S	v0, PT_R2(sp)
 	li	t0, 1				# set error flag
-	sw	t0, PT_R7(sp)
+	LONGH_S	t0, PT_R7(sp)
 	j	o32_syscall_exit
 	END(handle_sys)
 
@@ -207,11 +240,11 @@ illegal_syscall:
 	sw	t4, 16(sp)
 	sw	t5, 20(sp)
 	sw	t6, 24(sp)
-	sw	a0, PT_R4(sp)			# .. and push back a0 - a3, some
-	sw	a1, PT_R5(sp)			# syscalls expect them there
-	sw	a2, PT_R6(sp)
-	sw	a3, PT_R7(sp)
-	sw	a3, PT_R26(sp)			# update a3 for syscall restarting
+	LONGD_S	a0, PT_R4(sp)			# .. and push back a0 - a3, some
+	LONGD_S	a1, PT_R5(sp)			# syscalls expect them there
+	LONGD_S	a2, PT_R6(sp)
+	LONGH_S	a3, PT_R7(sp)
+	LONGH_S	a3, PT_R26(sp)			# update a3 for syscall restarting
 	jr	t2
 	/* Unreached */
 
