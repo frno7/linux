@@ -20,7 +20,6 @@
 #include <linux/types.h>
 #include <linux/platform_device.h>
 #include <linux/ata_platform.h>
-#include <linux/dma-mapping.h>
 
 #include <asm/bootinfo.h>
 
@@ -66,6 +65,21 @@ static struct platform_device ps2_usb_ohci_device = {
 	.resource	= ps2_usb_ohci_resources,
 };
 
+static struct platform_device ps2_smaprpc_device = {
+	.name           = "ps2smaprpc",
+	.id		= -1,
+};
+
+static struct platform_device ps2_gs_device = {
+	.name           = "ps2fb",
+	.id		= -1,
+};
+
+static struct platform_device ps2_sbios_device = {
+	.name		= "ps2sbios-uart",
+	.id		= 0,
+};
+
 void __init plat_mem_setup(void)
 {
 	ps2_reset_init();
@@ -106,7 +120,9 @@ void __init plat_mem_setup(void)
 }
 
 static struct platform_device *ps2_platform_devices[] __initdata = {
+	&ps2_gs_device,
 	&ps2_usb_ohci_device,
+	&ps2_sbios_device,
 };
 
 static int __init ps2_board_setup(void)
@@ -121,6 +137,21 @@ arch_initcall(ps2_board_setup);
 static int __init ps2_device_setup(void)
 {
 	ps2rtc_init();
+
+	if (ps2_pccard_present == 0x0200) {
+		pr_info("Playstation 2 SLIM\n");
+
+		platform_device_register(&ps2_smaprpc_device);
+	}
+	else {
+		pr_info("Playstation 2 FAT\n");
+
+		if (ps2_pccard_present == 0x0100) {
+			pr_info(" - With network adapter\n");
+
+			platform_device_register(&ps2_smaprpc_device);
+		}
+	}
 
 	platform_add_devices(ps2_platform_devices, ARRAY_SIZE(ps2_platform_devices));
 

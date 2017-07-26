@@ -1,0 +1,16 @@
+obj-y		+= sbios.o
+obj-y		+= setup.o
+obj-y		+= prom.o
+obj-y		+= irq.o
+obj-y		+= time.o
+obj-y		+= ps2dma.o
+obj-y		+= ps2dev.o
+obj-y		+= gs.o
+obj-y		+= dma.o
+obj-y		+= sbcall.o
+obj-y		+= iopheap.o
+obj-y		+= rtc.o
+obj-y		+= siflock.o
+obj-y				+= reset.o
+obj-$(CONFIG_SYSFS_IOP_MODULES)	+= iopmodules.o
+obj-$(CONFIG_SYSFS_IOP_MODULES)	+= loadfile.o
