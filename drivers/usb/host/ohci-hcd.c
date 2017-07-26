@@ -564,6 +564,11 @@ retry:
 		}
 		udelay (1);
 	}
+#ifdef CONFIG_SONY_PS2
+	/* Enable USB. Leave PS2DEV enabled. */
+	outl(inl(0x1F801570) | 0x08000080, 0x1F801570);
+	outl(1, 0x1F801680);
+#endif
 
 	/* now we're in the SUSPEND state ... must go OPERATIONAL
 	 * within 2msec else HC enters RESUME
@@ -848,6 +853,10 @@ static irqreturn_t ohci_irq (struct usb_hcd *hcd)
 
 	/* We only care about interrupts that are enabled */
 	ints &= ohci_readl(ohci, &regs->intrenable);
+
+#ifdef CONFIG_SONY_PS2
+	ohci_writel(ohci, OHCI_INTR_MIE, &regs->intrdisable);
+#endif
 
 	/* interrupt for some other device? */
 	if (ints == 0 || unlikely(ohci->rh_state == OHCI_RH_HALTED))
@@ -1227,6 +1236,11 @@ MODULE_LICENSE ("GPL");
 #ifdef CONFIG_TILE_USB
 #include "ohci-tilegx.c"
 #define PLATFORM_DRIVER		ohci_hcd_tilegx_driver
+#endif
+
+#if defined(CONFIG_SONY_PS2)
+#include "ohci-ps2.c"
+#define PLATFORM_DRIVER		ohci_hcd_ps2_driver
 #endif
 
 static int __init ohci_hcd_mod_init(void)

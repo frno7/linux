@@ -1044,6 +1044,14 @@ static inline void cpu_probe_legacy(struct cpuinfo_mips *c, unsigned int cpu)
 		}
 
 		break;
+	case PRID_IMP_R5900:
+		c->cputype = CPU_R5900;
+		__cpu_name[cpu] = "R5900";
+		c->isa_level = MIPS_CPU_ISA_III;
+		c->tlbsize = 48;
+		c->options = MIPS_CPU_TLB | MIPS_CPU_4K_CACHE | MIPS_CPU_4KEX |
+				MIPS_CPU_DIVEC | MIPS_CPU_FPU | MIPS_CPU_32FPR | MIPS_CPU_COUNTER;
+		break;
 	}
 }
 
@@ -1516,9 +1524,11 @@ void cpu_probe(void)
 	else
 		cpu_set_nofpu_opts(c);
 
+#if !defined(CONFIG_CPU_R5900)
 	if (cpu_has_bp_ghist)
 		write_c0_r10k_diag(read_c0_r10k_diag() |
 				   R10K_DIAG_E_GHIST);
+#endif
 
 	if (cpu_has_mips_r2_r6) {
 		c->srsets = ((read_c0_srsctl() >> 26) & 0x0f) + 1;

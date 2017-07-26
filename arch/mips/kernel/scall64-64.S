@@ -33,6 +33,10 @@ NESTED(handle_sys64, PT_SIZE, sp)
 	 * already did this.
 	 */
 	.set	noat
+#ifdef CONFIG_CPU_R5900
+	nop
+	nop
+#endif
 	SAVE_SOME
 	TRACE_IRQS_ON_RELOAD
 	STI

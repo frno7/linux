@@ -14,24 +14,30 @@
 #include <asm/stackframe.h>
 
 /*
- * Game over.  Go to the button.  Press gently.	 Swear where allowed by
+ * Game over.  Go to the button.  Press gently.  Swear where allowed by
  * legislation.
  */
 	LEAF(except_vec2_generic)
 	.set	noreorder
 	.set	noat
-	.set	mips0
+	.set    mips0
 	/*
 	 * This is a very bad place to be.  Our cache error
 	 * detection has triggered.  If we have write-back data
-	 * in the cache, we may not be able to recover.	 As a
+	 * in the cache, we may not be able to recover.  As a
 	 * first-order desperate measure, turn off KSEG0 cacheing.
 	 */
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	k0,CP0_CONFIG
 	li	k1,~CONF_CM_CMASK
 	and	k0,k0,k1
 	ori	k0,k0,CONF_CM_UNCACHED
 	mtc0	k0,CP0_CONFIG
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	/* Give it a few cycles to sink in... */
 	nop
 	nop
