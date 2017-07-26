@@ -10,11 +10,21 @@
 #include <asm/asm-offsets.h>
 #include <asm/regdef.h>
 
+#ifdef CONFIG_CPU_R5900
+#define EX(insn,reg,addr,handler)			\
+	/* In an error exception handler the user space could be uncached. */ \
+	sync.l;						\
+9:	insn	reg, addr;				\
+	.section __ex_table,"a";			\
+	PTR	9b, handler;				\
+	.previous
+#else
 #define EX(insn,reg,addr,handler)			\
 9:	insn	reg, addr;				\
 	.section __ex_table,"a";			\
 	PTR	9b, handler;				\
 	.previous
+#endif
 
 /*
  * Returns: -EFAULT if exception before terminator, N if the entire
@@ -28,7 +38,7 @@
  */
 
 LEAF(__strncpy_from_user_asm)
-	LONG_L		v0, TI_ADDR_LIMIT($28)	# pointer ok?
+	LONGI_L		v0, TI_ADDR_LIMIT($28)	# pointer ok?
 	and		v0, a1
 	bnez		v0, .Lfault
 
@@ -40,10 +50,14 @@ FEXPORT(__strncpy_from_user_nocheck_asm)
 	PTR_ADDIU	v1, 1
 	R10KCBARRIER(0(ra))
 	beqz		t0, 2f
-	 sb		t0, (a0)
+	sb		t0, (a0)
 	PTR_ADDIU	v0, 1
 	.set		reorder
 	PTR_ADDIU	a0, 1
+#ifdef CONFIG_CPU_R5900
+	/* no short loops. */
+	nop
+#endif
 	bne		v0, a2, 1b
 2:	PTR_ADDU	t0, a1, v0
 	xor		t0, a1

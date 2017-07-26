@@ -38,7 +38,12 @@
 	 * 0+DVG in tlblo_1.
 	 */
 	dli	t0, 0xffffffffc0000000
+#ifdef CONFIG_CPU_R5900
+	mtc0	t0, CP0_ENTRYHI
+	sync.p
+#else
 	dmtc0	t0, CP0_ENTRYHI
+#endif
 	li	t0, 0x1c000		# Offset of text into node memory
 	dsll	t1, NASID_SHFT		# Shift text nasid into place
 	dsll	t2, NASID_SHFT		# Same for data nasid
@@ -51,18 +56,36 @@
 	li	t0, ((_PAGE_GLOBAL|_PAGE_VALID| _CACHE_CACHABLE_COW) >> 6)
 	or	t0, t0, t1
 	mtc0	t0, CP0_ENTRYLO0	# physaddr, VG, cach exlwr
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	li	t0, ((_PAGE_GLOBAL|_PAGE_VALID| _PAGE_DIRTY|_CACHE_CACHABLE_COW) >> 6)
 	or	t0, t0, t2
 	mtc0	t0, CP0_ENTRYLO1	# physaddr, DVG, cach exlwr
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	li	t0, 0x1ffe000		# MAPPED_KERN_TLBMASK, TLBPGMASK_16M
 	mtc0	t0, CP0_PAGEMASK
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	li	t0, 0			# KMAP_INX
 	mtc0	t0, CP0_INDEX
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	li	t0, 1
 	mtc0	t0, CP0_WIRED
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	tlbwi
 #else
 	mtc0	zero, CP0_WIRED
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 #endif
 	.endm
 
@@ -79,6 +102,9 @@
 	 * For SMTC, we need to set privilege and disable interrupts only for
 	 * the current TC, using the TCStatus register.
 	 */
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	t0, CP0_TCSTATUS
 	/* Fortunately CU 0 is in the same place in both registers */
 	/* Set TCU0, TMX, TKSU (for later inversion) and IXMT */
@@ -87,17 +113,32 @@
 	/* Clear TKSU, leave IXMT */
 	xori	t0, 0x00001800
 	mtc0	t0, CP0_TCSTATUS
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	_ehb
 	/* We need to leave the global IE bit set, but clear EXL...*/
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	t0, CP0_STATUS
 	or	t0, ST0_CU0 | ST0_EXL | ST0_ERL | \set | \clr
 	xor	t0, ST0_EXL | ST0_ERL | \clr
 	mtc0	t0, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 #else
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	t0, CP0_STATUS
 	or	t0, ST0_CU0|\set|0x1f|\clr
 	xor	t0, 0x1f|\clr
 	mtc0	t0, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	.set	noreorder
 	sll	zero,3				# ehb
 #endif
@@ -166,26 +207,35 @@ NESTED(kernel_entry, 16, sp)			# kernel entry point
 	 */
 	mtc0	zero, CP0_TCCONTEXT
 
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	t0, CP0_STATUS
 	ori	t0, t0, 0xff1f
 	xori	t0, t0, 0x001e
 	mtc0	t0, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 #endif /* CONFIG_MIPS_MT_SMTC */
 
 	PTR_LA		t0, __bss_start		# clear .bss
-	LONG_S		zero, (t0)
+	LONGI_S		zero, (t0)
 	PTR_LA		t1, __bss_stop - LONGSIZE
 1:
 	PTR_ADDIU	t0, LONGSIZE
-	LONG_S		zero, (t0)
+	LONGI_S		zero, (t0)
 	bne		t0, t1, 1b
 
-	LONG_S		a0, fw_arg0		# firmware arguments
-	LONG_S		a1, fw_arg1
-	LONG_S		a2, fw_arg2
-	LONG_S		a3, fw_arg3
+	LONGI_S		a0, fw_arg0		# firmware arguments
+	LONGI_S		a1, fw_arg1
+	LONGI_S		a2, fw_arg2
+	LONGI_S		a3, fw_arg3
 
 	MTC0		zero, CP0_CONTEXT	# clear context register
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	PTR_LA		$28, init_thread_union
 	/* Set the SP after an empty pt_regs.  */
 	PTR_LI		sp, _THREAD_SIZE - 32 - PT_SIZE

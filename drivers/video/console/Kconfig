@@ -131,7 +131,7 @@ config STI_CONSOLE
 
 config FONTS
 	bool "Select compiled-in fonts"
-	depends on FRAMEBUFFER_CONSOLE || STI_CONSOLE
+	depends on FRAMEBUFFER_CONSOLE || STI_CONSOLE || PS2_CONSOLE
 	help
 	  Say Y here if you would like to use fonts other than the default
 	  your frame buffer console usually use.
@@ -144,7 +144,7 @@ config FONTS
 
 config FONT_8x8
 	bool "VGA 8x8 font" if FONTS
-	depends on FRAMEBUFFER_CONSOLE || STI_CONSOLE
+	depends on FRAMEBUFFER_CONSOLE || STI_CONSOLE || PS2_CONSOLE
 	default y if !SPARC && !FONTS
 	help
 	  This is the "high resolution" font for the VGA frame buffer (the one
@@ -158,7 +158,7 @@ config FONT_8x8
 
 config FONT_8x16
 	bool "VGA 8x16 font" if FONTS
-	depends on FRAMEBUFFER_CONSOLE || SGI_NEWPORT_CONSOLE || STI_CONSOLE || USB_SISUSBVGA_CON
+	depends on FRAMEBUFFER_CONSOLE || SGI_NEWPORT_CONSOLE || STI_CONSOLE || USB_SISUSBVGA_CON || PS2_CONSOLE
 	default y if !SPARC && !FONTS
 	help
 	  This is the "high resolution" font for the VGA frame buffer (the one
@@ -238,5 +238,21 @@ config FONT_AUTOSELECT
 	depends on !FONT_10x18
 	select FONT_8x16
 
-endmenu
+config PS2_CONSOLE
+	tristate "Support for PlayStation 2 console device"
+	depends on SONY_PS2 && !FB_PS2
+	default n
 
+config PS2_CONSOLE_SCROLLBACK
+	bool "Console scrollback support"
+	depends on PS2_CONSOLE
+	default y
+
+config PS2_CONSOLE_LARGEBUF
+	bool "Allocate large DMA buffer for console"
+	depends on PS2_CONSOLE
+	select DUMMY_CONSOLE
+	select FONT_8x8
+	select FONT_8x16
+
+endmenu

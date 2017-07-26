@@ -1447,4 +1447,50 @@ config SERIAL_ARC_NR_PORTS
 	  Set this to the number of serial ports you want the driver
 	  to support.
 
+config SERIAL_PS2_UART
+	tristate "PS2 serial port"
+	depends on SONY_PS2
+	select SERIAL_CORE
+	default n
+	help
+	  This driver is for the Playstation 2 UART/SIO port. You can see
+	  the output with a serial cable connected to the internal serial
+	  pins of the PS2.
+	  To use this as system console, you need to specify the kernel
+	  parameter: console=ttyS0
+	  Can not be used together with ps2 sbios driver.
+
+config SERIAL_PS2_UART_CONSOLE
+	bool "PS2 serial port console"
+	depends on SERIAL_PS2_UART=y
+	select SERIAL_CORE_CONSOLE
+	help
+	  Enable the PS2 UART port to be the system console.
+
+config SERIAL_PS2_SBIOS
+	tristate "PS2 serial port over SBIOS"
+	depends on SONY_PS2
+	select SERIAL_CORE
+	default n
+	help
+	  If you have Sony Playstation 2 the output is handled by
+	  the putc function of the SBIOS.
+	  This means you can see the output in ps2link or with
+	  a serial cable connected to the internal serial pins
+	  of the PS2.
+	  To use this as system console, you need to specify
+	  the kernel parameter:
+	  console=ttyS0
+	  Can not be used together with ps2 uart driver.
+
+config SERIAL_PS2_SBIOS_DEFAULT
+	bool "Use PS2 serial console as default"
+	depends on SERIAL_PS2_SBIOS=y
+	default n
+	help
+	  Don't use graphical console as default. Use PS2 SBIOS
+	  console as default console. This is only for debugging
+	  You need to have a PS2 serial cable or ps2link enabled
+	  in kernelloader.
+
 endmenu

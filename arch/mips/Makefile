@@ -35,7 +35,11 @@ endif
 
 ifdef CONFIG_32BIT
 tool-archpref		= $(32bit-tool-archpref)
+ifdef CONFIG_MIPS_N32
+UTS_MACHINE		:= mips64
+else
 UTS_MACHINE		:= mips
+endif
 endif
 ifdef CONFIG_64BIT
 tool-archpref		= $(64bit-tool-archpref)
@@ -141,6 +145,8 @@ cflags-$(CONFIG_CPU_R5432)	+= $(call cc-option,-march=r5400,-march=r5000) \
 			-Wa,--trap
 cflags-$(CONFIG_CPU_R5500)	+= $(call cc-option,-march=r5500,-march=r5000) \
 			-Wa,--trap
+cflags-$(CONFIG_CPU_R5900)	+= -march=r5900 -mtune=r5900 \
+			-Wa,--trap -mno-llsc
 cflags-$(CONFIG_CPU_NEVADA)	+= $(call cc-option,-march=rm5200,-march=r5000) \
 			-Wa,--trap
 cflags-$(CONFIG_CPU_RM7000)	+= $(call cc-option,-march=rm7000,-march=r5000) \
@@ -193,6 +199,12 @@ include $(srctree)/arch/mips/Kbuild.platforms
 ifdef CONFIG_PHYSICAL_START
 load-y                                  = $(CONFIG_PHYSICAL_START)
 endif
+
+# Sony Playstation 2
+#
+core-$(CONFIG_SONY_PS2)	+= arch/mips/ps2/
+cflags-$(CONFIG_SONY_PS2)+= -I$(srctree)/arch/mips/include/asm/mach-ps2
+load-$(CONFIG_SONY_PS2)	+= 0x80010000
 
 cflags-y			+= -I$(srctree)/arch/mips/include/asm/mach-generic
 drivers-$(CONFIG_PCI)		+= arch/mips/pci/

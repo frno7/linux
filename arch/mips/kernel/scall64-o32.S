@@ -27,6 +27,10 @@
 	.align  5
 NESTED(handle_sys, PT_SIZE, sp)
 	.set	noat
+#ifdef CONFIG_CPU_R5900
+	nop
+	nop
+#endif
 	SAVE_SOME
 	TRACE_IRQS_ON_RELOAD
 	STI
@@ -69,9 +73,25 @@ NESTED(handle_sys, PT_SIZE, sp)
 	daddu	t1, t0, 32
 	bltz	t1, bad_stack
 
+#ifdef CONFIG_CPU_R5900
+	/* In an error exception handler the user space could be uncached. */
+	sync.l
+#endif
 1:	lw	a4, 16(t0)		# argument #5 from usp
+#ifdef CONFIG_CPU_R5900
+	/* In an error exception handler the user space could be uncached. */
+	sync.l
+#endif
 2:	lw	a5, 20(t0)		# argument #6 from usp
+#ifdef CONFIG_CPU_R5900
+	/* In an error exception handler the user space could be uncached. */
+	sync.l
+#endif
 3:	lw	a6, 24(t0)		# argument #7 from usp
+#ifdef CONFIG_CPU_R5900
+	/* In an error exception handler the user space could be uncached. */
+	sync.l
+#endif
 4:	lw	a7, 28(t0)		# argument #8 from usp (for indirect syscalls)
 
 	.section __ex_table,"a"

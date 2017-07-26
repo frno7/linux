@@ -24,20 +24,33 @@
 /* Highest syscall used of any syscall flavour */
 #define MAX_SYSCALL_NO	__NR_O32_Linux + __NR_O32_Linux_syscalls
 
+#ifdef CONFIG_MIPS_N32
+/* There is already an n32 syscall handler installed. */
+#define handle_sys handle_sys32
+#endif
+
+
 	.align  5
 NESTED(handle_sys, PT_SIZE, sp)
+#ifndef CONFIG_MIPS_N32
 	.set	noat
+#ifdef CONFIG_CPU_R5900
+	nop
+	nop
+#endif
 	SAVE_SOME
 	TRACE_IRQS_ON_RELOAD
 	STI
 	.set	at
-
-	lw	t1, PT_EPC(sp)		# skip syscall on return
+#endif
 
 	subu	v0, v0, __NR_O32_Linux	# check syscall number
 	sltiu	t0, v0, __NR_O32_Linux_syscalls + 1
+#ifndef CONFIG_MIPS_N32
+	lw	t1, PT_EPC(sp)		# skip syscall on return
 	addiu	t1, 4			# skip to next instruction
 	sw	t1, PT_EPC(sp)
+#endif
 	beqz	t0, illegal_syscall
 
 	sll	t0, v0, 3
@@ -47,7 +60,7 @@ NESTED(handle_sys, PT_SIZE, sp)
 	lw	t3, 4(t1)		# >= 0 if we need stack arguments
 	beqz	t2, illegal_syscall
 
-	sw	a3, PT_R26(sp)		# save a3 for syscall restarting
+	LONGD_S	a3, PT_R26(sp)		# save a3 for syscall restarting
 	bgez	t3, stackargs
 
 stack_done:
@@ -56,17 +69,25 @@ stack_done:
 	and	t0, t1
 	bnez	t0, syscall_trace_entry	# -> yes
 
+#ifdef CONFIG_R5900_128BIT_SUPPORT
+	SAVE_STATIC
+#endif
+
 	jalr	t2			# Do The Real Thing (TM)
+
+#ifdef CONFIG_R5900_128BIT_SUPPORT
+	RESTORE_STATIC
+#endif
 
 	li	t0, -EMAXERRNO - 1	# error?
 	sltu	t0, t0, v0
-	sw	t0, PT_R7(sp)		# set error flag
+	LONGH_S	t0, PT_R7(sp)		# set error flag
 	beqz	t0, 1f
 
 	lw	t1, PT_R2(sp)		# syscall number
 	negu	v0			# error
-	sw	t1, PT_R0(sp)		# save it for syscall restarting
-1:	sw	v0, PT_R2(sp)		# result
+	LONGH_S	t1, PT_R0(sp)		# save it for syscall restarting
+1:	LONGH_S	v0, PT_R2(sp)		# result
 
 o32_syscall_exit:
 	j	syscall_exit_partial
@@ -81,21 +102,25 @@ syscall_trace_entry:
 
 	move	t0, s0
 	RESTORE_STATIC
-	lw	a0, PT_R4(sp)		# Restore argument registers
-	lw	a1, PT_R5(sp)
-	lw	a2, PT_R6(sp)
-	lw	a3, PT_R7(sp)
+	LONGD_L	a0, PT_R4(sp)		# Restore argument registers
+	LONGD_L	a1, PT_R5(sp)
+	LONGD_L	a2, PT_R6(sp)
+	LONGD_L	a3, PT_R7(sp)
 	jalr	t0
+
+#ifdef CONFIG_R5900_128BIT_SUPPORT
+	RESTORE_STATIC
+#endif
 
 	li	t0, -EMAXERRNO - 1	# error?
 	sltu	t0, t0, v0
-	sw	t0, PT_R7(sp)		# set error flag
+	LONGH_S	t0, PT_R7(sp)		# set error flag
 	beqz	t0, 1f
 
 	lw	t1, PT_R2(sp)		# syscall number
 	negu	v0			# error
-	sw	t1, PT_R0(sp)		# save it for syscall restarting
-1:	sw	v0, PT_R2(sp)		# result
+	LONGH_S	t1, PT_R0(sp)		# save it for syscall restarting
+1:	LONGH_S	v0, PT_R2(sp)		# result
 
 	j	syscall_exit
 
@@ -107,7 +132,7 @@ syscall_trace_entry:
 	 * This Sucks (TM).
 	 */
 stackargs:
-	lw	t0, PT_R29(sp)		# get old user stack pointer
+	LONGH_L	t0, PT_R29(sp)		# get old user stack pointer
 
 	/*
 	 * We intentionally keep the kernel stack a little below the top of
@@ -125,6 +150,11 @@ stackargs:
 
 	la	t1, 5f			# load up to 3 arguments
 	subu	t1, t3
+#ifdef CONFIG_CPU_R5900
+	subu	t1, t3			# Add sync.l instructions to jump calculation
+	/* In an error exception handler the user space could be uncached. */
+	sync.l
+#endif
 1:	lw	t5, 16(t0)		# argument #5 from usp
 	.set    push
 	.set    noreorder
@@ -132,10 +162,26 @@ stackargs:
 	jr	t1
 	 addiu	t1, 6f - 5f
 
+#ifdef CONFIG_CPU_R5900
+	/* In an error exception handler the user space could be uncached. */
+	sync.l
+#endif
 2:	lw	t8, 28(t0)		# argument #8 from usp
+#ifdef CONFIG_CPU_R5900
+	/* In an error exception handler the user space could be uncached. */
+	sync.l
+#endif
 3:	lw	t7, 24(t0)		# argument #7 from usp
+#ifdef CONFIG_CPU_R5900
+	/* In an error exception handler the user space could be uncached. */
+	sync.l
+#endif
 4:	lw	t6, 20(t0)		# argument #6 from usp
-5:	jr	t1
+5:
+#ifdef CONFIG_CPU_R5900
+	addu	t1, t3
+#endif
+	jr	t1
 	 sw	t5, 16(sp)		# argument #5 to ksp
 
 	sw	t8, 28(sp)		# argument #8 to ksp
@@ -158,9 +204,9 @@ stackargs:
 	 */
 bad_stack:
 	li	v0, EFAULT
-	sw	v0, PT_R2(sp)
+	LONGH_S	v0, PT_R2(sp)
 	li	t0, 1				# set error flag
-	sw	t0, PT_R7(sp)
+	LONGH_S	t0, PT_R7(sp)
 	j	o32_syscall_exit
 
 	/*
@@ -168,9 +214,9 @@ bad_stack:
 	 */
 illegal_syscall:
 	li	v0, ENOSYS			# error
-	sw	v0, PT_R2(sp)
+	LONGH_S	v0, PT_R2(sp)
 	li	t0, 1				# set error flag
-	sw	t0, PT_R7(sp)
+	LONGH_S	t0, PT_R7(sp)
 	j	o32_syscall_exit
 	END(handle_sys)
 
@@ -197,11 +243,11 @@ illegal_syscall:
 	sw	t4, 16(sp)
 	sw	t5, 20(sp)
 	sw	t6, 24(sp)
-	sw	a0, PT_R4(sp)			# .. and push back a0 - a3, some
-	sw	a1, PT_R5(sp)			# syscalls expect them there
-	sw	a2, PT_R6(sp)
-	sw	a3, PT_R7(sp)
-	sw	a3, PT_R26(sp)			# update a3 for syscall restarting
+	LONGD_S	a0, PT_R4(sp)			# .. and push back a0 - a3, some
+	LONGD_S	a1, PT_R5(sp)			# syscalls expect them there
+	LONGD_S	a2, PT_R6(sp)
+	LONGH_S	a3, PT_R7(sp)
+	LONGH_S	a3, PT_R26(sp)			# update a3 for syscall restarting
 	jr	t2
 	/* Unreached */
 

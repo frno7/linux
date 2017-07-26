@@ -161,7 +161,7 @@ static int __init rd_start_early(char *p)
 {
 	unsigned long start = memparse(p, &p);
 
-#ifdef CONFIG_64BIT
+#if defined(CONFIG_64BIT) && !defined(CONFIG_CPU_R5900)
 	/* Guess if the sign extension was forgotten by bootloader */
 	if (start < XKPHYS)
 		start = (int)start;

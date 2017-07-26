@@ -386,10 +386,23 @@ static inline void pfx##out##bwlq##p(type val, unsigned long port)	\
 									\
 	__val = pfx##ioswab##bwlq(__addr, val);				\
 									\
-	/* Really, we want this to be atomic */				\
-	BUILD_BUG_ON(sizeof(type) > sizeof(unsigned long));		\
+	if (sizeof(type) != sizeof(u64) || sizeof(u64) == sizeof(long))	\
+		*__addr = __val;					\
+	else if (cpu_has_64bits) {					\
+		type __tmp;						\
 									\
-	*__addr = __val;						\
+		__asm__ __volatile__(					\
+			".set	mips3"		"\t\t# __writeq""\n\t"	\
+			"dsll32	%L0, %L0, 0"			"\n\t"	\
+			"dsrl32	%L0, %L0, 0"			"\n\t"	\
+			"dsll32	%M0, %M0, 0"			"\n\t"	\
+			"or	%L0, %L0, %M0"			"\n\t"	\
+			"sd	%L0, %2"			"\n\t"	\
+			".set	mips0"				"\n"	\
+			: "=r" (__tmp)					\
+			: "0" (__val), "m" (*__addr));			\
+	} else								\
+		BUG();							\
 	slow;								\
 }									\
 									\
@@ -400,9 +413,22 @@ static inline type pfx##in##bwlq##p(unsigned long port)			\
 									\
 	__addr = (void *)__swizzle_addr_##bwlq(mips_io_port_base + port); \
 									\
-	BUILD_BUG_ON(sizeof(type) > sizeof(unsigned long));		\
+	if (sizeof(type) != sizeof(u64) || sizeof(u64) == sizeof(long))	\
+		__val = *__addr;					\
+	else if (cpu_has_64bits) {					\
 									\
-	__val = *__addr;						\
+		__asm__ __volatile__(					\
+			".set	mips3"		"\t\t# __outq"	"\n\t"	\
+			"ld	%L0, %1"			"\n\t"	\
+			"dsra32	%M0, %L0, 0"			"\n\t"	\
+			"sll	%L0, %L0, 0"			"\n\t"	\
+			".set	mips0"				"\n"	\
+			: "=r" (__val)					\
+			: "m" (*__addr));				\
+	} else {							\
+		__val = 0;						\
+		BUG();							\
+	}								\
 	slow;								\
 									\
 	return pfx##ioswab##bwlq(__addr, __val);			\
@@ -434,7 +460,7 @@ BUILDIO_MEM(q, u64)
 BUILDIO_IOPORT(b, u8)
 BUILDIO_IOPORT(w, u16)
 BUILDIO_IOPORT(l, u32)
-#ifdef CONFIG_64BIT
+#if defined(CONFIG_64BIT) || defined(CONFIG_CPU_R5900)
 BUILDIO_IOPORT(q, u64)
 #endif
 

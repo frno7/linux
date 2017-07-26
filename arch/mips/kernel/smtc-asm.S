@@ -93,6 +93,9 @@ FEXPORT(__smtc_ipi_vector)
 	_ehb
 	lw	k0,PT_EPC(k1)
 	mtc0	k0,CP0_EPC
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	/* Save all will redundantly recompute the SP, but use it for now */
 	SAVE_ALL
 	CLI

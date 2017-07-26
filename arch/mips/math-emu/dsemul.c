@@ -85,7 +85,7 @@ int mips_dsemul(struct pt_regs *regs, mips_instruction ir, unsigned long cpc)
 
 	/* Ensure that the two instructions are in the same cache line */
 	fr = (struct emuframe __user *)
-		((regs->regs[29] - sizeof(struct emuframe)) & ~0x7);
+		((MIPS_READ_REG_L(regs->regs[29]) - sizeof(struct emuframe)) & ~0x7);
 
 	/* Verify that the stack pointer is not competely insane */
 	if (unlikely(!access_ok(VERIFY_WRITE, fr, sizeof(struct emuframe))))

@@ -57,6 +57,11 @@ typedef elf_fpreg_t elf_fpregset_t[ELF_NFPREG];
 #include <linux/math64.h>
 
 #define elf_prstatus elf_prstatus32
+
+#ifdef CONFIG_32BIT
+#define compat_timeval timeval
+#endif
+
 struct elf_prstatus32
 {
 	struct elf_siginfo pr_info;	/* Info associated with signal */
@@ -116,7 +121,9 @@ MODULE_AUTHOR("Ralf Baechle (ralf@linux-mips.org)");
 #undef MODULE_DESCRIPTION
 #undef MODULE_AUTHOR
 
+#ifndef CONFIG_32BIT
 #undef TASK_SIZE
 #define TASK_SIZE TASK_SIZE32
+#endif
 
 #include "../../../fs/binfmt_elf.c"

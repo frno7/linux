@@ -231,7 +231,7 @@ no_context:
 	printk(KERN_ALERT "CPU %d Unable to handle kernel paging request at "
 	       "virtual address %0*lx, epc == %0*lx, ra == %0*lx\n",
 	       raw_smp_processor_id(), field, address, field, regs->cp0_epc,
-	       field,  regs->regs[31]);
+	       field,  MIPS_READ_REG_L(regs->regs[31]));
 	die("Oops", regs);
 
 out_of_memory:

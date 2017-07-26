@@ -70,4 +70,8 @@
  */
 #define cond_syscall(x) asm(".weak\t" #x "\n" #x "\t=\tsys_ni_syscall")
 
+#ifdef CONFIG_MIPS_N32
+#define COMPAT_UTS_MACHINE	"mips\0\0\0"
+#endif
+
 #endif /* _ASM_UNISTD_H */

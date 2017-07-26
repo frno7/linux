@@ -101,6 +101,9 @@ static u32 unaligned_action;
 #define unaligned_action UNALIGNED_ACTION_QUIET
 #endif
 extern void show_registers(struct pt_regs *regs);
+#ifdef CONFIG_CPU_R5900
+asmlinkage void do_ri(struct pt_regs *regs);
+#endif
 
 static void emulate_load_store_insn(struct pt_regs *regs,
 	void __user *addr, unsigned int __user *pc)
@@ -159,7 +162,14 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 			"2:\tlbu\t$1, 1(%2)\n\t"
 #endif
 #ifdef __LITTLE_ENDIAN
+#ifdef CONFIG_CPU_R5900
+			/* In an error exception handler the user space could be uncached. */
+			"sync.l\n\t"
+#endif
 			"1:\tlb\t%0, 1(%2)\n"
+#ifdef CONFIG_CPU_R5900
+			"sync.l\n\t"
+#endif
 			"2:\tlbu\t$1, 0(%2)\n\t"
 #endif
 			"sll\t%0, 0x8\n\t"
@@ -179,7 +189,7 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 		if (res)
 			goto fault;
 		compute_return_epc(regs);
-		regs->regs[insn.i_format.rt] = value;
+		MIPS_WRITE_REG(regs->regs[insn.i_format.rt]) = value;
 		break;
 
 	case lw_op:
@@ -192,7 +202,14 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 			"2:\tlwr\t%0, 3(%2)\n\t"
 #endif
 #ifdef __LITTLE_ENDIAN
+#ifdef CONFIG_CPU_R5900
+			/* In an error exception handler the user space could be uncached. */
+			"sync.l\n\t"
+#endif
 			"1:\tlwl\t%0, 3(%2)\n"
+#ifdef CONFIG_CPU_R5900
+			"sync.l\n\t"
+#endif
 			"2:\tlwr\t%0, (%2)\n\t"
 #endif
 			"li\t%1, 0\n"
@@ -209,7 +226,7 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 		if (res)
 			goto fault;
 		compute_return_epc(regs);
-		regs->regs[insn.i_format.rt] = value;
+		MIPS_WRITE_REG(regs->regs[insn.i_format.rt]) = value;
 		break;
 
 	case lhu_op:
@@ -223,7 +240,14 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 			"2:\tlbu\t$1, 1(%2)\n\t"
 #endif
 #ifdef __LITTLE_ENDIAN
+#ifdef CONFIG_CPU_R5900
+			/* In an error exception handler the user space could be uncached. */
+			"sync.l\n\t"
+#endif
 			"1:\tlbu\t%0, 1(%2)\n"
+#ifdef CONFIG_CPU_R5900
+			"sync.l\n\t"
+#endif
 			"2:\tlbu\t$1, 0(%2)\n\t"
 #endif
 			"sll\t%0, 0x8\n\t"
@@ -243,11 +267,11 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 		if (res)
 			goto fault;
 		compute_return_epc(regs);
-		regs->regs[insn.i_format.rt] = value;
+		MIPS_WRITE_REG(regs->regs[insn.i_format.rt]) = value;
 		break;
 
 	case lwu_op:
-#ifdef CONFIG_64BIT
+#if defined(CONFIG_64BIT) || defined(CONFIG_R5900_128BIT_SUPPORT)
 		/*
 		 * A 32-bit kernel might be running on a 64-bit processor.  But
 		 * if we're on a 32-bit processor and an i-cache incoherency
@@ -259,31 +283,41 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 			goto sigbus;
 
 		__asm__ __volatile__ (
+			".set push\n"
 #ifdef __BIG_ENDIAN
 			"1:\tlwl\t%0, (%2)\n"
 			"2:\tlwr\t%0, 3(%2)\n\t"
 #endif
 #ifdef __LITTLE_ENDIAN
+#ifdef CONFIG_CPU_R5900
+			".set arch=r5900\n\t"
+			/* In an error exception handler the user space could be uncached. */
+			"sync.l\n\t"
+#endif
 			"1:\tlwl\t%0, 3(%2)\n"
+#ifdef CONFIG_CPU_R5900
+			"sync.l\n\t"
+#endif
 			"2:\tlwr\t%0, (%2)\n\t"
 #endif
 			"dsll\t%0, %0, 32\n\t"
 			"dsrl\t%0, %0, 32\n\t"
-			"li\t%1, 0\n"
+			"sd\t%0, 0(%1)\n\t"
+			"li\t%0, 0\n\t"
+			".set pop\n"
 			"3:\t.section\t.fixup,\"ax\"\n\t"
-			"4:\tli\t%1, %3\n\t"
+			"4:\tli\t%0, %3\n\t"
 			"j\t3b\n\t"
 			".previous\n\t"
 			".section\t__ex_table,\"a\"\n\t"
 			STR(PTR)"\t1b, 4b\n\t"
 			STR(PTR)"\t2b, 4b\n\t"
 			".previous"
-			: "=&r" (value), "=r" (res)
-			: "r" (addr), "i" (-EFAULT));
+			: "=&r" (res)
+			: "r"(&MIPS_READ_REG(regs->regs[insn.i_format.rt])), "r" (addr), "i" (-EFAULT));
 		if (res)
 			goto fault;
 		compute_return_epc(regs);
-		regs->regs[insn.i_format.rt] = value;
 		break;
 #endif /* CONFIG_64BIT */
 
@@ -291,7 +325,7 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 		goto sigill;
 
 	case ld_op:
-#ifdef CONFIG_64BIT
+#if defined(CONFIG_64BIT) || defined(CONFIG_R5900_128BIT_SUPPORT)
 		/*
 		 * A 32-bit kernel might be running on a 64-bit processor.  But
 		 * if we're on a 32-bit processor and an i-cache incoherency
@@ -303,29 +337,39 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 			goto sigbus;
 
 		__asm__ __volatile__ (
+			".set push\n"
 #ifdef __BIG_ENDIAN
 			"1:\tldl\t%0, (%2)\n"
 			"2:\tldr\t%0, 7(%2)\n\t"
 #endif
 #ifdef __LITTLE_ENDIAN
+#ifdef CONFIG_CPU_R5900
+			".set arch=r5900\n\t"
+			/* In an error exception handler the user space could be uncached. */
+			"sync.l\n\t"
+#endif
 			"1:\tldl\t%0, 7(%2)\n"
+#ifdef CONFIG_CPU_R5900
+			"sync.l\n\t"
+#endif
 			"2:\tldr\t%0, (%2)\n\t"
 #endif
-			"li\t%1, 0\n"
+			"sd\t%0, 0(%1)\n"
+			"li\t%0, 0\n\t"
+			".set pop\n"
 			"3:\t.section\t.fixup,\"ax\"\n\t"
-			"4:\tli\t%1, %3\n\t"
+			"4:\tli\t%0, %3\n\t"
 			"j\t3b\n\t"
 			".previous\n\t"
 			".section\t__ex_table,\"a\"\n\t"
 			STR(PTR)"\t1b, 4b\n\t"
 			STR(PTR)"\t2b, 4b\n\t"
 			".previous"
-			: "=&r" (value), "=r" (res)
-			: "r" (addr), "i" (-EFAULT));
+			: "=&r" (res)
+			: "r"(&MIPS_READ_REG(regs->regs[insn.i_format.rt])), "r" (addr), "i" (-EFAULT));
 		if (res)
 			goto fault;
 		compute_return_epc(regs);
-		regs->regs[insn.i_format.rt] = value;
 		break;
 #endif /* CONFIG_64BIT */
 
@@ -336,7 +380,7 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 		if (!access_ok(VERIFY_WRITE, addr, 2))
 			goto sigbus;
 
-		value = regs->regs[insn.i_format.rt];
+		value = MIPS_READ_REG(regs->regs[insn.i_format.rt]);
 		__asm__ __volatile__ (
 #ifdef __BIG_ENDIAN
 			".set\tnoat\n"
@@ -347,8 +391,15 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 #endif
 #ifdef __LITTLE_ENDIAN
 			".set\tnoat\n"
+#ifdef CONFIG_CPU_R5900
+			/* In an error exception handler the user space could be uncached. */
+			"sync.l\n\t"
+#endif
 			"1:\tsb\t%1, 0(%2)\n\t"
 			"srl\t$1,%1, 0x8\n"
+#ifdef CONFIG_CPU_R5900
+			"sync.l\n\t"
+#endif
 			"2:\tsb\t$1, 1(%2)\n\t"
 			".set\tat\n\t"
 #endif
@@ -373,14 +424,21 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 		if (!access_ok(VERIFY_WRITE, addr, 4))
 			goto sigbus;
 
-		value = regs->regs[insn.i_format.rt];
+		value = MIPS_READ_REG(regs->regs[insn.i_format.rt]);
 		__asm__ __volatile__ (
 #ifdef __BIG_ENDIAN
 			"1:\tswl\t%1,(%2)\n"
 			"2:\tswr\t%1, 3(%2)\n\t"
 #endif
 #ifdef __LITTLE_ENDIAN
+#ifdef CONFIG_CPU_R5900
+			/* In an error exception handler the user space could be uncached. */
+			"sync.l\n\t"
+#endif
 			"1:\tswl\t%1, 3(%2)\n"
+#ifdef CONFIG_CPU_R5900
+			"sync.l\n\t"
+#endif
 			"2:\tswr\t%1, (%2)\n\t"
 #endif
 			"li\t%0, 0\n"
@@ -401,7 +459,7 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 		break;
 
 	case sd_op:
-#ifdef CONFIG_64BIT
+#if defined(CONFIG_64BIT) || defined(CONFIG_R5900_128BIT_SUPPORT)
 		/*
 		 * A 32-bit kernel might be running on a 64-bit processor.  But
 		 * if we're on a 32-bit processor and an i-cache incoherency
@@ -412,14 +470,23 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 		if (!access_ok(VERIFY_WRITE, addr, 8))
 			goto sigbus;
 
-		value = regs->regs[insn.i_format.rt];
 		__asm__ __volatile__ (
+			".set push\n\t"
+			".set arch=r5900\n\t"
+			"LD %1, 0(%1)\n\t"
 #ifdef __BIG_ENDIAN
 			"1:\tsdl\t%1,(%2)\n"
 			"2:\tsdr\t%1, 7(%2)\n\t"
 #endif
 #ifdef __LITTLE_ENDIAN
+#ifdef CONFIG_CPU_R5900
+			/* In an error exception handler the user space could be uncached. */
+			"sync.l\n\t"
+#endif
 			"1:\tsdl\t%1, 7(%2)\n"
+#ifdef CONFIG_CPU_R5900
+			"sync.l\n\t"
+#endif
 			"2:\tsdr\t%1, (%2)\n\t"
 #endif
 			"li\t%0, 0\n"
@@ -433,7 +500,7 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 			STR(PTR)"\t2b, 4b\n\t"
 			".previous"
 		: "=r" (res)
-		: "r" (value), "r" (addr), "i" (-EFAULT));
+		: "r" (&MIPS_READ_REG(regs->regs[insn.i_format.rt])), "r" (addr), "i" (-EFAULT));
 		if (res)
 			goto fault;
 		compute_return_epc(regs);
@@ -472,6 +539,13 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 	case sdc2_op:
 		cu2_notifier_call_chain(CU2_SDC2_OP, regs);
 		break;
+
+#ifdef CONFIG_CPU_R5900
+	case spec3_op:
+		/* On R5900 it is possible that illegal opcode generates a fetch exception. */
+		do_ri(regs);
+		return;
+#endif
 
 	default:
 		/*

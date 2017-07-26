@@ -968,6 +968,17 @@ static void __cpuinit probe_pcache(void)
 		c->dcache.waybit = 0;
 		break;
 
+	case CPU_R5900:
+		icache_size = 1 << (12 + ((config & CONF_IC) >> 9));
+		dcache_size = 1 << (12 + ((config & CONF_DC) >> 6));
+		c->icache.linesz = 64;
+		c->icache.ways = 2;
+		c->icache.waybit = 0;
+		c->dcache.ways = 2;
+		c->dcache.linesz = 64;
+		c->dcache.waybit = 0;
+		break;
+
 	default:
 		if (!(config & MIPS_CONF_M))
 			panic("Don't know how to probe P-caches on this cpu.");
@@ -1069,6 +1080,23 @@ static void __cpuinit probe_pcache(void)
 			c->dcache.flags |= MIPS_CACHE_PINDEX;
 			break;
 		}
+
+	case CPU_R5900:
+		if (c->dcache.waysize > 4096)
+			c->dcache.flags |= MIPS_CACHE_ALIASES;
+		/* Sony Playstation 2 has:
+		 * 8 KByte data cache, 2 ways
+		 * 16 KByte instruction cache, 2 ways
+		 * There can be cache aliases in instruction cache.
+		 * If MIPS_CACHE_ALIASES is not set, the CPU
+		 * may execute wrong code. There seems to be a
+		 * missing data cache flush which is fixed when
+		 * setting MIPS_CACHE_ALIASES.
+		 */
+		if (c->icache.waysize > 4096)
+			c->dcache.flags |= MIPS_CACHE_ALIASES;
+		break;
+
 	default:
 		if (c->dcache.waysize > PAGE_SIZE)
 			c->dcache.flags |= MIPS_CACHE_ALIASES;
@@ -1146,14 +1174,14 @@ static int __cpuinit probe_scache(void)
 	write_c0_taglo(0);
 	write_c0_taghi(0);
 	__asm__ __volatile__("nop; nop; nop; nop;"); /* avoid the hazard */
-	cache_op(Index_Store_Tag_I, begin);
-	cache_op(Index_Store_Tag_D, begin);
-	cache_op(Index_Store_Tag_SD, begin);
+	cache_op_i(Index_Store_Tag_I, begin);
+	cache_op_d(Index_Store_Tag_D, begin);
+	cache_op_s(Index_Store_Tag_SD, begin);
 
 	/* Now search for the wrap around point. */
 	pow2 = (128 * 1024);
 	for (addr = begin + (128 * 1024); addr < end; addr = begin + pow2) {
-		cache_op(Index_Load_Tag_SD, addr);
+		cache_op_s(Index_Load_Tag_SD, addr);
 		__asm__ __volatile__("nop; nop; nop; nop;"); /* hazard... */
 		if (!read_c0_taglo())
 			break;

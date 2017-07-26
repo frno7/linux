@@ -506,6 +506,10 @@
 #define R5K_CONF_SE		(_ULCAST_(1) << 12)
 #define R5K_CONF_SS		(_ULCAST_(3) << 20)
 
+#define R5900_CONF_ICE		(_ULCAST_(1) << 17)
+#define R5900_CONF_DCE		(_ULCAST_(1) << 16)
+#define R5900_CONF_BPE		(_ULCAST_(1) << 12)
+
 /* Bits specific to the RM7000.  */
 #define RM7K_CONF_SE		(_ULCAST_(1) <<  3)
 #define RM7K_CONF_TE		(_ULCAST_(1) << 12)
@@ -670,6 +674,30 @@ do {								\
  * Macros to access the system control coprocessor
  */
 
+#ifdef CONFIG_CPU_R5900
+#define __read_32bit_c0_register(source, sel)				\
+({ int __res;								\
+	if (sel == 0)							\
+		__asm__ __volatile__(					\
+			".set push\n\t"					\
+			".set noreorder\n\t"				\
+			"sync.p\n\t"					\
+			"mfc0\t%0, " #source "\n\t"			\
+			".set pop\n\t"					\
+			: "=r" (__res));				\
+	else								\
+		__asm__ __volatile__(					\
+			".set push\n\t"					\
+			".set noreorder\n\t"				\
+			".set\tmips32\n\t"				\
+			"sync.p\n\t"					\
+			"mfc0\t%0, " #source ", " #sel "\n\t"		\
+			".set\tmips0\n\t"				\
+			".set pop\n\t"					\
+			: "=r" (__res));				\
+	__res;								\
+})
+#else
 #define __read_32bit_c0_register(source, sel)				\
 ({ int __res;								\
 	if (sel == 0)							\
@@ -684,7 +712,9 @@ do {								\
 			: "=r" (__res));				\
 	__res;								\
 })
+#endif
 
+#if !defined(CONFIG_CPU_R5900)
 #define __read_64bit_c0_register(source, sel)				\
 ({ unsigned long long __res;						\
 	if (sizeof(unsigned long) == 4)					\
@@ -703,7 +733,31 @@ do {								\
 			: "=r" (__res));				\
 	__res;								\
 })
+#endif
 
+#ifdef CONFIG_CPU_R5900
+#define __write_32bit_c0_register(register, sel, value)			\
+do {									\
+	if (sel == 0)							\
+		__asm__ __volatile__(					\
+			".set push\n\t"					\
+			".set noreorder\n\t"				\
+			"mtc0\t%z0, " #register "\n\t"			\
+			"sync.p\n\t"					\
+			".set pop\n\t"					\
+			: : "Jr" ((unsigned int)(value)));		\
+	else								\
+		__asm__ __volatile__(					\
+			".set push\n\t"					\
+			".set noreorder\n\t"				\
+			".set\tmips32\n\t"				\
+			"mtc0\t%z0, " #register ", " #sel "\n\t"	\
+			"sync.p\n\t"					\
+			".set\tmips0\n\t"					\
+			".set pop\n\t"					\
+			: : "Jr" ((unsigned int)(value)));		\
+} while (0)
+#else
 #define __write_32bit_c0_register(register, sel, value)			\
 do {									\
 	if (sel == 0)							\
@@ -717,7 +771,9 @@ do {									\
 			".set\tmips0"					\
 			: : "Jr" ((unsigned int)(value)));		\
 } while (0)
+#endif
 
+#if !defined(CONFIG_CPU_R5900)
 #define __write_64bit_c0_register(register, sel, value)			\
 do {									\
 	if (sizeof(unsigned long) == 4)					\
@@ -735,12 +791,22 @@ do {									\
 			".set\tmips0"					\
 			: : "Jr" (value));				\
 } while (0)
+#endif
 
+#if defined(CONFIG_CPU_R5900)
+#define __read_ulong_c0_register(reg, sel)				\
+	((unsigned long) __read_32bit_c0_register(reg, sel))
+#else
 #define __read_ulong_c0_register(reg, sel)				\
 	((sizeof(unsigned long) == 4) ?					\
 	(unsigned long) __read_32bit_c0_register(reg, sel) :		\
 	(unsigned long) __read_64bit_c0_register(reg, sel))
+#endif
 
+#if defined(CONFIG_CPU_R5900)
+#define __write_ulong_c0_register(reg, sel, val)			\
+		__write_32bit_c0_register(reg, sel, val)
+#else
 #define __write_ulong_c0_register(reg, sel, val)			\
 do {									\
 	if (sizeof(unsigned long) == 4)					\
@@ -748,6 +814,7 @@ do {									\
 	else								\
 		__write_64bit_c0_register(reg, sel, val);		\
 } while (0)
+#endif
 
 /*
  * On RM7000/RM9000 these are uses to access cop0 set 1 registers
@@ -767,6 +834,7 @@ do {									\
 		: : "Jr" ((unsigned int)(value)));			\
 } while (0)
 
+#if !defined(CONFIG_CPU_R5900)
 /*
  * These versions are only needed for systems with more than 38 bits of
  * physical address space running the 32-bit kernel.  That's none atm :-)
@@ -799,7 +867,9 @@ do {									\
 									\
 	__val;								\
 })
+#endif
 
+#if !defined(CONFIG_CPU_R5900)
 #define __write_64bit_c0_split(source, sel, val)			\
 do {									\
 	unsigned long __flags;						\
@@ -827,6 +897,7 @@ do {									\
 			: : "r" (val));					\
 	local_irq_restore(__flags);					\
 } while (0)
+#endif
 
 #define read_c0_index()		__read_32bit_c0_register($0, 0)
 #define write_c0_index(val)	__write_32bit_c0_register($0, 0, val)
@@ -1206,6 +1277,28 @@ do {									\
 
 #else
 
+#ifdef CONFIG_CPU_R5900
+#define mfsa()								\
+({									\
+	unsigned long __treg;						\
+									\
+	__asm__ __volatile__(						\
+	"	mfsa	%0\n"			\
+	: "=r" (__treg));						\
+	__treg;								\
+})
+
+#define mtsa(x)							\
+do {									\
+	unsigned long __treg = (x);						\
+									\
+	__asm__ __volatile__(						\
+	"	mtsa	%0\n"	\
+	:								\
+	: "r" (__treg));							\
+} while (0)
+#endif
+
 #define mfhi0()								\
 ({									\
 	unsigned long __treg;						\
@@ -1221,6 +1314,34 @@ do {									\
 	__treg;								\
 })
 
+#ifdef CONFIG_CPU_R5900
+#ifdef CONFIG_32BIT
+#define mfhi1()								\
+({									\
+	unsigned long long __treg;						\
+									\
+	__asm__ __volatile__(						\
+	"	.set	push			\n"			\
+	"	.set	noat			\n"			\
+	"	.set	arch=r5900		\n"			\
+	"	mfhi1	$1\n"					\
+	"	sd		$1, %0\n"					\
+	"	.set	pop\n"					\
+	: "=m" (__treg));						\
+	__treg;								\
+})
+#else
+#define mfhi1()								\
+({									\
+	unsigned long long __treg;						\
+									\
+	__asm__ __volatile__(						\
+	"	mfhi1	%0\n"					\
+	: "=r" (__treg));						\
+	__treg;								\
+})
+#endif
+#else
 #define mfhi1()								\
 ({									\
 	unsigned long __treg;						\
@@ -1235,6 +1356,7 @@ do {									\
 	: "=r" (__treg));						\
 	__treg;								\
 })
+#endif
 
 #define mfhi2()								\
 ({									\
@@ -1281,6 +1403,34 @@ do {									\
 	__treg;								\
 })
 
+#ifdef CONFIG_CPU_R5900
+#ifdef CONFIG_32BIT
+#define mflo1()								\
+({									\
+	unsigned long long __treg;						\
+									\
+	__asm__ __volatile__(						\
+	"	.set	push			\n"			\
+	"	.set	noat			\n"			\
+	"	.set	arch=r5900		\n"			\
+	"	mflo1	$1\n"			\
+	"	sd		$1, %0\n"			\
+	"	.set	pop			\n"			\
+	: "=m" (__treg));						\
+	__treg;								\
+})
+#else
+#define mflo1()								\
+({									\
+	unsigned long long __treg;						\
+									\
+	__asm__ __volatile__(						\
+	"	mflo1	%0\n"			\
+	: "=r" (__treg));						\
+	__treg;								\
+})
+#endif
+#else
 #define mflo1()								\
 ({									\
 	unsigned long __treg;						\
@@ -1295,6 +1445,7 @@ do {									\
 	: "=r" (__treg));						\
 	__treg;								\
 })
+#endif
 
 #define mflo2()								\
 ({									\
@@ -1339,6 +1490,34 @@ do {									\
 	: "r" (x));							\
 } while (0)
 
+#ifdef CONFIG_CPU_R5900
+#ifdef CONFIG_32BIT
+#define mthi1(x)							\
+do {									\
+	unsigned long long __treg = (x);						\
+									\
+	__asm__ __volatile__(						\
+	"	.set	push			\n"			\
+	"	.set	noat			\n"			\
+	"	.set	arch=r5900		\n"			\
+	"	ld		$1, %0\n"	\
+	"	mthi1	$1\n"	\
+	"	.set	pop\n"			\
+	:								\
+	: "m" (__treg));							\
+} while (0)
+#else
+#define mthi1(x)							\
+do {									\
+	unsigned long long __treg = (x);						\
+									\
+	__asm__ __volatile__(						\
+	"	mthi1	%0\n"	\
+	:								\
+	: "r" (__treg));							\
+} while (0)
+#endif
+#else
 #define mthi1(x)							\
 do {									\
 	__asm__ __volatile__(						\
@@ -1351,6 +1530,7 @@ do {									\
 	:								\
 	: "r" (x));							\
 } while (0)
+#endif
 
 #define mthi2(x)							\
 do {									\
@@ -1391,6 +1571,34 @@ do {									\
 	: "r" (x));							\
 } while (0)
 
+#ifdef CONFIG_CPU_R5900
+#ifdef CONFIG_32BIT
+#define mtlo1(x)							\
+do {									\
+	unsigned long long __treg = (x);						\
+									\
+	__asm__ __volatile__(						\
+	"	.set	push			\n"			\
+	"	.set	noat			\n"			\
+	"	.set	arch=r5900		\n"			\
+	"	ld		$1, %0\n"	\
+	"	mtlo1	$1\n"	\
+	"	.set	pop					\n"	\
+	:								\
+	: "m" (__treg));							\
+} while (0)
+#else
+#define mtlo1(x)							\
+do {									\
+	unsigned long long __treg = (x);						\
+									\
+	__asm__ __volatile__(						\
+	"	mtlo1	%0\n"	\
+	:								\
+	: "r" (__treg));							\
+} while (0)
+#endif
+#else
 #define mtlo1(x)							\
 do {									\
 	__asm__ __volatile__(						\
@@ -1403,6 +1611,7 @@ do {									\
 	:								\
 	: "r" (x));							\
 } while (0)
+#endif
 
 #define mtlo2(x)							\
 do {									\
@@ -1442,6 +1651,14 @@ static inline void tlb_probe(void)
 	__asm__ __volatile__(
 		".set noreorder\n\t"
 		"tlbp\n\t"
+#ifdef CONFIG_CPU_R5900
+		/* No memory access behind the tlbp instruction. */
+		"sync.p\n\t"
+		"nop\n\t"
+		"nop\n\t"
+		"nop\n\t"
+		"nop\n\t"
+#endif
 		".set reorder");
 }
 
@@ -1466,7 +1683,19 @@ static inline void tlb_read(void)
 
 	__asm__ __volatile__(
 		".set noreorder\n\t"
+#ifdef CONFIG_CPU_R5900
+		/* instruction must not be at the end of a page. */
+		".align 8\n\t"
+#endif
 		"tlbr\n\t"
+#ifdef CONFIG_CPU_R5900
+		"sync.p\n\t"
+		/* No branch behind tlbr. */
+		"nop\n\t"
+		"nop\n\t"
+		"nop\n\t"
+		"nop\n\t"
+#endif
 		".set reorder");
 
 #if MIPS34K_MISSED_ITLB_WAR
@@ -1487,6 +1716,9 @@ static inline void tlb_write_indexed(void)
 	__asm__ __volatile__(
 		".set noreorder\n\t"
 		"tlbwi\n\t"
+#ifdef CONFIG_CPU_R5900
+		"sync.p\n\t"
+#endif
 		".set reorder");
 }
 
@@ -1495,6 +1727,9 @@ static inline void tlb_write_random(void)
 	__asm__ __volatile__(
 		".set noreorder\n\t"
 		"tlbwr\n\t"
+#ifdef CONFIG_CPU_R5900
+		"sync.p\n\t"
+#endif
 		".set reorder");
 }
 

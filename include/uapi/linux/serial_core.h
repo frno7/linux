@@ -220,4 +220,8 @@
 /* ARC (Synopsys) on-chip UART */
 #define PORT_ARC       101
 
+/* PS2 ports */
+#define PORT_PS2_SBIOS 102
+#define PORT_PS2_UART  103
+
 #endif /* _UAPILINUX_SERIAL_CORE_H */

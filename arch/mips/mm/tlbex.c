@@ -35,6 +35,8 @@
 #include <asm/uasm.h>
 #include <asm/setup.h>
 
+#include <asm/mach-ps2/eedev.h>
+
 /*
  * TLB load/store/modify handlers.
  *
@@ -161,6 +163,10 @@ enum label_id {
 #ifdef CONFIG_MIPS_HUGE_TLB_SUPPORT
 	label_tlb_huge_update,
 #endif
+#ifdef CONFIG_CPU_R5900
+	label_scratchpad,
+	label_scratchpad_out,
+#endif
 };
 
 UASM_L_LA(_second_part)
@@ -179,6 +185,10 @@ UASM_L_LA(_r3000_write_probe_fail)
 UASM_L_LA(_large_segbits_fault)
 #ifdef CONFIG_MIPS_HUGE_TLB_SUPPORT
 UASM_L_LA(_tlb_huge_update)
+#endif
+#ifdef CONFIG_CPU_R5900
+UASM_L_LA(_scratchpad)
+UASM_L_LA(_scratchpad_out)
 #endif
 
 static int __cpuinitdata hazard_instance;
@@ -492,6 +502,15 @@ static void __cpuinit __maybe_unused build_tlb_probe_entry(u32 **p)
 		uasm_i_tlbp(p);
 		break;
 
+	case CPU_R5900:
+		uasm_i_tlbp(p);
+		uasm_i_syncp(p);
+		uasm_i_nop(p);
+		uasm_i_nop(p);
+		uasm_i_nop(p);
+		uasm_i_nop(p);
+		break;
+
 	default:
 		uasm_i_tlbp(p);
 		break;
@@ -626,6 +645,10 @@ static void __cpuinit build_tlb_write_entry(u32 **p, struct uasm_label **l,
 		uasm_i_nop(p);
 		tlbw(p);
 		break;
+	case CPU_R5900:
+		tlbw(p);
+		uasm_i_syncp(p);
+		break;
 
 	case CPU_JZRISC:
 		tlbw(p);
@@ -696,6 +719,9 @@ static __cpuinit void build_restore_pagemask(u32 **p,
 			uasm_i_mtc0(p, 0, C0_PAGEMASK);
 		}
 	}
+#ifdef CONFIG_CPU_R5900
+	uasm_i_syncp(p);
+#endif
 }
 
 static __cpuinit void build_huge_tlb_write_entry(u32 **p,
@@ -709,6 +735,9 @@ static __cpuinit void build_huge_tlb_write_entry(u32 **p,
 	uasm_i_lui(p, tmp, PM_HUGE_MASK >> 16);
 	uasm_i_ori(p, tmp, tmp, PM_HUGE_MASK & 0xffff);
 	uasm_i_mtc0(p, tmp, C0_PAGEMASK);
+#ifdef CONFIG_CPU_R5900
+	uasm_i_syncp(p);
+#endif
 
 	build_tlb_write_entry(p, l, r, wmode);
 
@@ -796,7 +825,12 @@ build_get_pmde64(u32 **p, struct uasm_label **l, struct uasm_reloc **r,
 	/*
 	 * The vmalloc handling is not in the hotpath.
 	 */
+#ifndef CONFIG_CPU_R5900
 	uasm_i_dmfc0(p, tmp, C0_BADVADDR);
+#else
+	uasm_i_syncp(p);
+	uasm_i_mfc0(p, tmp, C0_BADVADDR);
+#endif
 
 	if (check_for_high_segbits) {
 		/*
@@ -866,7 +900,12 @@ build_get_pmde64(u32 **p, struct uasm_label **l, struct uasm_reloc **r,
 	uasm_i_andi(p, tmp, tmp, (PTRS_PER_PGD - 1)<<3);
 	uasm_i_daddu(p, ptr, ptr, tmp); /* add in pgd offset */
 #ifndef __PAGETABLE_PMD_FOLDED
+#ifndef CONFIG_CPU_R5900
 	uasm_i_dmfc0(p, tmp, C0_BADVADDR); /* get faulting address */
+#else
+	uasm_i_syncp(p);
+	uasm_i_mfc0(p, tmp, C0_BADVADDR); /* get faulting address */
+#endif
 	uasm_i_ld(p, ptr, 0, ptr); /* get pmd pointer */
 	uasm_i_dsrl_safe(p, tmp, tmp, PMD_SHIFT-3); /* get pmd offset in bytes */
 	uasm_i_andi(p, tmp, tmp, (PTRS_PER_PMD - 1)<<3);
@@ -974,6 +1013,7 @@ build_get_pgde32(u32 **p, unsigned int tmp, unsigned int ptr)
 #else
 	UASM_i_LA_mostly(p, ptr, pgdc);
 #endif
+	uasm_i_syncp(p);
 	uasm_i_mfc0(p, tmp, C0_BADVADDR); /* get faulting address */
 	uasm_i_lw(p, ptr, uasm_rel_lo(pgdc), ptr);
 	uasm_i_srl(p, tmp, tmp, PGDIR_SHIFT); /* get pgd only bits */
@@ -1034,7 +1074,7 @@ static void __cpuinit build_get_ptep(u32 **p, unsigned int tmp, unsigned int ptr
 	UASM_i_ADDU(p, ptr, ptr, tmp); /* add in offset */
 }
 
-static void __cpuinit build_update_entries(u32 **p, unsigned int tmp,
+static void __cpuinit build_update_entries(u32 **p, struct uasm_label **l, struct uasm_reloc **r, unsigned int tmp,
 					unsigned int ptep)
 {
 	/*
@@ -1043,6 +1083,14 @@ static void __cpuinit build_update_entries(u32 **p, unsigned int tmp,
 	 */
 #ifdef CONFIG_64BIT_PHYS_ADDR
 	if (cpu_has_64bits) {
+#ifdef CONFIG_CPU_R5900
+		uasm_i_ld(p, tmp, 0, ptep); /* get even pte */
+		uasm_i_dsrl_safe(p, tmp, tmp, ilog2(_PAGE_GLOBAL)); /* convert to entrylo0 */
+		uasm_i_sll(p, tmp, tmp, 6);
+		uasm_il_bltz(p, r, tmp, label_scratchpad); /* Check if scratchpad should be mapped */
+		uasm_i_nop(p); /* branch delay slot */
+
+#endif
 		uasm_i_ld(p, tmp, 0, ptep); /* get even pte */
 		uasm_i_ld(p, ptep, sizeof(pte_t), ptep); /* get odd pte */
 		if (cpu_has_rixi) {
@@ -1055,17 +1103,75 @@ static void __cpuinit build_update_entries(u32 **p, unsigned int tmp,
 			uasm_i_dsrl_safe(p, ptep, ptep, ilog2(_PAGE_GLOBAL)); /* convert to entrylo1 */
 		}
 		UASM_i_MTC0(p, ptep, C0_ENTRYLO1); /* load it */
+#ifdef CONFIG_CPU_R5900
+		uasm_il_b(p, r, label_scratchpad_out); /* continue */
+		uasm_i_nop(p); /* branch delay slot */
+
+		uasm_l_scratchpad(l, *p);
+
+		UASM_i_MFC0(p, tmp, C0_ENTRYHI);
+		uasm_i_ori(p, tmp, tmp, 1 << 13);
+		uasm_i_xori(p, tmp, tmp, 1 << 13); /* VPN must be 16KB aligned */
+		UASM_i_MTC0(p, tmp, C0_ENTRYHI);
+
+		uasm_i_ld(p, ptep, 0, ptep); /* get even pte */
+		uasm_i_dsrl_safe(p, ptep, ptep, ilog2(_PAGE_GLOBAL)); /* convert to entrylo0 */
+		uasm_i_andi(p, ptep, ptep, 0x3f); /* Only keep flags. */
+		uasm_i_lui(p, tmp, (int16_t) (SCRATCHPAD_RAM >> 16));
+		uasm_i_or(p, ptep, ptep, tmp); /* Set highest bit to use scratchpad. */
+		UASM_i_MTC0(p, ptep, C0_ENTRYLO0); /* load it */
+		uasm_i_xor(p, ptep, ptep, tmp); /* Clear highest bit. */
+		UASM_i_MTC0(p, ptep, C0_ENTRYLO1); /* load it */
+
+		uasm_l_scratchpad_out(l, *p);
+#endif
 	} else {
 		int pte_off_even = sizeof(pte_t) / 2;
 		int pte_off_odd = pte_off_even + sizeof(pte_t);
 
 		/* The pte entries are pre-shifted */
+#ifdef CONFIG_CPU_R5900
+		uasm_i_lw(p, tmp, pte_off_even, ptep); /* get even pte */
+		uasm_i_sll(p, tmp, tmp, 6);
+		uasm_il_bltz(p, r, tmp, label_scratchpad); /* Check if scratchpad should be mapped */
+		uasm_i_nop(p); /* branch delay slot */
+
+#endif
 		uasm_i_lw(p, tmp, pte_off_even, ptep); /* get even pte */
 		UASM_i_MTC0(p, tmp, C0_ENTRYLO0); /* load it */
 		uasm_i_lw(p, ptep, pte_off_odd, ptep); /* get odd pte */
 		UASM_i_MTC0(p, ptep, C0_ENTRYLO1); /* load it */
+#ifdef CONFIG_CPU_R5900
+		uasm_il_b(p, r, label_scratchpad_out); /* continue */
+		uasm_i_nop(p); /* branch delay slot */
+
+		uasm_l_scratchpad(l, *p);
+
+		UASM_i_MFC0(p, tmp, C0_ENTRYHI);
+		uasm_i_ori(p, tmp, tmp, 1 << 13);
+		uasm_i_xori(p, tmp, tmp, 1 << 13); /* VPN must be 16KB aligned */
+		UASM_i_MTC0(p, tmp, C0_ENTRYHI);
+
+		uasm_i_lw(p, ptep, pte_off_even, ptep); /* get even pte */
+		uasm_i_andi(p, ptep, ptep, 0x3f); /* Only keep flags. */
+		uasm_i_lui(p, tmp, (int16_t) (SCRATCHPAD_RAM >> 16));
+		uasm_i_or(p, ptep, ptep, tmp); /* Set highest bit to use scratchpad. */
+		UASM_i_MTC0(p, ptep, C0_ENTRYLO0); /* load it */
+		uasm_i_xor(p, ptep, ptep, tmp); /* Clear highest bit. */
+		UASM_i_MTC0(p, ptep, C0_ENTRYLO1); /* load it */
+
+		uasm_l_scratchpad_out(l, *p);
+#endif
 	}
 #else
+#ifdef CONFIG_CPU_R5900
+	uasm_i_lw(p, tmp, 0, ptep); /* get even pte */
+	uasm_i_srl(p, tmp, tmp, ilog2(_PAGE_GLOBAL)); /* convert to entrylo0 */
+	uasm_i_sll(p, tmp, tmp, 6);
+	uasm_il_bltz(p, r, tmp, label_scratchpad); /* Check if scratchpad should be mapped */
+	uasm_i_nop(p); /* branch delay slot */
+
+#endif
 	UASM_i_LW(p, tmp, 0, ptep); /* get even pte */
 	UASM_i_LW(p, ptep, sizeof(pte_t), ptep); /* get odd pte */
 	if (r45k_bvahwbug())
@@ -1088,6 +1194,28 @@ static void __cpuinit build_update_entries(u32 **p, unsigned int tmp,
 	if (r4k_250MHZhwbug())
 		UASM_i_MTC0(p, 0, C0_ENTRYLO1);
 	UASM_i_MTC0(p, ptep, C0_ENTRYLO1); /* load it */
+#ifdef CONFIG_CPU_R5900
+	uasm_il_b(p, r, label_scratchpad_out); /* continue */
+	uasm_i_nop(p); /* branch delay slot */
+
+	uasm_l_scratchpad(l, *p);
+
+	UASM_i_MFC0(p, tmp, C0_ENTRYHI);
+	uasm_i_ori(p, tmp, tmp, 1 << 13);
+	uasm_i_xori(p, tmp, tmp, 1 << 13); /* VPN must be 16KB aligned */
+	UASM_i_MTC0(p, tmp, C0_ENTRYHI);
+
+	uasm_i_lw(p, ptep, 0, ptep); /* get even pte */
+	uasm_i_srl(p, tmp, tmp, ilog2(_PAGE_GLOBAL)); /* convert to entrylo0 */
+	uasm_i_andi(p, ptep, ptep, 0x3f); /* Only keep flags. */
+	uasm_i_lui(p, tmp, (int16_t) (SCRATCHPAD_RAM >> 16));
+	uasm_i_or(p, ptep, ptep, tmp); /* Set highest bit to use scratchpad. */
+	UASM_i_MTC0(p, ptep, C0_ENTRYLO0); /* load it */
+	uasm_i_xor(p, ptep, ptep, tmp); /* Clear highest bit. */
+	UASM_i_MTC0(p, ptep, C0_ENTRYLO1); /* load it */
+
+	uasm_l_scratchpad_out(l, *p);
+#endif
 #endif
 }
 
@@ -1289,6 +1417,11 @@ static void __cpuinit build_r4000_tlb_refill_handler(void)
 	memset(relocs, 0, sizeof(relocs));
 	memset(final_handler, 0, sizeof(final_handler));
 
+#ifdef CONFIG_CPU_R5900
+	uasm_i_nop(&p);
+	uasm_i_nop(&p);
+#endif
+
 	if ((scratch_reg > 0 || scratchpad_available()) && use_bbit_insns()) {
 		htlb_info = build_fast_tlb_refill_handler(&p, &l, &r, K0, K1,
 							  scratch_reg);
@@ -1303,8 +1436,8 @@ static void __cpuinit build_r4000_tlb_refill_handler(void)
 		if (bcm1250_m3_war()) {
 			unsigned int segbits = 44;
 
-			uasm_i_dmfc0(&p, K0, C0_BADVADDR);
-			uasm_i_dmfc0(&p, K1, C0_ENTRYHI);
+			UASM_i_MFC0(&p, K0, C0_BADVADDR);
+			UASM_i_MFC0(&p, K1, C0_ENTRYHI);
 			uasm_i_xor(&p, K0, K0, K1);
 			uasm_i_dsrl_safe(&p, K1, K0, 62);
 			uasm_i_dsrl_safe(&p, K0, K0, 12 + 1);
@@ -1325,11 +1458,21 @@ static void __cpuinit build_r4000_tlb_refill_handler(void)
 #endif
 
 		build_get_ptep(&p, K0, K1);
-		build_update_entries(&p, K0, K1);
+		build_update_entries(&p, &l, &r, K0, K1);
 		build_tlb_write_entry(&p, &l, &r, tlb_random);
 		uasm_l_leave(&l, p);
 		uasm_i_eret(&p); /* return from trap */
 	}
+
+#ifdef CONFIG_CPU_R5900
+	/* There should be nothing which can be interpreted as cache instruction. */
+	uasm_i_nop(&p);
+	uasm_i_nop(&p);
+	uasm_i_nop(&p);
+	uasm_i_nop(&p);
+	uasm_i_nop(&p);
+#endif
+
 #ifdef CONFIG_MIPS_HUGE_TLB_SUPPORT
 	uasm_l_tlb_huge_update(&l, p);
 	build_huge_update_entries(&p, htlb_info.huge_pte, K1);
@@ -1845,6 +1988,11 @@ build_r4000_tlbchange_handler_head(u32 **p, struct uasm_label **l,
 {
 	struct work_registers wr = build_get_work_registers(p);
 
+#ifdef CONFIG_CPU_R5900
+	uasm_i_nop(p);
+	uasm_i_nop(p);
+#endif
+
 #ifdef CONFIG_64BIT
 	build_get_pmde64(p, l, r, wr.r1, wr.r2); /* get pmd in ptr */
 #else
@@ -1882,11 +2030,19 @@ build_r4000_tlbchange_handler_tail(u32 **p, struct uasm_label **l,
 {
 	uasm_i_ori(p, ptr, ptr, sizeof(pte_t));
 	uasm_i_xori(p, ptr, ptr, sizeof(pte_t));
-	build_update_entries(p, tmp, ptr);
+	build_update_entries(p, l, r, tmp, ptr);
 	build_tlb_write_entry(p, l, r, tlb_indexed);
 	uasm_l_leave(l, *p);
 	build_restore_work_registers(p);
 	uasm_i_eret(p); /* return from trap */
+#ifdef CONFIG_CPU_R5900
+	/* There should be nothing which can be interpreted as cache instruction. */
+	uasm_i_nop(p);
+	uasm_i_nop(p);
+	uasm_i_nop(p);
+	uasm_i_nop(p);
+	uasm_i_nop(p);
+#endif
 
 #ifdef CONFIG_64BIT
 	build_get_pgd_vmalloc64(p, l, r, tmp, ptr, not_refill);
@@ -1907,8 +2063,17 @@ static void __cpuinit build_r4000_tlb_load_handler(void)
 	if (bcm1250_m3_war()) {
 		unsigned int segbits = 44;
 
+#ifndef CONFIG_CPU_R5900
+		uasm_i_nop(&p);
+		uasm_i_nop(&p);
 		uasm_i_dmfc0(&p, K0, C0_BADVADDR);
 		uasm_i_dmfc0(&p, K1, C0_ENTRYHI);
+#else
+		uasm_i_syncp(&p);
+		uasm_i_mfc0(&p, K0, C0_BADVADDR);
+		uasm_i_syncp(&p);
+		uasm_i_mfc0(&p, K1, C0_ENTRYHI);
+#endif
 		uasm_i_xor(&p, K0, K0, K1);
 		uasm_i_dsrl_safe(&p, K1, K0, 62);
 		uasm_i_dsrl_safe(&p, K0, K0, 12 + 1);
@@ -1938,6 +2103,14 @@ static void __cpuinit build_r4000_tlb_load_handler(void)
 		uasm_i_nop(&p);
 
 		uasm_i_tlbr(&p);
+#ifdef CONFIG_CPU_R5900
+		uasm_i_syncp(&p);
+		uasm_i_nop(&p);
+		uasm_i_nop(&p);
+		uasm_i_nop(&p);
+		uasm_i_nop(&p);
+#endif
+
 		/* Examine  entrylo 0 or 1 based on ptr. */
 		if (use_bbit_insns()) {
 			uasm_i_bbit0(&p, wr.r2, ilog2(sizeof(pte_t)), 8);
@@ -1992,6 +2165,14 @@ static void __cpuinit build_r4000_tlb_load_handler(void)
 		uasm_i_nop(&p);
 
 		uasm_i_tlbr(&p);
+#ifdef CONFIG_CPU_R5900
+		uasm_i_syncp(p);
+		uasm_i_nop(&p);
+		uasm_i_nop(&p);
+		uasm_i_nop(&p);
+		uasm_i_nop(&p);
+#endif
+
 		/* Examine  entrylo 0 or 1 based on ptr. */
 		if (use_bbit_insns()) {
 			uasm_i_bbit0(&p, wr.r2, ilog2(sizeof(pte_t)), 8);

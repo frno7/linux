@@ -85,11 +85,21 @@
  * they're not protected.
  */
 
+#ifdef CONFIG_CPU_R5900
+#define EXC(inst_reg,addr,handler)		\
+	/* In an error exception handler the user space could be uncached. */ \
+	sync.l;					\
+9:	inst_reg, addr;				\
+	.section __ex_table,"a";		\
+	PTR	9b, handler;			\
+	.previous
+#else
 #define EXC(inst_reg,addr,handler)		\
 9:	inst_reg, addr;				\
 	.section __ex_table,"a";		\
 	PTR	9b, handler;			\
 	.previous
+#endif
 
 /*
  * Only on the 64-bit kernel we can made use of 64-bit registers.
@@ -236,6 +246,13 @@ __copy_user_common:
 	 */
 .Lboth_aligned:
 	 SRL	t0, len, LOG_NBYTES+3    # +3 for 8 units/iter
+#ifdef CONFIG_CPU_R5900
+	/* no short loop. */
+	nop
+	nop
+	nop
+	nop
+#endif
 	beqz	t0, .Lcleanup_both_aligned # len < 8*NBYTES
 	 and	rem, len, (8*NBYTES-1)	 # rem = len % (8*NBYTES)
 	PREF(	0, 3*32(src) )
@@ -420,8 +437,9 @@ EXC(	STORE	t0, 0(dst),		.Ls_exc_p1u)
 #define COPY_BYTE(N)			\
 EXC(	lb	t0, N(src), .Ll_exc);	\
 	SUB	len, len, 1;		\
+EXC(	 sb	t0, N(dst), .Ls_exc_p1) \
 	beqz	len, .Ldone;		\
-EXC(	 sb	t0, N(dst), .Ls_exc_p1)
+	nop
 
 	COPY_BYTE(0)
 	COPY_BYTE(1)
@@ -433,8 +451,9 @@ EXC(	 sb	t0, N(dst), .Ls_exc_p1)
 #endif
 EXC(	lb	t0, NBYTES-2(src), .Ll_exc)
 	SUB	len, len, 1
-	jr	ra
 EXC(	 sb	t0, NBYTES-2(dst), .Ls_exc_p1)
+	jr	ra
+	nop
 .Ldone:
 	jr	ra
 	 nop
@@ -460,6 +479,11 @@ EXC(	lb	t1, 0(src),	.Ll_exc)
 	sb	t1, 0(dst)	# can't fault -- we're copy_from_user
 	.set	reorder				/* DADDI_WAR */
 	ADD	dst, dst, 1
+#ifdef CONFIG_CPU_R5900
+	/* no short loop. */
+	nop
+	nop
+#endif
 	bne	src, t0, 1b
 	.set	noreorder
 .Ll_exc:
@@ -486,6 +510,11 @@ EXC(	lb	t1, 0(src),	.Ll_exc)
 	.set	noreorder
 1:	sb	zero, 0(dst)
 	ADD	dst, dst, 1
+#ifdef CONFIG_CPU_R5900
+	nop
+	nop
+	nop
+#endif
 #ifndef CONFIG_CPU_DADDI_WORKAROUNDS
 	bnez	src, 1b
 	 SUB	src, src, 1
@@ -552,6 +581,10 @@ LEAF(__rmemcpy)					/* a0=dst a1=src a2=len */
 	SUB	a2, a2, 0x1
 	sb	t0, -1(a0)
 	SUB	a1, a1, 0x1
+#ifdef CONFIG_CPU_R5900
+	/* no short loop. */
+	nop
+#endif
 	.set	reorder				/* DADDI_WAR */
 	SUB	a0, a0, 0x1
 	bnez	a2, .Lr_end_bytes
@@ -567,6 +600,10 @@ LEAF(__rmemcpy)					/* a0=dst a1=src a2=len */
 	SUB	a2, a2, 0x1
 	sb	t0, (a0)
 	ADD	a1, a1, 0x1
+#ifdef CONFIG_CPU_R5900
+	/* no short loop. */
+	nop
+#endif
 	.set	reorder				/* DADDI_WAR */
 	ADD	a0, a0, 0x1
 	bnez	a2, .Lr_end_bytes_up

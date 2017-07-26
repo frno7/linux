@@ -168,3 +168,6 @@ obj-$(CONFIG_FB_VIRTUAL)          += vfb.o
 
 #video output switch sysfs driver
 obj-$(CONFIG_VIDEO_OUTPUT_CONTROL) += output.o
+
+obj-$(CONFIG_SONY_PS2)            += ps2core.o
+obj-$(CONFIG_FB_PS2)              += ps2fb.o

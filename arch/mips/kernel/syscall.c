@@ -56,7 +56,7 @@ asmlinkage int sysm_pipe(nabi_no_regargs volatile struct pt_regs regs)
 		res = error;
 		goto out;
 	}
-	regs.regs[3] = fd[1];
+	MIPS_WRITE_REG(regs.regs[3]) = fd[1];
 	res = fd[0];
 out:
 	return res;
@@ -92,7 +92,7 @@ save_static_function(sys_fork);
 static int __used noinline
 _sys_fork(nabi_no_regargs struct pt_regs regs)
 {
-	return do_fork(SIGCHLD, regs.regs[29], 0, NULL, NULL);
+	return do_fork(SIGCHLD, MIPS_READ_REG_L(regs.regs[29]), 0, NULL, NULL);
 }
 
 save_static_function(sys_clone);
@@ -103,17 +103,17 @@ _sys_clone(nabi_no_regargs struct pt_regs regs)
 	unsigned long newsp;
 	int __user *parent_tidptr, *child_tidptr;
 
-	clone_flags = regs.regs[4];
-	newsp = regs.regs[5];
+	clone_flags = MIPS_READ_REG(regs.regs[4]);
+	newsp = MIPS_READ_REG(regs.regs[5]);
 	if (!newsp)
-		newsp = regs.regs[29];
-	parent_tidptr = (int __user *) regs.regs[6];
+		newsp = MIPS_READ_REG_L(regs.regs[29]);
+	parent_tidptr = (int __user *) MIPS_READ_REG_L(regs.regs[6]);
 #ifdef CONFIG_32BIT
 	/* We need to fetch the fifth argument off the stack.  */
 	child_tidptr = NULL;
 	if (clone_flags & (CLONE_CHILD_SETTID | CLONE_CHILD_CLEARTID)) {
-		int __user *__user *usp = (int __user *__user *) regs.regs[29];
-		if (regs.regs[2] == __NR_syscall) {
+		int __user *__user *usp = (int __user *__user *) MIPS_READ_REG_L(regs.regs[29]);
+		if (MIPS_READ_REG(regs.regs[2]) == __NR_syscall) {
 			if (get_user (child_tidptr, &usp[5]))
 				return -EFAULT;
 		}
@@ -127,6 +127,27 @@ _sys_clone(nabi_no_regargs struct pt_regs regs)
 	               parent_tidptr, child_tidptr);
 }
 
+#ifdef CONFIG_MIPS_N32
+/* Same as _sys_clone() function above, but without CONFIG_32BIT. */
+save_static_function(sysn32_clone);
+static int __used noinline
+_sysn32_clone(nabi_no_regargs struct pt_regs regs)
+{
+	unsigned long clone_flags;
+	unsigned long newsp;
+	int __user *parent_tidptr, *child_tidptr;
+
+	clone_flags = MIPS_READ_REG(regs.regs[4]);
+	newsp = MIPS_READ_REG(regs.regs[5]);
+	if (!newsp)
+		newsp = MIPS_READ_REG_L(regs.regs[29]);
+	parent_tidptr = (int __user *) MIPS_READ_REG_L(regs.regs[6]);
+	child_tidptr = (int __user *) MIPS_READ_REG_L(regs.regs[8]);
+	return do_fork(clone_flags, newsp, 0,
+	               parent_tidptr, child_tidptr);
+}
+#endif
+
 SYSCALL_DEFINE1(set_thread_area, unsigned long, addr)
 {
 	struct thread_info *ti = task_thread_info(current);
@@ -138,7 +159,7 @@ SYSCALL_DEFINE1(set_thread_area, unsigned long, addr)
 	return 0;
 }
 
-static inline int mips_atomic_set(struct pt_regs *regs,
+static inline int mips_atomic_set(volatile struct pt_regs *regs,
 	unsigned long addr, unsigned long new)
 {
 	unsigned long old, tmp;
@@ -222,8 +243,8 @@ static inline int mips_atomic_set(struct pt_regs *regs,
 	if (unlikely(err))
 		return err;
 
-	regs->regs[2] = old;
-	regs->regs[7] = 0;	/* No error */
+	MIPS_WRITE_REG(regs->regs[2]) = old;
+	MIPS_WRITE_REG(regs->regs[7]) = 0;	/* No error */
 
 	/*
 	 * Don't let your children do this ...
@@ -244,9 +265,9 @@ _sys_sysmips(nabi_no_regargs struct pt_regs regs)
 {
 	long cmd, arg1, arg2;
 
-	cmd = regs.regs[4];
-	arg1 = regs.regs[5];
-	arg2 = regs.regs[6];
+	cmd = MIPS_READ_REG(regs.regs[4]);
+	arg1 = MIPS_READ_REG(regs.regs[5]);
+	arg2 = MIPS_READ_REG(regs.regs[6]);
 
 	switch (cmd) {
 	case MIPS_ATOMIC_SET:
