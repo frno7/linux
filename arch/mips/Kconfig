@@ -877,6 +877,25 @@ config MIPS_PARAVIRT
 	help
 	  This option supports guest running under ????
 
+config SONY_PS2
+	bool "Sony Playstation 2"
+	select BOOT_ELF32
+	select IRQ_CPU
+	select SYS_HAS_CPU_R5900
+	select SYS_SUPPORTS_32BIT_KERNEL
+	select SYS_SUPPORTS_LITTLE_ENDIAN
+	select DMA_NONCOHERENT
+	select NO_IOPORT
+	select SYS_HAS_EARLY_PRINTK
+	select USB_ARCH_HAS_OHCI
+	select USB_OHCI_LITTLE_ENDIAN
+	select CEVT_R4K
+	select CSRC_R4K
+	select HAVE_PATA_PLATFORM
+	select MIPS_L1_CACHE_SHIFT_6
+	help
+	  This enables support for Sony Playstation 2.
+
 endchoice
 
 source "arch/mips/alchemy/Kconfig"
@@ -899,6 +918,15 @@ source "arch/mips/loongson/Kconfig"
 source "arch/mips/loongson1/Kconfig"
 source "arch/mips/netlogic/Kconfig"
 source "arch/mips/paravirt/Kconfig"
+source "arch/mips/ps2/Kconfig"
+
+config R5900_128BIT_SUPPORT
+	bool "Support for 128 bit general purpose registers"
+	default y
+	depends on SYS_HAS_CPU_R5900
+	help
+	  Say Y here to support applications which use 64 bit and
+	  128 bit general purpose registers.
 
 endmenu
 
@@ -1510,6 +1538,15 @@ config CPU_BMIPS
 	help
 	  Support for BMIPS32/3300/4350/4380 and BMIPS5000 processors.
 
+config CPU_R5900
+	bool "R5900"
+	depends on SYS_HAS_CPU_R5900
+	select CPU_SUPPORTS_32BIT_KERNEL
+	select CPU_SUPPORTS_64BIT_KERNEL
+	select CPU_HAS_WB
+	help
+	  MIPS Technologies R5900 processor (Emotion Engine in Sony Playstation 2).
+
 config CPU_XLR
 	bool "Netlogic XLR SoC"
 	depends on SYS_HAS_CPU_XLR
@@ -1690,6 +1727,9 @@ config SYS_HAS_CPU_R5432
 	bool
 
 config SYS_HAS_CPU_R5500
+	bool
+
+config SYS_HAS_CPU_R5900
 	bool
 
 config SYS_HAS_CPU_R6000
@@ -2684,6 +2724,17 @@ config MIPS32_N32
 	select COMPAT
 	select MIPS32_COMPAT
 	select SYSVIPC_COMPAT if SYSVIPC
+	help
+	  Select this option if you want to run n32 binaries.  These are
+	  64-bit binaries using 32-bit quantities for addressing and certain
+	  data that would normally be 64-bit.  They are used in special
+	  cases.
+
+	  If unsure, say N.
+
+config MIPS_N32
+	bool "Kernel support for n32 binaries"
+	depends on R5900_128BIT_SUPPORT && !64BIT
 	help
 	  Select this option if you want to run n32 binaries.  These are
 	  64-bit binaries using 32-bit quantities for addressing and certain

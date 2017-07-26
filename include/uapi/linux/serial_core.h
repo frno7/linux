@@ -248,4 +248,8 @@
 /* MESON */
 #define PORT_MESON	109
 
+/* PS2 ports */
+#define PORT_PS2_SBIOS 110
+#define PORT_PS2_UART  111
+
 #endif /* _UAPILINUX_SERIAL_CORE_H */

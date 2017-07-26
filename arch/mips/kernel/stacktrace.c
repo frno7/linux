@@ -33,9 +33,9 @@ static void save_raw_context_stack(struct stack_trace *trace,
 static void save_context_stack(struct stack_trace *trace,
 	struct task_struct *tsk, struct pt_regs *regs)
 {
-	unsigned long sp = regs->regs[29];
+	unsigned long sp = MIPS_READ_REG_L(regs->regs[29]);
 #ifdef CONFIG_KALLSYMS
-	unsigned long ra = regs->regs[31];
+	unsigned long ra = MIPS_READ_REG_L(regs->regs[31]);
 	unsigned long pc = regs->cp0_epc;
 
 	if (raw_show_trace || !__kernel_text_address(pc)) {
@@ -78,8 +78,8 @@ void save_stack_trace_tsk(struct task_struct *tsk, struct stack_trace *trace)
 
 	if (tsk != current) {
 		regs->regs[29] = tsk->thread.reg29;
-		regs->regs[31] = 0;
-		regs->cp0_epc = tsk->thread.reg31;
+		MIPS_WRITE_REG(regs->regs[31]) = 0;
+		regs->cp0_epc = MIPS_READ_REG_L(tsk->thread.reg31);
 	} else
 		prepare_frametrace(regs);
 	save_context_stack(trace, tsk, regs);
