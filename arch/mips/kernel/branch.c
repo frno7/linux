@@ -414,9 +414,12 @@ int __MIPS16e_compute_return_epc(struct pt_regs *regs)
 int __compute_return_epc_for_insn(struct pt_regs *regs,
 				   union mips_instruction insn)
 {
-	unsigned int bit, fcr31, dspcontrol, reg;
+	unsigned int bit, fcr31, reg;
 	long epc = regs->cp0_epc;
 	int ret = 0;
+#ifndef CONFIG_CPU_R5900
+	unsigned int dspcontrol;
+#endif
 
 	switch (insn.i_format.opcode) {
 	/*
@@ -425,12 +428,12 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 	case spec_op:
 		switch (insn.r_format.func) {
 		case jalr_op:
-			regs->regs[insn.r_format.rd] = epc + 8;
+			MIPS_WRITE_REG(regs->regs[insn.r_format.rd]) = epc + 8;
 			/* Fall through */
 		case jr_op:
 			if (NO_R6EMU && insn.r_format.func == jr_op)
 				goto sigill_r6;
-			regs->cp0_epc = regs->regs[insn.r_format.rs];
+			regs->cp0_epc = MIPS_READ_REG_L(regs->regs[insn.r_format.rs]);
 			break;
 		}
 		break;
@@ -446,7 +449,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 			if (NO_R6EMU)
 				goto sigill_r6;
 		case bltz_op:
-			if ((long)regs->regs[insn.i_format.rs] < 0) {
+			if ((long)MIPS_READ_REG_S(regs->regs[insn.i_format.rs]) < 0) {
 				epc = epc + 4 + (insn.i_format.simmediate << 2);
 				if (insn.i_format.rt == bltzl_op)
 					ret = BRANCH_LIKELY_TAKEN;
@@ -459,7 +462,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 			if (NO_R6EMU)
 				goto sigill_r6;
 		case bgez_op:
-			if ((long)regs->regs[insn.i_format.rs] >= 0) {
+			if ((long)MIPS_READ_REG_S(regs->regs[insn.i_format.rs]) >= 0) {
 				epc = epc + 4 + (insn.i_format.simmediate << 2);
 				if (insn.i_format.rt == bgezl_op)
 					ret = BRANCH_LIKELY_TAKEN;
@@ -475,7 +478,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 				ret = -SIGILL;
 				break;
 			}
-			regs->regs[31] = epc + 8;
+			MIPS_WRITE_REG(regs->regs[31]) = epc + 8;
 			/*
 			 * OK we are here either because we hit a NAL
 			 * instruction or because we are emulating an
@@ -493,7 +496,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 				break;
 			}
 			/* Now do the real thing for non-R6 BLTZAL{,L} */
-			if ((long)regs->regs[insn.i_format.rs] < 0) {
+			if ((long)MIPS_READ_REG_S(regs->regs[insn.i_format.rs]) < 0) {
 				epc = epc + 4 + (insn.i_format.simmediate << 2);
 				if (insn.i_format.rt == bltzall_op)
 					ret = BRANCH_LIKELY_TAKEN;
@@ -509,7 +512,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 				ret = -SIGILL;
 				break;
 			}
-			regs->regs[31] = epc + 8;
+			MIPS_WRITE_REG(regs->regs[31]) = epc + 8;
 			/*
 			 * OK we are here either because we hit a BAL
 			 * instruction or because we are emulating an
@@ -527,7 +530,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 				break;
 			}
 			/* Now do the real thing for non-R6 BGEZAL{,L} */
-			if ((long)regs->regs[insn.i_format.rs] >= 0) {
+			if ((long)MIPS_READ_REG_S(regs->regs[insn.i_format.rs]) >= 0) {
 				epc = epc + 4 + (insn.i_format.simmediate << 2);
 				if (insn.i_format.rt == bgezall_op)
 					ret = BRANCH_LIKELY_TAKEN;
@@ -537,9 +540,12 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 			break;
 
 		case bposge32_op:
+#ifndef CONFIG_CPU_R5900
 			if (!cpu_has_dsp)
+#endif
 				goto sigill_dsp;
 
+#ifndef CONFIG_CPU_R5900
 			dspcontrol = rddsp(0x01);
 
 			if (dspcontrol >= 32) {
@@ -547,6 +553,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 			} else
 				epc += 8;
 			regs->cp0_epc = epc;
+#endif
 			break;
 		}
 		break;
@@ -555,7 +562,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 	 * These are unconditional and in j_format.
 	 */
 	case jal_op:
-		regs->regs[31] = regs->cp0_epc + 8;
+		MIPS_WRITE_REG(regs->regs[31]) = regs->cp0_epc + 8;
 	case j_op:
 		epc += 4;
 		epc >>= 28;
@@ -573,8 +580,8 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 		if (NO_R6EMU)
 			goto sigill_r6;
 	case beq_op:
-		if (regs->regs[insn.i_format.rs] ==
-		    regs->regs[insn.i_format.rt]) {
+		if (MIPS_READ_REG(regs->regs[insn.i_format.rs]) ==
+		    MIPS_READ_REG(regs->regs[insn.i_format.rt])) {
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
 			if (insn.i_format.opcode == beql_op)
 				ret = BRANCH_LIKELY_TAKEN;
@@ -587,8 +594,8 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 		if (NO_R6EMU)
 			goto sigill_r6;
 	case bne_op:
-		if (regs->regs[insn.i_format.rs] !=
-		    regs->regs[insn.i_format.rt]) {
+		if (MIPS_READ_REG(regs->regs[insn.i_format.rs]) !=
+		    MIPS_READ_REG(regs->regs[insn.i_format.rt])) {
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
 			if (insn.i_format.opcode == bnel_op)
 				ret = BRANCH_LIKELY_TAKEN;
@@ -623,7 +630,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 			break;
 		}
 		/* rt field assumed to be zero */
-		if ((long)regs->regs[insn.i_format.rs] <= 0) {
+		if (MIPS_READ_REG_S(regs->regs[insn.i_format.rs]) <= 0) {
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
 			if (insn.i_format.opcode == blezl_op)
 				ret = BRANCH_LIKELY_TAKEN;
@@ -659,7 +666,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 		}
 
 		/* rt field assumed to be zero */
-		if ((long)regs->regs[insn.i_format.rs] > 0) {
+		if (MIPS_READ_REG_S(regs->regs[insn.i_format.rs]) > 0) {
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
 			if (insn.i_format.opcode == bgtzl_op)
 				ret = BRANCH_LIKELY_TAKEN;
@@ -751,7 +758,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 		}
 #ifdef CONFIG_CPU_CAVIUM_OCTEON
 	case lwc2_op: /* This is bbit0 on Octeon */
-		if ((regs->regs[insn.i_format.rs] & (1ull<<insn.i_format.rt))
+		if ((MIPS_READ_REG(regs->regs[insn.i_format.rs]) & (1ull<<insn.i_format.rt))
 		     == 0)
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
 		else
@@ -759,7 +766,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 		regs->cp0_epc = epc;
 		break;
 	case ldc2_op: /* This is bbit032 on Octeon */
-		if ((regs->regs[insn.i_format.rs] &
+		if ((MIPS_READ_REG(regs->regs[insn.i_format.rs]) &
 		    (1ull<<(insn.i_format.rt+32))) == 0)
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
 		else
@@ -767,14 +774,14 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 		regs->cp0_epc = epc;
 		break;
 	case swc2_op: /* This is bbit1 on Octeon */
-		if (regs->regs[insn.i_format.rs] & (1ull<<insn.i_format.rt))
+		if (MIPS_READ_REG(regs->regs[insn.i_format.rs]) & (1ull<<insn.i_format.rt))
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
 		else
 			epc += 8;
 		regs->cp0_epc = epc;
 		break;
 	case sdc2_op: /* This is bbit132 on Octeon */
-		if (regs->regs[insn.i_format.rs] &
+		if (MIPS_READ_REG(regs->regs[insn.i_format.rs]) &
 		    (1ull<<(insn.i_format.rt+32)))
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
 		else

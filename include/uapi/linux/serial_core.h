@@ -258,4 +258,8 @@
 /* Cris v10 / v32 SoC */
 #define PORT_CRIS	112
 
+/* PS2 ports */
+#define PORT_PS2_SBIOS 113
+#define PORT_PS2_UART  114
+
 #endif /* _UAPILINUX_SERIAL_CORE_H */
