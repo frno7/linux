@@ -861,9 +861,9 @@ static int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
  */
 static inline int cop1_64bit(struct pt_regs *xcp)
 {
-#if defined(CONFIG_64BIT) && !defined(CONFIG_MIPS32_O32)
+#if defined(CONFIG_64BIT) && !defined(CONFIG_MIPS32_O32) && !defined(CONFIG_R5900_128BIT_SUPPORT)
 	return 1;
-#elif defined(CONFIG_64BIT) && defined(CONFIG_MIPS32_O32)
+#elif (defined(CONFIG_64BIT) && defined(CONFIG_MIPS32_O32)) || defined(CONFIG_R5900_128BIT_SUPPORT)
 	return !test_thread_flag(TIF_32BIT_REGS);
 #else
 	return 0;
@@ -957,7 +957,7 @@ static int cop1Emulate(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 	MIPS_FPU_EMU_INC_STATS(emulated);
 	switch (MIPSInst_OPCODE(ir)) {
 	case ldc1_op:{
-		u64 __user *va = (u64 __user *) (xcp->regs[MIPSInst_RS(ir)] +
+		u64 __user *va = (u64 __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_RS(ir)]) +
 			MIPSInst_SIMM(ir));
 		u64 val;
 
@@ -978,7 +978,7 @@ static int cop1Emulate(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 	}
 
 	case sdc1_op:{
-		u64 __user *va = (u64 __user *) (xcp->regs[MIPSInst_RS(ir)] +
+		u64 __user *va = (u64 __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_RS(ir)]) +
 			MIPSInst_SIMM(ir));
 		u64 val;
 
@@ -998,7 +998,7 @@ static int cop1Emulate(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 	}
 
 	case lwc1_op:{
-		u32 __user *va = (u32 __user *) (xcp->regs[MIPSInst_RS(ir)] +
+		u32 __user *va = (u32 __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_RS(ir)]) +
 			MIPSInst_SIMM(ir));
 		u32 val;
 
@@ -1018,7 +1018,7 @@ static int cop1Emulate(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 	}
 
 	case swc1_op:{
-		u32 __user *va = (u32 __user *) (xcp->regs[MIPSInst_RS(ir)] +
+		u32 __user *va = (u32 __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_RS(ir)]) +
 			MIPSInst_SIMM(ir));
 		u32 val;
 
@@ -1040,32 +1040,34 @@ static int cop1Emulate(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 	case cop1_op:
 		switch (MIPSInst_RS(ir)) {
 
-#if defined(__mips64)
+#if defined(__mips64) || defined(CONFIG_R5900_128BIT_SUPPORT)
 		case dmfc_op:
 			/* copregister fs -> gpr[rt] */
 			if (MIPSInst_RT(ir) != 0) {
-				DIFROMREG(xcp->regs[MIPSInst_RT(ir)],
-					MIPSInst_RD(ir));
+				MIPS_REG_T tmp;
+				DIFROMREG(tmp, MIPSInst_RD(ir));
+				MIPS_WRITE_REG(xcp->regs[MIPSInst_RT(ir)]) = tmp;
 			}
 			break;
 
 		case dmtc_op:
 			/* copregister fs <- rt */
-			DITOREG(xcp->regs[MIPSInst_RT(ir)], MIPSInst_RD(ir));
+			DITOREG(MIPS_READ_REG(xcp->regs[MIPSInst_RT(ir)]), MIPSInst_RD(ir));
 			break;
 #endif
 
 		case mfc_op:
 			/* copregister rd -> gpr[rt] */
 			if (MIPSInst_RT(ir) != 0) {
-				SIFROMREG(xcp->regs[MIPSInst_RT(ir)],
-					MIPSInst_RD(ir));
+				MIPS_REG_T tmp;
+				SIFROMREG(tmp, MIPSInst_RD(ir));
+				MIPS_WRITE_REG(xcp->regs[MIPSInst_RT(ir)]) = tmp;
 			}
 			break;
 
 		case mtc_op:
 			/* copregister rd <- rt */
-			SITOREG(xcp->regs[MIPSInst_RT(ir)], MIPSInst_RD(ir));
+			SITOREG(MIPS_READ_REG(xcp->regs[MIPSInst_RT(ir)]), MIPSInst_RD(ir));
 			break;
 
 		case cfc_op:{
@@ -1087,7 +1089,7 @@ static int cop1Emulate(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			else
 				value = 0;
 			if (MIPSInst_RT(ir))
-				xcp->regs[MIPSInst_RT(ir)] = value;
+				MIPS_WRITE_REG(xcp->regs[MIPSInst_RT(ir)]) = value;
 			break;
 		}
 
@@ -1098,7 +1100,7 @@ static int cop1Emulate(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			if (MIPSInst_RT(ir) == 0)
 				value = 0;
 			else
-				value = xcp->regs[MIPSInst_RT(ir)];
+				value = MIPS_READ_REG(xcp->regs[MIPSInst_RT(ir)]);
 
 			/* we only have one writable control reg
 			 */
@@ -1187,7 +1189,7 @@ static int cop1Emulate(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 				switch (MIPSInst_OPCODE(ir)) {
 				case lwc1_op:
 				case swc1_op:
-#if (__mips >= 2 || defined(__mips64))
+#if (__mips >= 2 || defined(__mips64)) || defined(CONFIG_CPU_R5900)
 				case ldc1_op:
 				case sdc1_op:
 #endif
@@ -1257,8 +1259,8 @@ static int cop1Emulate(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			return SIGILL;
 		cond = fpucondbit[MIPSInst_RT(ir) >> 2];
 		if (((ctx->fcr31 & cond) != 0) == ((MIPSInst_RT(ir) & 1) != 0))
-			xcp->regs[MIPSInst_RD(ir)] =
-				xcp->regs[MIPSInst_RS(ir)];
+			MIPS_WRITE_REG(xcp->regs[MIPSInst_RD(ir)]) =
+				MIPS_READ_REG(xcp->regs[MIPSInst_RS(ir)]);
 		break;
 #endif
 
@@ -1357,8 +1359,8 @@ static int fpux_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 
 		switch (MIPSInst_FUNC(ir)) {
 		case lwxc1_op:
-			va = (void __user *) (xcp->regs[MIPSInst_FR(ir)] +
-				xcp->regs[MIPSInst_FT(ir)]);
+			va = (void __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_FR(ir)]) +
+				MIPS_READ_REG_L(xcp->regs[MIPSInst_FT(ir)]));
 
 			MIPS_FPU_EMU_INC_STATS(loads);
 			if (!access_ok(VERIFY_READ, va, sizeof(u32))) {
@@ -1375,8 +1377,8 @@ static int fpux_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			break;
 
 		case swxc1_op:
-			va = (void __user *) (xcp->regs[MIPSInst_FR(ir)] +
-				xcp->regs[MIPSInst_FT(ir)]);
+			va = (void __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_FR(ir)]) +
+				MIPS_READ_REG_L(xcp->regs[MIPSInst_FT(ir)]));
 
 			MIPS_FPU_EMU_INC_STATS(stores);
 
@@ -1446,8 +1448,8 @@ static int fpux_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 
 		switch (MIPSInst_FUNC(ir)) {
 		case ldxc1_op:
-			va = (void __user *) (xcp->regs[MIPSInst_FR(ir)] +
-				xcp->regs[MIPSInst_FT(ir)]);
+			va = (void __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_FR(ir)]) +
+				MIPS_READ_REG_L(xcp->regs[MIPSInst_FT(ir)]));
 
 			MIPS_FPU_EMU_INC_STATS(loads);
 			if (!access_ok(VERIFY_READ, va, sizeof(u64))) {
@@ -1464,8 +1466,8 @@ static int fpux_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			break;
 
 		case sdxc1_op:
-			va = (void __user *) (xcp->regs[MIPSInst_FR(ir)] +
-				xcp->regs[MIPSInst_FT(ir)]);
+			va = (void __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_FR(ir)]) +
+				MIPS_READ_REG_L(xcp->regs[MIPSInst_FT(ir)]));
 
 			MIPS_FPU_EMU_INC_STATS(stores);
 			DIFROMREG(val, MIPSInst_FS(ir));
@@ -1538,7 +1540,7 @@ static int fpu_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 		ieee754dp d;
 		ieee754sp s;
 		int w;
-#ifdef __mips64
+#if defined(__mips64) || defined(CONFIG_R5900_128BIT_SUPPORT)
 		s64 l;
 #endif
 	} rv;			/* resulting value */
@@ -1567,7 +1569,7 @@ static int fpu_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			goto scopbop;
 
 			/* unary  ops */
-#if __mips >= 2 || defined(__mips64)
+#if __mips >= 2 || defined(__mips64) || defined(CONFIG_CPU_R5900)
 		case fsqrt_op:
 			handler.u = ieee754sp_sqrt;
 			goto scopuop;
@@ -1589,12 +1591,12 @@ static int fpu_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			SPFROMREG(rv.s, MIPSInst_FS(ir));
 			break;
 		case fmovz_op:
-			if (xcp->regs[MIPSInst_FT(ir)] != 0)
+			if (MIPS_READ_REG(xcp->regs[MIPSInst_FT(ir)]) != 0)
 				return 0;
 			SPFROMREG(rv.s, MIPSInst_FS(ir));
 			break;
 		case fmovn_op:
-			if (xcp->regs[MIPSInst_FT(ir)] == 0)
+			if (MIPS_READ_REG(xcp->regs[MIPSInst_FT(ir)]) == 0)
 				return 0;
 			SPFROMREG(rv.s, MIPSInst_FS(ir));
 			break;
@@ -1662,7 +1664,7 @@ static int fpu_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			goto copcsr;
 		}
 
-#if __mips >= 2 || defined(__mips64)
+#if __mips >= 2 || defined(__mips64) || defined(CONFIG_CPU_R5900)
 		case fround_op:
 		case ftrunc_op:
 		case fceil_op:
@@ -1679,7 +1681,7 @@ static int fpu_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 		}
 #endif /* __mips >= 2 */
 
-#if defined(__mips64)
+#if defined(__mips64) || defined(CONFIG_R5900_128BIT_SUPPORT)
 		case fcvtl_op:{
 			ieee754sp fs;
 
@@ -1752,7 +1754,7 @@ static int fpu_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			goto dcopbop;
 
 			/* unary  ops */
-#if __mips >= 2 || defined(__mips64)
+#if __mips >= 2 || defined(__mips64) || defined(CONFIG_CPU_R5900)
 		case fsqrt_op:
 			handler.u = ieee754dp_sqrt;
 			goto dcopuop;
@@ -1774,12 +1776,12 @@ static int fpu_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			DPFROMREG(rv.d, MIPSInst_FS(ir));
 			break;
 		case fmovz_op:
-			if (xcp->regs[MIPSInst_FT(ir)] != 0)
+			if (MIPS_READ_REG(xcp->regs[MIPSInst_FT(ir)]) != 0)
 				return 0;
 			DPFROMREG(rv.d, MIPSInst_FS(ir));
 			break;
 		case fmovn_op:
-			if (xcp->regs[MIPSInst_FT(ir)] == 0)
+			if (MIPS_READ_REG(xcp->regs[MIPSInst_FT(ir)]) == 0)
 				return 0;
 			DPFROMREG(rv.d, MIPSInst_FS(ir));
 			break;
@@ -1836,7 +1838,7 @@ static int fpu_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			goto copcsr;
 		}
 
-#if __mips >= 2 || defined(__mips64)
+#if __mips >= 2 || defined(__mips64) || defined(CONFIG_CPU_R5900)
 		case fround_op:
 		case ftrunc_op:
 		case fceil_op:
@@ -1853,7 +1855,7 @@ static int fpu_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 		}
 #endif
 
-#if defined(__mips64)
+#if defined(__mips64) || defined(CONFIG_R5900_128BIT_SUPPORT)
 		case fcvtl_op:{
 			ieee754dp fs;
 
@@ -1928,7 +1930,7 @@ static int fpu_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 		break;
 	}
 
-#if defined(__mips64)
+#if defined(__mips64) || defined(CONFIG_R5900_128BIT_SUPPORT)
 	case l_fmt:{
 		switch (MIPSInst_FUNC(ir)) {
 		case fcvts_op:
@@ -1990,7 +1992,7 @@ static int fpu_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 	case w_fmt:
 		SITOREG(rv.w, MIPSInst_FD(ir));
 		break;
-#if defined(__mips64)
+#if defined(__mips64) || defined(CONFIG_R5900_128BIT_SUPPORT)
 	case l_fmt:
 		DITOREG(rv.l, MIPSInst_FD(ir));
 		break;

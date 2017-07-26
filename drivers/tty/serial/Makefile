@@ -88,3 +88,5 @@ obj-$(CONFIG_SERIAL_EFM32_UART) += efm32-uart.o
 obj-$(CONFIG_SERIAL_ARC)	+= arc_uart.o
 obj-$(CONFIG_SERIAL_RP2)	+= rp2.o
 obj-$(CONFIG_SERIAL_FSL_LPUART)	+= fsl_lpuart.o
+obj-$(CONFIG_SERIAL_PS2_UART) += ps2_uart.o
+obj-$(CONFIG_SERIAL_PS2_SBIOS) += ps2sbioscon.o

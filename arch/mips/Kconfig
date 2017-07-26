@@ -800,6 +800,24 @@ config NLM_XLP_BOARD
 	  This board is based on Netlogic XLP Processor.
 	  Say Y here if you have a XLP based board.
 
+config SONY_PS2
+	bool "Sony Playstation 2"
+	select BOOT_ELF32
+	select IRQ_CPU
+	select SYS_HAS_CPU_R5900
+	select SYS_SUPPORTS_32BIT_KERNEL
+	select SYS_SUPPORTS_LITTLE_ENDIAN
+	select DMA_NONCOHERENT
+	select NO_IOPORT
+	select SYS_HAS_EARLY_PRINTK
+	select USB_ARCH_HAS_OHCI
+	select USB_OHCI_LITTLE_ENDIAN
+	select CEVT_R4K
+	select CSRC_R4K
+	select HAVE_PATA_PLATFORM
+	help
+	  This enables support for Sony Playstation 2.
+
 endchoice
 
 source "arch/mips/alchemy/Kconfig"
@@ -821,6 +839,15 @@ source "arch/mips/cavium-octeon/Kconfig"
 source "arch/mips/loongson/Kconfig"
 source "arch/mips/loongson1/Kconfig"
 source "arch/mips/netlogic/Kconfig"
+source "arch/mips/ps2/Kconfig"
+
+config R5900_128BIT_SUPPORT
+	bool "Support for 128 bit general purpose registers"
+	default y
+	depends on SYS_HAS_CPU_R5900
+	help
+	  Say Y here to support applications which use 64 bit and
+	  128 bit general purpose registers.
 
 endmenu
 
@@ -1109,7 +1136,7 @@ config BOOT_ELF32
 config MIPS_L1_CACHE_SHIFT
 	int
 	default "4" if MACH_DECSTATION || MIKROTIK_RB532 || PMC_MSP4200_EVAL || SOC_RT288X
-	default "6" if MIPS_CPU_SCACHE
+	default "6" if MIPS_CPU_SCACHE || CPU_R5900
 	default "7" if SGI_IP22 || SGI_IP27 || SGI_IP28 || SNI_RM || CPU_CAVIUM_OCTEON
 	default "5"
 
@@ -1431,6 +1458,14 @@ config CPU_BMIPS5000
 	select SYS_SUPPORTS_HOTPLUG_CPU
 	help
 	  Broadcom BMIPS5000 processors.
+config CPU_R5900
+	bool "R5900"
+	depends on SYS_HAS_CPU_R5900
+	select CPU_SUPPORTS_32BIT_KERNEL
+	select CPU_SUPPORTS_64BIT_KERNEL
+	select CPU_HAS_WB
+	help
+	  MIPS Technologies R5900 processor (Emotion Engine in Sony Playstation 2).
 
 config CPU_XLR
 	bool "Netlogic XLR SoC"
@@ -1569,6 +1604,9 @@ config SYS_HAS_CPU_R5432
 	bool
 
 config SYS_HAS_CPU_R5500
+	bool
+
+config SYS_HAS_CPU_R5900
 	bool
 
 config SYS_HAS_CPU_R6000
@@ -2507,6 +2545,17 @@ config MIPS32_O32
 config MIPS32_N32
 	bool "Kernel support for n32 binaries"
 	depends on MIPS32_COMPAT
+	help
+	  Select this option if you want to run n32 binaries.  These are
+	  64-bit binaries using 32-bit quantities for addressing and certain
+	  data that would normally be 64-bit.  They are used in special
+	  cases.
+
+	  If unsure, say N.
+
+config MIPS_N32
+	bool "Kernel support for n32 binaries"
+	depends on R5900_128BIT_SUPPORT && !64BIT
 	help
 	  Select this option if you want to run n32 binaries.  These are
 	  64-bit binaries using 32-bit quantities for addressing and certain
