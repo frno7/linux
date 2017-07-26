@@ -174,4 +174,6 @@ source "drivers/powercap/Kconfig"
 
 source "drivers/mcb/Kconfig"
 
+source "drivers/ps2/Kconfig"
+
 endmenu

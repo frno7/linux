@@ -68,15 +68,15 @@ extern int ptrace_set_watch_regs(struct task_struct *child,
 
 static inline int is_syscall_success(struct pt_regs *regs)
 {
-	return !regs->regs[7];
+	return !MIPS_READ_REG(regs->regs[7]);
 }
 
 static inline long regs_return_value(struct pt_regs *regs)
 {
 	if (is_syscall_success(regs))
-		return regs->regs[2];
+		return MIPS_READ_REG(regs->regs[2]);
 	else
-		return -regs->regs[2];
+		return -MIPS_READ_REG(regs->regs[2]);
 }
 
 #define instruction_pointer(regs) ((regs)->cp0_epc)
@@ -103,13 +103,13 @@ static inline void die_if_kernel(const char *str, struct pt_regs *regs)
 
 static inline unsigned long user_stack_pointer(struct pt_regs *regs)
 {
-	return regs->regs[29];
+	return MIPS_READ_REG(regs->regs[29]);
 }
 
 static inline void user_stack_pointer_set(struct pt_regs *regs,
 	unsigned long val)
 {
-	regs->regs[29] = val;
+	MIPS_WRITE_REG(regs->regs[29]) = val;
 }
 
 #endif /* _ASM_PTRACE_H */
