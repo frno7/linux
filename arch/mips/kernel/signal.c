@@ -47,6 +47,11 @@
 
 #include "signal-common.h"
 
+/*
+ * Including <asm/unistd.h> would give use the 64-bit syscall numbers ...
+ */
+#define __NR_N32_restart_syscall	6214
+
 static int (*save_fp_context)(void __user *sc);
 static int (*restore_fp_context)(void __user *sc);
 
@@ -421,7 +426,7 @@ int setup_sigcontext(struct pt_regs *regs, struct sigcontext __user *sc)
 
 	err |= __put_user(0, &sc->sc_regs[0]);
 	for (i = 1; i < 32; i++)
-		err |= __put_user(regs->regs[i], &sc->sc_regs[i]);
+		err |= __put_user(MIPS_READ_REG(regs->regs[i]), &sc->sc_regs[i]);
 
 #ifdef CONFIG_CPU_HAS_SMARTMIPS
 	err |= __put_user(regs->acx, &sc->sc_acx);
@@ -431,11 +436,15 @@ int setup_sigcontext(struct pt_regs *regs, struct sigcontext __user *sc)
 	if (cpu_has_dsp) {
 		err |= __put_user(mfhi1(), &sc->sc_hi1);
 		err |= __put_user(mflo1(), &sc->sc_lo1);
+#ifdef CONFIG_CPU_R5900
+		err |= __put_user(mfsa(), &sc->sc_sa);
+#else
 		err |= __put_user(mfhi2(), &sc->sc_hi2);
 		err |= __put_user(mflo2(), &sc->sc_lo2);
 		err |= __put_user(mfhi3(), &sc->sc_hi3);
 		err |= __put_user(mflo3(), &sc->sc_lo3);
 		err |= __put_user(rddsp(DSP_MASK), &sc->sc_dsp);
+#endif
 	}
 
 
@@ -508,15 +517,27 @@ int restore_sigcontext(struct pt_regs *regs, struct sigcontext __user *sc)
 	if (cpu_has_dsp) {
 		err |= __get_user(treg, &sc->sc_hi1); mthi1(treg);
 		err |= __get_user(treg, &sc->sc_lo1); mtlo1(treg);
+#ifdef CONFIG_CPU_R5900
+		err |= __get_user(treg, &sc->sc_sa); mtsa(treg);
+#else
 		err |= __get_user(treg, &sc->sc_hi2); mthi2(treg);
 		err |= __get_user(treg, &sc->sc_lo2); mtlo2(treg);
 		err |= __get_user(treg, &sc->sc_hi3); mthi3(treg);
 		err |= __get_user(treg, &sc->sc_lo3); mtlo3(treg);
 		err |= __get_user(treg, &sc->sc_dsp); wrdsp(treg, DSP_MASK);
+#endif
 	}
 
-	for (i = 1; i < 32; i++)
-		err |= __get_user(regs->regs[i], &sc->sc_regs[i]);
+	for (i = 1; i < 32; i++) {
+		MIPS_REG_T tmp;
+		int rv;
+
+		rv = __get_user(tmp, &sc->sc_regs[i]);
+		err |= rv;
+		if (rv == 0) {
+			MIPS_WRITE_REG(regs->regs[i]) = tmp;
+		}
+	}
 
 	return err ?: protected_restore_fp_context(sc);
 }
@@ -530,7 +551,7 @@ void __user *get_sigframe(struct ksignal *ksig, struct pt_regs *regs,
 	frame_size += extcontext_max_size();
 
 	/* Default to using normal stack */
-	sp = regs->regs[29];
+	sp = MIPS_READ_REG_L(regs->regs[29]);
 
 	/*
 	 * FPU emulator may have it's own trampoline active just
@@ -603,7 +624,7 @@ asmlinkage void sys_sigreturn(nabi_no_regargs struct pt_regs regs)
 	sigset_t blocked;
 	int sig;
 
-	frame = (struct sigframe __user *) regs.regs[29];
+	frame = (struct sigframe __user *) MIPS_READ_REG_L(regs.regs[29]);
 	if (!access_ok(VERIFY_READ, frame, sizeof(*frame)))
 		goto badframe;
 	if (__copy_from_user(&blocked, &frame->sf_mask, sizeof(blocked)))
@@ -638,7 +659,7 @@ asmlinkage void sys_rt_sigreturn(nabi_no_regargs struct pt_regs regs)
 	sigset_t set;
 	int sig;
 
-	frame = (struct rt_sigframe __user *) regs.regs[29];
+	frame = (struct rt_sigframe __user *) MIPS_READ_REG_L(regs.regs[29]);
 	if (!access_ok(VERIFY_READ, frame, sizeof(*frame)))
 		goto badframe;
 	if (__copy_from_user(&set, &frame->rs_uc.uc_sigmask, sizeof(set)))
@@ -695,16 +716,17 @@ static int setup_frame(void *sig_return, struct ksignal *ksig,
 	 * $25 and c0_epc point to the signal handler, $29 points to the
 	 * struct sigframe.
 	 */
-	regs->regs[ 4] = ksig->sig;
-	regs->regs[ 5] = 0;
-	regs->regs[ 6] = (unsigned long) &frame->sf_sc;
-	regs->regs[29] = (unsigned long) frame;
-	regs->regs[31] = (unsigned long) sig_return;
-	regs->cp0_epc = regs->regs[25] = (unsigned long) ksig->ka.sa.sa_handler;
+	MIPS_WRITE_REG(regs->regs[ 4]) = ksig->sig;
+	MIPS_WRITE_REG(regs->regs[ 5]) = 0;
+	MIPS_WRITE_REG(regs->regs[ 6]) = (unsigned long) &frame->sf_sc;
+	MIPS_WRITE_REG(regs->regs[29]) = (unsigned long) frame;
+	MIPS_WRITE_REG(regs->regs[31]) = (unsigned long) sig_return;
+	MIPS_WRITE_REG(regs->regs[25]) = (unsigned long) ksig->ka.sa.sa_handler;
+	regs->cp0_epc = MIPS_READ_REG_L(regs->regs[25]);
 
 	DEBUGP("SIG deliver (%s:%d): sp=0x%p pc=0x%lx ra=0x%lx\n",
 	       current->comm, current->pid,
-	       frame, regs->cp0_epc, regs->regs[31]);
+	       frame, regs->cp0_epc, MIPS_READ_REG_L(regs->regs[31]));
 	return 0;
 }
 #endif
@@ -725,7 +747,8 @@ static int setup_rt_frame(void *sig_return, struct ksignal *ksig,
 	/* Create the ucontext.	 */
 	err |= __put_user(0, &frame->rs_uc.uc_flags);
 	err |= __put_user(NULL, &frame->rs_uc.uc_link);
-	err |= __save_altstack(&frame->rs_uc.uc_stack, regs->regs[29]);
+	err |= __save_altstack(&frame->rs_uc.uc_stack,
+		MIPS_READ_REG_L(regs->regs[29]));
 	err |= setup_sigcontext(regs, &frame->rs_uc.uc_mcontext);
 	err |= __copy_to_user(&frame->rs_uc.uc_sigmask, set, sizeof(*set));
 
@@ -742,12 +765,13 @@ static int setup_rt_frame(void *sig_return, struct ksignal *ksig,
 	 * $25 and c0_epc point to the signal handler, $29 points to
 	 * the struct rt_sigframe.
 	 */
-	regs->regs[ 4] = ksig->sig;
-	regs->regs[ 5] = (unsigned long) &frame->rs_info;
-	regs->regs[ 6] = (unsigned long) &frame->rs_uc;
-	regs->regs[29] = (unsigned long) frame;
-	regs->regs[31] = (unsigned long) sig_return;
-	regs->cp0_epc = regs->regs[25] = (unsigned long) ksig->ka.sa.sa_handler;
+	MIPS_WRITE_REG(regs->regs[ 4]) = ksig->sig;
+	MIPS_WRITE_REG(regs->regs[ 5]) = (unsigned long) &frame->rs_info;
+	MIPS_WRITE_REG(regs->regs[ 6]) = (unsigned long) &frame->rs_uc;
+	MIPS_WRITE_REG(regs->regs[29]) = (unsigned long) frame;
+	MIPS_WRITE_REG(regs->regs[31]) = (unsigned long) sig_return;
+	MIPS_WRITE_REG(regs->regs[25]) = (unsigned long) ksig->ka.sa.sa_handler;
+	regs->cp0_epc = MIPS_READ_REG_L(regs->regs[25]);
 
 	DEBUGP("SIG deliver (%s:%d): sp=0x%p pc=0x%lx ra=0x%lx\n",
 	       current->comm, current->pid,
@@ -770,6 +794,15 @@ struct mips_abi mips_abi = {
 	.vdso		= &vdso_image,
 };
 
+#ifdef CONFIG_MIPS_N32
+struct mips_abi mips_abi_n32 = {
+	.setup_rt_frame	= setup_rt_frame,
+	.rt_signal_return_offset =
+		offsetof(struct mips_vdso, n32_rt_signal_trampoline),
+	.restart	= __NR_N32_restart_syscall
+};
+#endif
+
 static void handle_signal(struct ksignal *ksig, struct pt_regs *regs)
 {
 	sigset_t *oldset = sigmask_to_save();
@@ -777,25 +810,25 @@ static void handle_signal(struct ksignal *ksig, struct pt_regs *regs)
 	struct mips_abi *abi = current->thread.abi;
 	void *vdso = current->mm->context.vdso;
 
-	if (regs->regs[0]) {
-		switch(regs->regs[2]) {
+	if (MIPS_READ_REG(regs->regs[0])) {
+		switch(MIPS_READ_REG(regs->regs[2])) {
 		case ERESTART_RESTARTBLOCK:
 		case ERESTARTNOHAND:
-			regs->regs[2] = EINTR;
+			MIPS_WRITE_REG(regs->regs[2]) = EINTR;
 			break;
 		case ERESTARTSYS:
 			if (!(ksig->ka.sa.sa_flags & SA_RESTART)) {
-				regs->regs[2] = EINTR;
+				MIPS_WRITE_REG(regs->regs[2]) = EINTR;
 				break;
 			}
 		/* fallthrough */
 		case ERESTARTNOINTR:
-			regs->regs[7] = regs->regs[26];
-			regs->regs[2] = regs->regs[0];
+			MIPS_WRITE_REG(regs->regs[7]) = MIPS_READ_REG(regs->regs[26]);
+			MIPS_WRITE_REG(regs->regs[2]) = MIPS_READ_REG(regs->regs[0]);
 			regs->cp0_epc -= 4;
 		}
 
-		regs->regs[0] = 0;		/* Don't deal with this again.	*/
+		MIPS_WRITE_REG(regs->regs[0]) = 0;		/* Don't deal with this again.  */
 	}
 
 	if (sig_uses_siginfo(&ksig->ka, abi))
@@ -818,23 +851,23 @@ static void do_signal(struct pt_regs *regs)
 		return;
 	}
 
-	if (regs->regs[0]) {
-		switch (regs->regs[2]) {
+	if (MIPS_READ_REG(regs->regs[0])) {
+		switch (MIPS_READ_REG(regs->regs[2])) {
 		case ERESTARTNOHAND:
 		case ERESTARTSYS:
 		case ERESTARTNOINTR:
-			regs->regs[2] = regs->regs[0];
-			regs->regs[7] = regs->regs[26];
+			MIPS_WRITE_REG(regs->regs[2]) = MIPS_READ_REG(regs->regs[0]);
+			MIPS_WRITE_REG(regs->regs[7]) = MIPS_READ_REG(regs->regs[26]);
 			regs->cp0_epc -= 4;
 			break;
 
 		case ERESTART_RESTARTBLOCK:
-			regs->regs[2] = current->thread.abi->restart;
-			regs->regs[7] = regs->regs[26];
+			MIPS_WRITE_REG(regs->regs[2]) = current->thread.abi->restart;
+			MIPS_WRITE_REG(regs->regs[7]) = MIPS_READ_REG(regs->regs[26]);
 			regs->cp0_epc -= 4;
 			break;
 		}
-		regs->regs[0] = 0;	/* Don't deal with this again.	*/
+		MIPS_WRITE_REG(regs->regs[0]) = 0;	/* Don't deal with this again.  */
 	}
 
 	/*

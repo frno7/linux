@@ -17,3 +17,5 @@ obj-$(CONFIG_FRAMEBUFFER_CONSOLE)     += fbcon_rotate.o fbcon_cw.o fbcon_ud.o \
 endif
 
 obj-$(CONFIG_FB_STI)              += sticore.o
+
+obj-$(CONFIG_PS2_CONSOLE)         += ps2con.o font.o
