@@ -19,7 +19,8 @@
 #define PHYS_OFFSET		_AC(0, UL)
 #endif
 
-#ifdef CONFIG_32BIT
+#if defined(CONFIG_32BIT) || defined(CONFIG_CPU_R5900)
+
 #ifdef CONFIG_KVM_GUEST
 #define CAC_BASE		_AC(0x40000000, UL)
 #else
@@ -45,7 +46,7 @@
 
 #endif /* CONFIG_32BIT */
 
-#ifdef CONFIG_64BIT
+#if defined(CONFIG_64BIT) && !defined(CONFIG_CPU_R5900)
 
 #ifndef CAC_BASE
 #ifdef CONFIG_DMA_NONCOHERENT

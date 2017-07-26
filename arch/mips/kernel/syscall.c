@@ -52,7 +52,7 @@ asmlinkage int sysm_pipe(void)
 	int error = do_pipe_flags(fd, 0);
 	if (error)
 		return error;
-	current_pt_regs()->regs[3] = fd[1];
+	MIPS_WRITE_REG(current_pt_regs()->regs[3]) = fd[1];
 	return fd[0];
 }
 
@@ -99,7 +99,7 @@ SYSCALL_DEFINE1(set_thread_area, unsigned long, addr)
 static inline int mips_atomic_set(unsigned long addr, unsigned long new)
 {
 	unsigned long old, tmp;
-	struct pt_regs *regs;
+	volatile struct pt_regs *regs;
 	unsigned int err;
 
 	if (unlikely(addr & 3))
@@ -181,8 +181,8 @@ static inline int mips_atomic_set(unsigned long addr, unsigned long new)
 		return err;
 
 	regs = current_pt_regs();
-	regs->regs[2] = old;
-	regs->regs[7] = 0;	/* No error */
+	MIPS_WRITE_REG(regs->regs[2]) = old;
+	MIPS_WRITE_REG(regs->regs[7]) = 0;	/* No error */
 
 	/*
 	 * Don't let your children do this ...

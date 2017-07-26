@@ -17,13 +17,18 @@
 
 extern void *__bzero(void *__s, size_t __count);
 extern long __strncpy_from_user_nocheck_asm(char *__to,
-					    const char *__from, long __len);
+                                            const char *__from, long __len);
 extern long __strncpy_from_user_asm(char *__to, const char *__from,
-				    long __len);
+                                    long __len);
 extern long __strlen_user_nocheck_asm(const char *s);
 extern long __strlen_user_asm(const char *s);
 extern long __strnlen_user_nocheck_asm(const char *s);
 extern long __strnlen_user_asm(const char *s);
+extern void __muldi3(void);
+extern void __umoddi3(void);
+extern void __divdi3(void);
+extern void __udivdi3(void);
+extern void __moddi3(void);
 
 /*
  * String functions
@@ -59,4 +64,11 @@ EXPORT_SYMBOL(invalid_pte_table);
 #ifdef CONFIG_FUNCTION_TRACER
 /* _mcount is defined in arch/mips/kernel/mcount.S */
 EXPORT_SYMBOL(_mcount);
+#endif
+#ifdef CONFIG_CPU_R5900
+EXPORT_SYMBOL(__muldi3);
+EXPORT_SYMBOL(__umoddi3);
+EXPORT_SYMBOL(__divdi3);
+EXPORT_SYMBOL(__udivdi3);
+EXPORT_SYMBOL(__moddi3);
 #endif

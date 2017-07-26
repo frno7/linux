@@ -85,11 +85,21 @@
  * they're not protected.
  */
 
+#ifdef CONFIG_CPU_R5900
+#define EXC(inst_reg,addr,handler)		\
+	/* In an error exception handler the user space could be uncached. */ \
+	sync.l;					\
+9:	inst_reg, addr;				\
+	.section __ex_table,"a";		\
+	PTR	9b, handler;			\
+	.previous
+#else
 #define EXC(inst_reg,addr,handler)		\
 9:	inst_reg, addr;				\
 	.section __ex_table,"a";		\
 	PTR	9b, handler;			\
 	.previous
+#endif
 
 /*
  * Only on the 64-bit kernel we can made use of 64-bit registers.
@@ -156,15 +166,15 @@
 
 #ifdef CONFIG_CPU_LITTLE_ENDIAN
 #define LDFIRST LOADR
-#define LDREST	LOADL
+#define LDREST  LOADL
 #define STFIRST STORER
-#define STREST	STOREL
+#define STREST  STOREL
 #define SHIFT_DISCARD SLLV
 #else
 #define LDFIRST LOADL
-#define LDREST	LOADR
+#define LDREST  LOADR
 #define STFIRST STOREL
-#define STREST	STORER
+#define STREST  STORER
 #define SHIFT_DISCARD SRLV
 #endif
 
@@ -235,7 +245,14 @@ __copy_user_common:
 	 * src and dst are aligned; need to compute rem
 	 */
 .Lboth_aligned:
-	 SRL	t0, len, LOG_NBYTES+3	 # +3 for 8 units/iter
+	 SRL	t0, len, LOG_NBYTES+3    # +3 for 8 units/iter
+#ifdef CONFIG_CPU_R5900
+	/* no short loop. */
+	nop
+	nop
+	nop
+	nop
+#endif
 	beqz	t0, .Lcleanup_both_aligned # len < 8*NBYTES
 	 and	rem, len, (8*NBYTES-1)	 # rem = len % (8*NBYTES)
 	PREF(	0, 3*32(src) )
@@ -313,7 +330,7 @@ EXC(	STORE	t0, 0(dst),		.Ls_exc_p1u)
 	/*
 	 * src and dst are aligned, need to copy rem bytes (rem < NBYTES)
 	 * A loop would do only a byte at a time with possible branch
-	 * mispredicts.	 Can't do an explicit LOAD dst,mask,or,STORE
+	 * mispredicts.  Can't do an explicit LOAD dst,mask,or,STORE
 	 * because can't assume read-access to dst.  Instead, use
 	 * STREST dst, which doesn't require read access to dst.
 	 *
@@ -327,7 +344,7 @@ EXC(	STORE	t0, 0(dst),		.Ls_exc_p1u)
 	li	bits, 8*NBYTES
 	SLL	rem, len, 3	# rem = number of bits to keep
 EXC(	LOAD	t0, 0(src),		.Ll_exc)
-	SUB	bits, bits, rem # bits = number of bits to discard
+	SUB	bits, bits, rem	# bits = number of bits to discard
 	SHIFT_DISCARD t0, t0, bits
 EXC(	STREST	t0, -1(t1),		.Ls_exc)
 	jr	ra
@@ -343,7 +360,7 @@ EXC(	STREST	t0, -1(t1),		.Ls_exc)
 	 * Set match = (src and dst have same alignment)
 	 */
 #define match rem
-EXC(	LDFIRST t3, FIRST(0)(src),	.Ll_exc)
+EXC(	LDFIRST	t3, FIRST(0)(src),	.Ll_exc)
 	ADD	t2, zero, NBYTES
 EXC(	LDREST	t3, REST(0)(src),	.Ll_exc_copy)
 	SUB	t2, t2, t1	# t2 = number of bytes copied
@@ -357,10 +374,10 @@ EXC(	STFIRST t3, FIRST(0)(dst),	.Ls_exc)
 	 ADD	src, src, t2
 
 .Lsrc_unaligned_dst_aligned:
-	SRL	t0, len, LOG_NBYTES+2	 # +2 for 4 units/iter
+	SRL	t0, len, LOG_NBYTES+2    # +2 for 4 units/iter
 	PREF(	0, 3*32(src) )
 	beqz	t0, .Lcleanup_src_unaligned
-	 and	rem, len, (4*NBYTES-1)	 # rem = len % 4*NBYTES
+	 and	rem, len, (4*NBYTES-1)   # rem = len % 4*NBYTES
 	PREF(	1, 3*32(dst) )
 1:
 /*
@@ -370,13 +387,13 @@ EXC(	STFIRST t3, FIRST(0)(dst),	.Ls_exc)
  * are to the same unit (unless src is aligned, but it's not).
  */
 	R10KCBARRIER(0(ra))
-EXC(	LDFIRST t0, FIRST(0)(src),	.Ll_exc)
-EXC(	LDFIRST t1, FIRST(1)(src),	.Ll_exc_copy)
-	SUB	len, len, 4*NBYTES
+EXC(	LDFIRST	t0, FIRST(0)(src),	.Ll_exc)
+EXC(	LDFIRST	t1, FIRST(1)(src),	.Ll_exc_copy)
+	SUB     len, len, 4*NBYTES
 EXC(	LDREST	t0, REST(0)(src),	.Ll_exc_copy)
 EXC(	LDREST	t1, REST(1)(src),	.Ll_exc_copy)
-EXC(	LDFIRST t2, FIRST(2)(src),	.Ll_exc_copy)
-EXC(	LDFIRST t3, FIRST(3)(src),	.Ll_exc_copy)
+EXC(	LDFIRST	t2, FIRST(2)(src),	.Ll_exc_copy)
+EXC(	LDFIRST	t3, FIRST(3)(src),	.Ll_exc_copy)
 EXC(	LDREST	t2, REST(2)(src),	.Ll_exc_copy)
 EXC(	LDREST	t3, REST(3)(src),	.Ll_exc_copy)
 	PREF(	0, 9*32(src) )		# 0 is PREF_LOAD  (not streamed)
@@ -388,7 +405,7 @@ EXC(	STORE	t0, UNIT(0)(dst),	.Ls_exc_p4u)
 EXC(	STORE	t1, UNIT(1)(dst),	.Ls_exc_p3u)
 EXC(	STORE	t2, UNIT(2)(dst),	.Ls_exc_p2u)
 EXC(	STORE	t3, UNIT(3)(dst),	.Ls_exc_p1u)
-	PREF(	1, 9*32(dst) )		# 1 is PREF_STORE (not streamed)
+	PREF(	1, 9*32(dst) )     	# 1 is PREF_STORE (not streamed)
 	.set	reorder				/* DADDI_WAR */
 	ADD	dst, dst, 4*NBYTES
 	bne	len, rem, 1b
@@ -420,8 +437,9 @@ EXC(	STORE	t0, 0(dst),		.Ls_exc_p1u)
 #define COPY_BYTE(N)			\
 EXC(	lb	t0, N(src), .Ll_exc);	\
 	SUB	len, len, 1;		\
+EXC(	 sb	t0, N(dst), .Ls_exc_p1) \
 	beqz	len, .Ldone;		\
-EXC(	 sb	t0, N(dst), .Ls_exc_p1)
+	nop
 
 	COPY_BYTE(0)
 	COPY_BYTE(1)
@@ -433,8 +451,9 @@ EXC(	 sb	t0, N(dst), .Ls_exc_p1)
 #endif
 EXC(	lb	t0, NBYTES-2(src), .Ll_exc)
 	SUB	len, len, 1
-	jr	ra
 EXC(	 sb	t0, NBYTES-2(dst), .Ls_exc_p1)
+	jr	ra
+	nop
 .Ldone:
 	jr	ra
 	 nop
@@ -460,6 +479,11 @@ EXC(	lb	t1, 0(src),	.Ll_exc)
 	sb	t1, 0(dst)	# can't fault -- we're copy_from_user
 	.set	reorder				/* DADDI_WAR */
 	ADD	dst, dst, 1
+#ifdef CONFIG_CPU_R5900
+	/* no short loop. */
+	nop
+	nop
+#endif
 	bne	src, t0, 1b
 	.set	noreorder
 .Ll_exc:
@@ -486,6 +510,11 @@ EXC(	lb	t1, 0(src),	.Ll_exc)
 	.set	noreorder
 1:	sb	zero, 0(dst)
 	ADD	dst, dst, 1
+#ifdef CONFIG_CPU_R5900
+	nop
+	nop
+	nop
+#endif
 #ifndef CONFIG_CPU_DADDI_WORKAROUNDS
 	bnez	src, 1b
 	 SUB	src, src, 1
@@ -502,7 +531,7 @@ EXC(	lb	t1, 0(src),	.Ll_exc)
 
 
 #define SEXC(n)							\
-	.set	reorder;			/* DADDI_WAR */ \
+	.set	reorder;			/* DADDI_WAR */	\
 .Ls_exc_p ## n ## u:						\
 	ADD	len, len, n*NBYTES;				\
 	jr	ra;						\
@@ -552,6 +581,10 @@ LEAF(__rmemcpy)					/* a0=dst a1=src a2=len */
 	SUB	a2, a2, 0x1
 	sb	t0, -1(a0)
 	SUB	a1, a1, 0x1
+#ifdef CONFIG_CPU_R5900
+	/* no short loop. */
+	nop
+#endif
 	.set	reorder				/* DADDI_WAR */
 	SUB	a0, a0, 0x1
 	bnez	a2, .Lr_end_bytes
@@ -567,6 +600,10 @@ LEAF(__rmemcpy)					/* a0=dst a1=src a2=len */
 	SUB	a2, a2, 0x1
 	sb	t0, (a0)
 	ADD	a1, a1, 0x1
+#ifdef CONFIG_CPU_R5900
+	/* no short loop. */
+	nop
+#endif
 	.set	reorder				/* DADDI_WAR */
 	ADD	a0, a0, 0x1
 	bnez	a2, .Lr_end_bytes_up

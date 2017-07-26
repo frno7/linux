@@ -52,7 +52,7 @@ asmlinkage void __kprobes do_page_fault(struct pt_regs *regs, unsigned long writ
 
 #ifdef CONFIG_KPROBES
 	/*
-	 * This is to notify the fault handler of the kprobes.	The
+	 * This is to notify the fault handler of the kprobes.  The
 	 * exception code is redundant as it is also carried in REGS,
 	 * but we pass it anyhow.
 	 */
@@ -216,7 +216,7 @@ bad_area_nosemaphore:
 	}
 
 no_context:
-	/* Are we prepared to handle this kernel fault?	 */
+	/* Are we prepared to handle this kernel fault?  */
 	if (fixup_exception(regs)) {
 		current->thread.cp0_baduaddr = address;
 		return;
@@ -231,7 +231,7 @@ no_context:
 	printk(KERN_ALERT "CPU %d Unable to handle kernel paging request at "
 	       "virtual address %0*lx, epc == %0*lx, ra == %0*lx\n",
 	       raw_smp_processor_id(), field, address, field, regs->cp0_epc,
-	       field,  regs->regs[31]);
+	       field,  MIPS_READ_REG_L(regs->regs[31]));
 	die("Oops", regs);
 
 out_of_memory:

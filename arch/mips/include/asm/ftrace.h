@@ -19,6 +19,31 @@
 extern void _mcount(void);
 #define mcount _mcount
 
+#ifdef CONFIG_CPU_R5900
+#define safe_load(load, src, dst, error)		\
+do {							\
+	asm volatile (					\
+		/* In an error exception handler the user space could be uncached. */ \
+		"sync.l							\n"	\
+		"1: " load " %[" STR(dst) "], 0(%[" STR(src) "])\n"\
+		"   li %[" STR(error) "], 0\n"		\
+		"2:\n"					\
+							\
+		".section .fixup, \"ax\"\n"		\
+		"3: li %[" STR(error) "], 1\n"		\
+		"   j 2b\n"				\
+		".previous\n"				\
+							\
+		".section\t__ex_table,\"a\"\n\t"	\
+		STR(PTR) "\t1b, 3b\n\t"			\
+		".previous\n"				\
+							\
+		: [dst] "=&r" (dst), [error] "=r" (error)\
+		: [src] "r" (src)			\
+		: "memory"				\
+	);						\
+} while (0)
+#else
 #define safe_load(load, src, dst, error)		\
 do {							\
 	asm volatile (					\
@@ -40,7 +65,33 @@ do {							\
 		: "memory"				\
 	);						\
 } while (0)
+#endif
 
+#ifdef CONFIG_CPU_R5900
+#define safe_store(store, src, dst, error)	\
+do {						\
+	asm volatile (				\
+		/* In an error exception handler the user space could be uncached. */ \
+		"sync.l							\n"	\
+		"1: " store " %[" STR(src) "], 0(%[" STR(dst) "])\n"\
+		"   li %[" STR(error) "], 0\n"	\
+		"2:\n"				\
+						\
+		".section .fixup, \"ax\"\n"	\
+		"3: li %[" STR(error) "], 1\n"	\
+		"   j 2b\n"			\
+		".previous\n"			\
+						\
+		".section\t__ex_table,\"a\"\n\t"\
+		STR(PTR) "\t1b, 3b\n\t"		\
+		".previous\n"			\
+						\
+		: [error] "=r" (error)		\
+		: [dst] "r" (dst), [src] "r" (src)\
+		: "memory"			\
+	);					\
+} while (0)
+#else
 #define safe_store(store, src, dst, error)	\
 do {						\
 	asm volatile (				\
@@ -62,6 +113,7 @@ do {						\
 		: "memory"			\
 	);					\
 } while (0)
+#endif
 
 #define safe_load_code(dst, src, error) \
 	safe_load(STR(lw), src, dst, error)

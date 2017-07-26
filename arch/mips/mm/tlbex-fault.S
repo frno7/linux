@@ -13,6 +13,9 @@
 	.macro tlb_do_page_fault, write
 	NESTED(tlb_do_page_fault_\write, PT_SIZE, sp)
 	SAVE_ALL
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	MFC0	a2, CP0_BADVADDR
 	KMODE
 	move	a0, sp

@@ -54,7 +54,7 @@ enum opcode {
 	insn_or, insn_ori, insn_pref, insn_rfe, insn_rotr, insn_sc, insn_scd,
 	insn_sd, insn_sll, insn_sra, insn_srl, insn_subu, insn_sw,
 	insn_syscall, insn_tlbp, insn_tlbr, insn_tlbwi, insn_tlbwr, insn_xor,
-	insn_xori,
+	insn_xori, insn_sync, insn_syncp
 };
 
 struct insn {
@@ -233,8 +233,10 @@ I_u1s2(_bltz)
 I_u1s2(_bltzl)
 I_u1u2s3(_bne)
 I_u2s3u1(_cache)
+#ifndef CONFIG_CPU_R5900
 I_u1u2u3(_dmfc0)
 I_u1u2u3(_dmtc0)
+#endif
 I_u2u1s3(_daddiu)
 I_u3u1u2(_daddu)
 I_u2u1u3(_dsll)
@@ -283,6 +285,8 @@ I_u1u2s3(_bbit0);
 I_u1u2s3(_bbit1);
 I_u3u1u2(_lwx)
 I_u3u1u2(_ldx)
+I_0(_sync)
+I_0(_syncp)
 
 #ifdef CONFIG_CPU_CAVIUM_OCTEON
 #include <asm/octeon/octeon.h>
@@ -315,7 +319,7 @@ UASM_EXPORT_SYMBOL(ISAFUNC(uasm_build_label));
 int __uasminit ISAFUNC(uasm_in_compat_space_p)(long addr)
 {
 	/* Is this address in 32bit compat space? */
-#ifdef CONFIG_64BIT
+#if defined(CONFIG_64BIT) && !defined(CONFIG_CPU_R5900)
 	return (((addr) & 0xffffffff00000000L) == 0xffffffff00000000L);
 #else
 	return 1;
@@ -325,7 +329,7 @@ UASM_EXPORT_SYMBOL(ISAFUNC(uasm_in_compat_space_p));
 
 static int __uasminit uasm_rel_highest(long val)
 {
-#ifdef CONFIG_64BIT
+#if defined(CONFIG_64BIT) && !defined(CONFIG_CPU_R5900)
 	return ((((val + 0x800080008000L) >> 48) & 0xffff) ^ 0x8000) - 0x8000;
 #else
 	return 0;
@@ -334,7 +338,7 @@ static int __uasminit uasm_rel_highest(long val)
 
 static int __uasminit uasm_rel_higher(long val)
 {
-#ifdef CONFIG_64BIT
+#if defined(CONFIG_64BIT) && !defined(CONFIG_CPU_R5900)
 	return ((((val + 0x80008000L) >> 32) & 0xffff) ^ 0x8000) - 0x8000;
 #else
 	return 0;

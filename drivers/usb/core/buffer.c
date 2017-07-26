@@ -115,9 +115,11 @@ void *hcd_buffer_alloc(
 		return kmalloc(size, mem_flags);
 	}
 
-	for (i = 0; i < HCD_BUFFER_POOLS; i++) {
-		if (size <= pool_max[i])
-			return dma_pool_alloc(hcd->pool[i], mem_flags, dma);
+	if (!(hcd->driver->flags & HCD_LOCAL_DMA)) {
+		for (i = 0; i < HCD_BUFFER_POOLS; i++) {
+			if (size <= pool_max [i])
+				return dma_pool_alloc(hcd->pool [i], mem_flags, dma);
+		}
 	}
 	return dma_alloc_coherent(hcd->self.controller, size, dma, mem_flags);
 }
@@ -141,10 +143,12 @@ void hcd_buffer_free(
 		return;
 	}
 
-	for (i = 0; i < HCD_BUFFER_POOLS; i++) {
-		if (size <= pool_max[i]) {
-			dma_pool_free(hcd->pool[i], addr, dma);
-			return;
+	if (!(hcd->driver->flags & HCD_LOCAL_DMA)) {
+		for (i = 0; i < HCD_BUFFER_POOLS; i++) {
+			if (size <= pool_max [i]) {
+				dma_pool_free(hcd->pool[i], addr, dma);
+				return;
+			}
 		}
 	}
 	dma_free_coherent(hcd->self.controller, size, addr, dma);

@@ -226,4 +226,8 @@
 /* Rocketport EXPRESS/INFINITY */
 #define PORT_RP2	102
 
+/* PS2 ports */
+#define PORT_PS2_SBIOS 103
+#define PORT_PS2_UART  104
+
 #endif /* _UAPILINUX_SERIAL_CORE_H */
