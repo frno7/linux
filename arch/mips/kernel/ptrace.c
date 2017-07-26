@@ -73,10 +73,17 @@ int ptrace_getregs(struct task_struct *child, __s64 __user *data)
 
 	regs = task_pt_regs(child);
 
+	/* TBD: Add 128 bit support. */
 	for (i = 0; i < 32; i++)
-		__put_user((long)regs->regs[i], data + i);
+		__put_user(MIPS_READ_REG_S(regs->regs[i]), data + i);
+#ifdef CONFIG_CPU_R5900
+	/* TBD: Test 64 bit lo access. */
+	__put_user((long long)regs->lo, data + EF_LO - EF_R0);
+	__put_user((long long)regs->hi, data + EF_HI - EF_R0);
+#else
 	__put_user((long)regs->lo, data + EF_LO - EF_R0);
 	__put_user((long)regs->hi, data + EF_HI - EF_R0);
+#endif
 	__put_user((long)regs->cp0_epc, data + EF_CP0_EPC - EF_R0);
 	__put_user((long)regs->cp0_badvaddr, data + EF_CP0_BADVADDR - EF_R0);
 	__put_user((long)regs->cp0_status, data + EF_CP0_STATUS - EF_R0);
@@ -100,8 +107,16 @@ int ptrace_setregs(struct task_struct *child, __s64 __user *data)
 
 	regs = task_pt_regs(child);
 
-	for (i = 0; i < 32; i++)
-		__get_user(regs->regs[i], data + i);
+	/* TBD: Add 128 bit support. */
+	for (i = 0; i < 32; i++) {
+		MIPS_REG_T tmp;
+		int rv;
+
+		rv = __get_user(tmp, data + i);
+		if (rv == 0) {
+			MIPS_WRITE_REG(regs->regs[i]) = tmp;
+		}
+	}
 	__get_user(regs->lo, data + EF_LO - EF_R0);
 	__get_user(regs->hi, data + EF_HI - EF_R0);
 	__get_user(regs->cp0_epc, data + EF_CP0_EPC - EF_R0);
@@ -408,14 +423,16 @@ long arch_ptrace(struct task_struct *child, long request,
 	/* Read the word at location addr in the USER area. */
 	case PTRACE_PEEKUSR: {
 		struct pt_regs *regs;
-		unsigned long tmp = 0;
+		/* TBD: Maybe not compatible with existing gdb when 128 bit registers are activated. */
+		MIPS_REG_T tmp = 0;
 
 		regs = task_pt_regs(child);
 		ret = 0;  /* Default return value. */
 
 		switch (addr) {
 		case 0 ... 31:
-			tmp = regs->regs[addr];
+			/* TBD: 128 bit support. */
+			tmp = MIPS_READ_REG(regs->regs[addr]);
 			break;
 		case FPR_BASE ... FPR_BASE + 31:
 			if (tsk_used_math(child)) {
@@ -500,7 +517,11 @@ long arch_ptrace(struct task_struct *child, long request,
 			preempt_enable();
 			break;
 		}
+#ifdef CONFIG_CPU_R5900
+		case DSP_BASE ... DSP_BASE + 1: {
+#else
 		case DSP_BASE ... DSP_BASE + 5: {
+#endif
 			dspreg_t *dregs;
 
 			if (!cpu_has_dsp) {
@@ -512,6 +533,7 @@ long arch_ptrace(struct task_struct *child, long request,
 			tmp = (unsigned long) (dregs[addr - DSP_BASE]);
 			break;
 		}
+#ifndef CONFIG_CPU_R5900
 		case DSP_CONTROL:
 			if (!cpu_has_dsp) {
 				tmp = 0;
@@ -520,6 +542,7 @@ long arch_ptrace(struct task_struct *child, long request,
 			}
 			tmp = child->thread.dsp.dspcontrol;
 			break;
+#endif
 		default:
 			tmp = 0;
 			ret = -EIO;
@@ -542,7 +565,7 @@ long arch_ptrace(struct task_struct *child, long request,
 
 		switch (addr) {
 		case 0 ... 31:
-			regs->regs[addr] = data;
+			MIPS_WRITE_REG(regs->regs[addr]) = data;
 			break;
 		case FPR_BASE ... FPR_BASE + 31: {
 			fpureg_t *fregs = get_fpu_regs(child);
@@ -589,7 +612,11 @@ long arch_ptrace(struct task_struct *child, long request,
 		case FPC_CSR:
 			child->thread.fpu.fcr31 = data;
 			break;
+#ifdef CONFIG_CPU_R5900
+		case DSP_BASE ... DSP_BASE + 1: {
+#else
 		case DSP_BASE ... DSP_BASE + 5: {
+#endif
 			dspreg_t *dregs;
 
 			if (!cpu_has_dsp) {
@@ -601,6 +628,7 @@ long arch_ptrace(struct task_struct *child, long request,
 			dregs[addr - DSP_BASE] = data;
 			break;
 		}
+#ifndef CONFIG_CPU_R5900
 		case DSP_CONTROL:
 			if (!cpu_has_dsp) {
 				ret = -EIO;
@@ -608,6 +636,7 @@ long arch_ptrace(struct task_struct *child, long request,
 			}
 			child->thread.dsp.dspcontrol = data;
 			break;
+#endif
 		default:
 			/* The rest are not allowed. */
 			ret = -EIO;
@@ -662,7 +691,7 @@ asmlinkage void syscall_trace_enter(struct pt_regs *regs)
 	user_exit();
 
 	/* do the secure computing check first */
-	secure_computing_strict(regs->regs[2]);
+	secure_computing_strict(MIPS_READ_REG(regs->regs[2]));
 
 	if (test_thread_flag(TIF_SYSCALL_TRACE) &&
 	    tracehook_report_syscall_entry(regs))
@@ -672,9 +701,11 @@ asmlinkage void syscall_trace_enter(struct pt_regs *regs)
 		trace_sys_enter(regs, regs->regs[2]);
 
 	audit_syscall_entry(__syscall_get_arch(),
-			    regs->regs[2],
-			    regs->regs[4], regs->regs[5],
-			    regs->regs[6], regs->regs[7]);
+			    MIPS_READ_REG(regs->regs[2]),
+			    MIPS_READ_REG(regs->regs[4]),
+			    MIPS_READ_REG(regs->regs[5]),
+			    MIPS_READ_REG(regs->regs[6]),
+			    MIPS_READ_REG(regs->regs[7]));
 }
 
 /*

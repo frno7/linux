@@ -10,23 +10,33 @@
 #include <asm/asm-offsets.h>
 #include <asm/regdef.h>
 
+#ifdef CONFIG_CPU_R5900
+#define EX(insn,reg,addr,handler)			\
+	/* In an error exception handler the user space could be uncached. */ \
+	sync.l;						\
+9:	insn	reg, addr;				\
+	.section __ex_table,"a";			\
+	PTR	9b, handler;				\
+	.previous
+#else
 #define EX(insn,reg,addr,handler)			\
 9:	insn	reg, addr;				\
 	.section __ex_table,"a";			\
 	PTR	9b, handler;				\
 	.previous
+#endif
 
 /*
  * Return the size of a string including the ending NUL character up to a
  * maximum of a1 or 0 in case of error.
  *
  * Note: for performance reasons we deliberately accept that a user may
- *	 make strlen_user and strnlen_user access the first few KSEG0
- *	 bytes.	 There's nothing secret there.	On 64-bit accessing beyond
- *	 the maximum is a tad hairier ...
+ *       make strlen_user and strnlen_user access the first few KSEG0
+ *       bytes.  There's nothing secret there.  On 64-bit accessing beyond
+ *       the maximum is a tad hairier ...
  */
 LEAF(__strnlen_user_asm)
-	LONG_L		v0, TI_ADDR_LIMIT($28)	# pointer ok?
+	LONGI_L		v0, TI_ADDR_LIMIT($28)	# pointer ok?
 	and		v0, a0
 	bnez		v0, .Lfault
 
@@ -35,7 +45,13 @@ FEXPORT(__strnlen_user_nocheck_asm)
 	PTR_ADDU	a1, a0			# stop pointer
 1:	beq		v0, a1, 1f		# limit reached?
 	EX(lb, t0, (v0), .Lfault)
-	PTR_ADDIU	v0, 1
+	PTR_ADDU	v0, 1
+#ifdef CONFIG_CPU_R5900
+	/* no short loop. */
+	nop
+	nop
+	nop
+#endif
 	bnez		t0, 1b
 1:	PTR_SUBU	v0, a0
 	jr		ra

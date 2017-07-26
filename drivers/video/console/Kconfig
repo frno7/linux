@@ -135,5 +135,21 @@ config STI_CONSOLE
           machines.  Say Y here to build support for it into your kernel.
           The alternative is to use your primary serial port as a console.
 
-endmenu
+config PS2_CONSOLE
+	tristate "Support for PlayStation 2 console device"
+	depends on SONY_PS2 && !FB_PS2
+	default n
 
+config PS2_CONSOLE_SCROLLBACK
+	bool "Console scrollback support"
+	depends on PS2_CONSOLE
+	default y
+
+config PS2_CONSOLE_LARGEBUF
+	bool "Allocate large DMA buffer for console"
+	depends on PS2_CONSOLE
+	select DUMMY_CONSOLE
+	select FONT_8x8
+	select FONT_8x16
+
+endmenu
