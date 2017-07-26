@@ -36,20 +36,20 @@ extern int ptrace_set_watch_regs(struct task_struct *child,
 
 static inline int is_syscall_success(struct pt_regs *regs)
 {
-	return !regs->regs[7];
+	return !MIPS_READ_REG(regs->regs[7]);
 }
 
 static inline long regs_return_value(struct pt_regs *regs)
 {
 	if (is_syscall_success(regs))
-		return regs->regs[2];
+		return MIPS_READ_REG(regs->regs[2]);
 	else
-		return -regs->regs[2];
+		return -MIPS_READ_REG(regs->regs[2]);
 }
 
 #define instruction_pointer(regs) ((regs)->cp0_epc)
 #define profile_pc(regs) instruction_pointer(regs)
-#define user_stack_pointer(r) ((r)->regs[29])
+#define user_stack_pointer(r) (MIPS_READ_REG((r)->regs[29]))
 
 extern asmlinkage void syscall_trace_enter(struct pt_regs *regs);
 extern asmlinkage void syscall_trace_leave(struct pt_regs *regs);

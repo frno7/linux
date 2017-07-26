@@ -175,3 +175,6 @@ obj-$(CONFIG_DISPLAY_TIMING) += display_timing.o
 obj-$(CONFIG_OF_DISPLAY_TIMING) += of_display_timing.o
 obj-$(CONFIG_VIDEOMODE) += videomode.o
 obj-$(CONFIG_OF_VIDEOMODE) += of_videomode.o
+
+obj-$(CONFIG_SONY_PS2)            += ps2core.o
+obj-$(CONFIG_FB_PS2)              += ps2fb.o

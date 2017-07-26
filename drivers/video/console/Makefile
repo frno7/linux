@@ -39,3 +39,4 @@ obj-$(CONFIG_FB_STI)              += sticore.o font.o
 ifeq ($(CONFIG_USB_SISUSBVGA_CON),y)
 obj-$(CONFIG_USB_SISUSBVGA)           += font.o
 endif
+obj-$(CONFIG_PS2_CONSOLE)         += ps2con.o font.o

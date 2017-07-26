@@ -22,6 +22,27 @@
 #define DSP_CONTROL	77
 #define ACX		78
 
+#ifdef CONFIG_R5900_128BIT_SUPPORT
+/* Cast larger R5900 register to smaller 32 bit. */
+#define MIPS_READ_REG_L(reg) ((unsigned long)((reg).lo))
+#define MIPS_READ_REG(reg) ((reg).lo)
+#define MIPS_READ_REG_HIGH(reg) ((reg).hi)
+#define MIPS_READ_REG_S(reg) ((long long)(reg).lo)
+#define MIPS_WRITE_REG(reg) ; ((reg).lo)
+#define MIPS_REG_T unsigned long long
+
+typedef struct __attribute__((aligned(16))) {
+	unsigned long long lo;
+	unsigned long long hi;
+} r5900_reg_t;
+#else
+#define MIPS_READ_REG_L(reg) (reg)
+#define MIPS_READ_REG(reg) (reg)
+#define MIPS_READ_REG_S(reg) ((long) (reg))
+#define MIPS_WRITE_REG(reg) (reg)
+#define MIPS_REG_T unsigned long
+#endif
+
 /*
  * This struct defines the way the registers are stored on the stack during a
  * system call/exception. As usual the registers k0/k1 aren't being saved.
@@ -33,12 +54,22 @@ struct pt_regs {
 #endif
 
 	/* Saved main processor registers. */
+#ifdef CONFIG_R5900_128BIT_SUPPORT
+	/* Support for 128 bit. */
+	r5900_reg_t regs[32];
+#else
 	unsigned long regs[32];
+#endif
 
 	/* Saved special registers. */
 	unsigned long cp0_status;
+#ifdef CONFIG_CPU_R5900
+	unsigned long long hi;
+	unsigned long long lo;
+#else
 	unsigned long hi;
 	unsigned long lo;
+#endif
 #ifdef CONFIG_CPU_HAS_SMARTMIPS
 	unsigned long acx;
 #endif
@@ -49,8 +80,8 @@ struct pt_regs {
 	unsigned long cp0_tcstatus;
 #endif /* CONFIG_MIPS_MT_SMTC */
 #ifdef CONFIG_CPU_CAVIUM_OCTEON
-	unsigned long long mpl[3];	  /* MTM{0,1,2} */
-	unsigned long long mtp[3];	  /* MTP{0,1,2} */
+	unsigned long long mpl[3];        /* MTM{0,1,2} */
+	unsigned long long mtp[3];        /* MTP{0,1,2} */
 #endif
 } __attribute__ ((aligned (8)));
 
@@ -67,14 +98,14 @@ struct pt_regs {
 #define PTRACE_GET_THREAD_AREA	25
 #define PTRACE_SET_THREAD_AREA	26
 
-/* Calls to trace a 64bit program from a 32bit program.	 */
+/* Calls to trace a 64bit program from a 32bit program.  */
 #define PTRACE_PEEKTEXT_3264	0xc0
 #define PTRACE_PEEKDATA_3264	0xc1
 #define PTRACE_POKETEXT_3264	0xc2
 #define PTRACE_POKEDATA_3264	0xc3
 #define PTRACE_GET_THREAD_AREA_3264	0xc4
 
-/* Read and write watchpoint registers.	 */
+/* Read and write watchpoint registers.  */
 enum pt_watch_style {
 	pt_watch_style_mips32,
 	pt_watch_style_mips64

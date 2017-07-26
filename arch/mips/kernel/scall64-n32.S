@@ -26,6 +26,10 @@
 NESTED(handle_sysn32, PT_SIZE, sp)
 #ifndef CONFIG_MIPS32_O32
 	.set	noat
+#ifdef CONFIG_CPU_R5900
+	nop
+	nop
+#endif
 	SAVE_SOME
 	TRACE_IRQS_ON_RELOAD
 	STI

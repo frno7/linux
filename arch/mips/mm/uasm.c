@@ -7,7 +7,7 @@
  * support a subset of instructions, and does not try to hide pipeline
  * effects like branch delay slots.
  *
- * Copyright (C) 2004, 2005, 2006, 2008	 Thiemo Seufer
+ * Copyright (C) 2004, 2005, 2006, 2008  Thiemo Seufer
  * Copyright (C) 2005, 2007  Maciej W. Rozycki
  * Copyright (C) 2006  Ralf Baechle (ralf@linux-mips.org)
  */
@@ -68,7 +68,7 @@ enum opcode {
 	insn_or, insn_ori, insn_pref, insn_rfe, insn_rotr, insn_sc, insn_scd,
 	insn_sd, insn_sll, insn_sra, insn_srl, insn_subu, insn_sw,
 	insn_syscall, insn_tlbp, insn_tlbr, insn_tlbwi, insn_tlbwr, insn_xor,
-	insn_xori,
+	insn_xori, insn_sync, insn_syncp
 };
 
 struct insn {
@@ -119,31 +119,33 @@ static struct insn insn_table[] __uasminitdata = {
 	{ insn_ext, M(spec3_op, 0, 0, 0, 0, ext_op), RS | RT | RD | RE },
 	{ insn_ins, M(spec3_op, 0, 0, 0, 0, ins_op), RS | RT | RD | RE },
 	{ insn_j,  M(j_op, 0, 0, 0, 0, 0),  JIMM },
-	{ insn_jal,  M(jal_op, 0, 0, 0, 0, 0),	JIMM },
+	{ insn_jal,  M(jal_op, 0, 0, 0, 0, 0),  JIMM },
 	{ insn_j,  M(j_op, 0, 0, 0, 0, 0),  JIMM },
 	{ insn_jr,  M(spec_op, 0, 0, 0, 0, jr_op),  RS },
 	{ insn_ld,  M(ld_op, 0, 0, 0, 0, 0),  RS | RT | SIMM },
 	{ insn_ldx, M(spec3_op, 0, 0, 0, ldx_op, lx_op), RS | RT | RD },
-	{ insn_lld,  M(lld_op, 0, 0, 0, 0, 0),	RS | RT | SIMM },
+	{ insn_lld,  M(lld_op, 0, 0, 0, 0, 0),  RS | RT | SIMM },
 	{ insn_ll,  M(ll_op, 0, 0, 0, 0, 0),  RS | RT | SIMM },
-	{ insn_lui,  M(lui_op, 0, 0, 0, 0, 0),	RT | SIMM },
+	{ insn_lui,  M(lui_op, 0, 0, 0, 0, 0),  RT | SIMM },
 	{ insn_lw,  M(lw_op, 0, 0, 0, 0, 0),  RS | RT | SIMM },
 	{ insn_lwx, M(spec3_op, 0, 0, 0, lwx_op, lx_op), RS | RT | RD },
 	{ insn_mfc0,  M(cop0_op, mfc_op, 0, 0, 0, 0),  RT | RD | SET},
 	{ insn_mtc0,  M(cop0_op, mtc_op, 0, 0, 0, 0),  RT | RD | SET},
-	{ insn_ori,  M(ori_op, 0, 0, 0, 0, 0),	RS | RT | UIMM },
+	{ insn_ori,  M(ori_op, 0, 0, 0, 0, 0),  RS | RT | UIMM },
 	{ insn_or,  M(spec_op, 0, 0, 0, 0, or_op),  RS | RT | RD },
 	{ insn_pref,  M(pref_op, 0, 0, 0, 0, 0),  RS | RT | SIMM },
 	{ insn_rfe,  M(cop0_op, cop_op, 0, 0, 0, rfe_op),  0 },
 	{ insn_rotr,  M(spec_op, 1, 0, 0, 0, srl_op),  RT | RD | RE },
-	{ insn_scd,  M(scd_op, 0, 0, 0, 0, 0),	RS | RT | SIMM },
+	{ insn_scd,  M(scd_op, 0, 0, 0, 0, 0),  RS | RT | SIMM },
 	{ insn_sc,  M(sc_op, 0, 0, 0, 0, 0),  RS | RT | SIMM },
 	{ insn_sd,  M(sd_op, 0, 0, 0, 0, 0),  RS | RT | SIMM },
 	{ insn_sll,  M(spec_op, 0, 0, 0, 0, sll_op),  RT | RD | RE },
 	{ insn_sra,  M(spec_op, 0, 0, 0, 0, sra_op),  RT | RD | RE },
 	{ insn_srl,  M(spec_op, 0, 0, 0, 0, srl_op),  RT | RD | RE },
-	{ insn_subu,  M(spec_op, 0, 0, 0, 0, subu_op),	RS | RT | RD },
+	{ insn_subu,  M(spec_op, 0, 0, 0, 0, subu_op),  RS | RT | RD },
 	{ insn_sw,  M(sw_op, 0, 0, 0, 0, 0),  RS | RT | SIMM },
+	{ insn_sync,  M(spec_op, 0, 0, 0, 0, sync_op),  0 },
+	{ insn_syncp,  M(spec_op, 0, 0, 0, 0x10, sync_op),  0 },
 	{ insn_syscall, M(spec_op, 0, 0, 0, 0, syscall_op), SCIMM},
 	{ insn_tlbp,  M(cop0_op, cop_op, 0, 0, 0, tlbp_op),  0 },
 	{ insn_tlbr,  M(cop0_op, cop_op, 0, 0, 0, tlbr_op),  0 },
@@ -345,7 +347,7 @@ Ip_u2u1msbu3(op)					\
 }							\
 UASM_EXPORT_SYMBOL(uasm_i##op);
 
-#define I_u2u1msbdu3(op)				\
+#define I_u2u1msbdu3(op) 				\
 Ip_u2u1msbu3(op)					\
 {							\
 	build_insn(buf, insn##op, b, a, d-1, c);	\
@@ -392,8 +394,10 @@ I_u1s2(_bltz)
 I_u1s2(_bltzl)
 I_u1u2s3(_bne)
 I_u2s3u1(_cache)
+#ifndef CONFIG_CPU_R5900
 I_u1u2u3(_dmfc0)
 I_u1u2u3(_dmtc0)
+#endif
 I_u2u1s3(_daddiu)
 I_u3u1u2(_daddu)
 I_u2u1u3(_dsll)
@@ -442,6 +446,8 @@ I_u1u2s3(_bbit0);
 I_u1u2s3(_bbit1);
 I_u3u1u2(_lwx)
 I_u3u1u2(_ldx)
+I_0(_sync)
+I_0(_syncp)
 
 #ifdef CONFIG_CPU_CAVIUM_OCTEON
 #include <asm/octeon/octeon.h>
@@ -474,7 +480,7 @@ UASM_EXPORT_SYMBOL(uasm_build_label);
 int __uasminit uasm_in_compat_space_p(long addr)
 {
 	/* Is this address in 32bit compat space? */
-#ifdef CONFIG_64BIT
+#if defined(CONFIG_64BIT) && !defined(CONFIG_CPU_R5900)
 	return (((addr) & 0xffffffff00000000L) == 0xffffffff00000000L);
 #else
 	return 1;
@@ -484,7 +490,7 @@ UASM_EXPORT_SYMBOL(uasm_in_compat_space_p);
 
 static int __uasminit uasm_rel_highest(long val)
 {
-#ifdef CONFIG_64BIT
+#if defined(CONFIG_64BIT) && !defined(CONFIG_CPU_R5900)
 	return ((((val + 0x800080008000L) >> 48) & 0xffff) ^ 0x8000) - 0x8000;
 #else
 	return 0;
@@ -493,7 +499,7 @@ static int __uasminit uasm_rel_highest(long val)
 
 static int __uasminit uasm_rel_higher(long val)
 {
-#ifdef CONFIG_64BIT
+#if defined(CONFIG_64BIT) && !defined(CONFIG_CPU_R5900)
 	return ((((val + 0x80008000L) >> 32) & 0xffff) ^ 0x8000) - 0x8000;
 #else
 	return 0;

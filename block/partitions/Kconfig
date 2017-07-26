@@ -249,3 +249,29 @@ config SYSV68_PARTITION
 	  partition table format used by Motorola Delta machines (using
 	  sysv68).
 	  Otherwise, say N.
+
+config PS2_PARTITION
+	bool "PS2 APA partition support" if PARTITION_ADVANCED
+	default y if SONY_PS2
+	help
+	  Support hard disks partitioned on Playstation 2 (APA).
+
+config PS2_PARTITION_SPLIT
+	bool "Show splitted partitions" if PS2_PARTITION
+	default n
+	help
+	  Larger Playstation 2 partitions may be splitted into several parts
+	  over the hard disc. Linux doesn't support merging the splitted parts.
+	  Therefore you will not have a device node for these partitions.
+	  You should use the program apascan to access it.
+	  If you enable this option you will also see the splitted parts.
+	  The splitted parts can be used in conjunction with the device mapper,
+	  but this is incompatible with apascan and the old PS2 Linux.
+
+config PS2_PARTITION_ALL
+	bool "Show all PS2 partitions" if PS2_PARTITION_SPLIT
+	default n
+	help
+	  By default there only partitions accessible which are created with
+	  ps2fdisk. This option will enable other partitions used by games.
+	  This is not recommended.

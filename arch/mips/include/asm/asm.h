@@ -33,12 +33,12 @@
  * Not used for the kernel but here seems to be the right place.
  */
 #ifdef __PIC__
-#define CPRESTORE(register)				\
+#define CPRESTORE(register)                             \
 		.cprestore register
-#define CPADD(register)					\
+#define CPADD(register)                                 \
 		.cpadd	register
-#define CPLOAD(register)				\
-		.cpload register
+#define CPLOAD(register)                                \
+		.cpload	register
 #else
 #define CPRESTORE(register)
 #define CPADD(register)
@@ -48,35 +48,35 @@
 /*
  * LEAF - declare leaf routine
  */
-#define LEAF(symbol)					\
-		.globl	symbol;				\
-		.align	2;				\
-		.type	symbol, @function;		\
-		.ent	symbol, 0;			\
+#define	LEAF(symbol)                                    \
+		.globl	symbol;                         \
+		.align	2;                              \
+		.type	symbol, @function;              \
+		.ent	symbol, 0;                      \
 symbol:		.frame	sp, 0, ra
 
 /*
  * NESTED - declare nested routine entry point
  */
-#define NESTED(symbol, framesize, rpc)			\
-		.globl	symbol;				\
-		.align	2;				\
-		.type	symbol, @function;		\
-		.ent	symbol, 0;			 \
+#define	NESTED(symbol, framesize, rpc)                  \
+		.globl	symbol;                         \
+		.align	2;                              \
+		.type	symbol, @function;              \
+		.ent	symbol, 0;                       \
 symbol:		.frame	sp, framesize, rpc
 
 /*
  * END - mark end of function
  */
-#define END(function)					\
-		.end	function;			\
+#define	END(function)                                   \
+		.end	function;		        \
 		.size	function, .-function
 
 /*
  * EXPORT - export definition of symbol
  */
 #define EXPORT(symbol)					\
-		.globl	symbol;				\
+		.globl	symbol;                         \
 symbol:
 
 /*
@@ -90,16 +90,16 @@ symbol:
 /*
  * ABS - export absolute symbol
  */
-#define ABS(symbol,value)				\
-		.globl	symbol;				\
+#define	ABS(symbol,value)                               \
+		.globl	symbol;                         \
 symbol		=	value
 
-#define PANIC(msg)					\
+#define	PANIC(msg)                                      \
 		.set	push;				\
-		.set	reorder;			\
-		PTR_LA	a0, 8f;				 \
-		jal	panic;				\
-9:		b	9b;				\
+		.set	reorder;                        \
+		PTR_LA	a0, 8f;                          \
+		jal	panic;                          \
+9:		b	9b;                             \
 		.set	pop;				\
 		TEXT(msg)
 
@@ -107,32 +107,72 @@ symbol		=	value
  * Print formatted string
  */
 #ifdef CONFIG_PRINTK
-#define PRINT(string)					\
+#define PRINT(string)                                   \
 		.set	push;				\
-		.set	reorder;			\
-		PTR_LA	a0, 8f;				 \
-		jal	printk;				\
+		.set	reorder;                        \
+		PTR_LA	a0, 8f;                          \
+		jal	printk;                         \
 		.set	pop;				\
 		TEXT(string)
 #else
 #define PRINT(string)
 #endif
 
-#define TEXT(msg)					\
+#define	TEXT(msg)                                       \
 		.pushsection .data;			\
-8:		.asciiz msg;				\
+8:		.asciiz	msg;                            \
 		.popsection;
 
 /*
  * Build text tables
  */
-#define TTABLE(string)					\
+#define TTABLE(string)                                  \
 		.pushsection .text;			\
-		.word	1f;				\
+		.word	1f;                             \
 		.popsection				\
 		.pushsection .data;			\
-1:		.asciiz string;				\
+1:		.asciiz	string;                         \
 		.popsection
+
+#ifdef __ASSEMBLY__
+#ifdef CONFIG_CPU_R5900
+/* ld would be replaced by 2 lw instructions with newer binutils when using
+ * ABI o32. Force use of ld by updating to ISA MIPS III.
+ */
+.macro force_ld to, from
+	.set push
+	.set mips3
+	ld \to, \from
+	.set pop
+.endm
+
+/* sd would be replaced by 2 sw instructions with newer binutils when using
+ * ABI o32. Force use of sd by updating to ISA MIPS III.
+ */
+.macro force_sd to, from
+	.set push
+	.set mips3
+	sd \to, \from
+	.set pop
+.endm
+
+#else
+.macro force_ld to, from
+	.set push
+	ld \to, \from
+	.set pop
+.endm
+
+.macro force_sd to, from
+	.set push
+	sd \to, \from
+	.set pop
+.endm
+#endif
+
+#define LD force_ld
+#define SD force_sd
+#endif
 
 /*
  * MIPS IV pref instruction.
@@ -143,13 +183,13 @@ symbol		=	value
  */
 #ifdef CONFIG_CPU_HAS_PREFETCH
 
-#define PREF(hint,addr)					\
+#define PREF(hint,addr)                                 \
 		.set	push;				\
 		.set	mips4;				\
 		pref	hint, addr;			\
 		.set	pop
 
-#define PREFX(hint,addr)				\
+#define PREFX(hint,addr)                                \
 		.set	push;				\
 		.set	mips4;				\
 		prefx	hint, addr;			\
@@ -166,42 +206,42 @@ symbol		=	value
  * MIPS ISA IV/V movn/movz instructions and equivalents for older CPUs.
  */
 #if (_MIPS_ISA == _MIPS_ISA_MIPS1)
-#define MOVN(rd, rs, rt)				\
+#define MOVN(rd, rs, rt)                                \
 		.set	push;				\
 		.set	reorder;			\
-		beqz	rt, 9f;				\
-		move	rd, rs;				\
+		beqz	rt, 9f;                         \
+		move	rd, rs;                         \
 		.set	pop;				\
 9:
-#define MOVZ(rd, rs, rt)				\
+#define MOVZ(rd, rs, rt)                                \
 		.set	push;				\
 		.set	reorder;			\
-		bnez	rt, 9f;				\
-		move	rd, rs;				\
+		bnez	rt, 9f;                         \
+		move	rd, rs;                         \
 		.set	pop;				\
 9:
 #endif /* _MIPS_ISA == _MIPS_ISA_MIPS1 */
 #if (_MIPS_ISA == _MIPS_ISA_MIPS2) || (_MIPS_ISA == _MIPS_ISA_MIPS3)
-#define MOVN(rd, rs, rt)				\
+#define MOVN(rd, rs, rt)                                \
 		.set	push;				\
 		.set	noreorder;			\
-		bnezl	rt, 9f;				\
-		 move	rd, rs;				\
+		bnezl	rt, 9f;                         \
+		 move	rd, rs;                         \
 		.set	pop;				\
 9:
-#define MOVZ(rd, rs, rt)				\
+#define MOVZ(rd, rs, rt)                                \
 		.set	push;				\
 		.set	noreorder;			\
-		beqzl	rt, 9f;				\
-		 move	rd, rs;				\
+		beqzl	rt, 9f;                         \
+		 move	rd, rs;                         \
 		.set	pop;				\
 9:
 #endif /* (_MIPS_ISA == _MIPS_ISA_MIPS2) || (_MIPS_ISA == _MIPS_ISA_MIPS3) */
 #if (_MIPS_ISA == _MIPS_ISA_MIPS4 ) || (_MIPS_ISA == _MIPS_ISA_MIPS5) || \
     (_MIPS_ISA == _MIPS_ISA_MIPS32) || (_MIPS_ISA == _MIPS_ISA_MIPS64)
-#define MOVN(rd, rs, rt)				\
+#define MOVN(rd, rs, rt)                                \
 		movn	rd, rs, rt
-#define MOVZ(rd, rs, rt)				\
+#define MOVZ(rd, rs, rt)                                \
 		movz	rd, rs, rt
 #endif /* MIPS IV, MIPS V, MIPS32 or MIPS64 */
 
@@ -288,20 +328,75 @@ symbol		=	value
  * How to add/sub/load/store/shift C long variables.
  */
 #if (_MIPS_SZLONG == 32)
-#define LONG_ADD	add
-#define LONG_ADDU	addu
-#define LONG_ADDI	addi
-#define LONG_ADDIU	addiu
-#define LONG_SUB	sub
-#define LONG_SUBU	subu
-#define LONG_L		lw
-#define LONG_S		sw
-#define LONG_SLL	sll
-#define LONG_SLLV	sllv
-#define LONG_SRL	srl
-#define LONG_SRLV	srlv
-#define LONG_SRA	sra
-#define LONG_SRAV	srav
+#ifdef CONFIG_R5900_128BIT_SUPPORT
+#define LONGD_ADD	dadd
+#define LONGI_ADD	add
+#define LONGD_ADDU	daddu
+#define LONGI_ADDU	addu
+#define LONGD_ADDI	daddi
+#define LONGI_ADDI	addi
+#define LONGD_ADDIU	daddiu
+#define LONGI_ADDIU	addiu
+#define LONGD_SUB	dsub
+#define LONGI_SUB	sub
+#define LONGD_SUBU	dsubu
+#define LONGI_SUBU	subu
+/* Load data register. */
+#define LONGD_L		lq
+/* Load hi/lo register. */
+#define LONGH_L		force_ld
+/* Load instruction register. */
+#define LONGI_L		lw
+/* Save data register. */
+#define LONGD_S		sq
+/* Save hi/lo register. */
+#define LONGH_S		force_sd
+/* Save instruction register. */
+#define LONGI_S		sw
+#define LONGD_SLL	dsll
+#define LONGI_SLL	sll
+#define LONGD_SLLV	dsllv
+#define LONGI_SLLV	sllv
+#define LONGD_SRL	dsrl
+#define LONGI_SRL	srl
+#define LONGD_SRLV	dsrlv
+#define LONGI_SRLV	srlv
+#define LONGD_SRA	dsra
+#define LONGI_SRA	sra
+#define LONGD_SRAV	dsrav
+#define LONGI_SRAV	srav
+#else
+#define LONGD_ADD	add
+#define LONGI_ADD	add
+#define LONGD_ADDU	addu
+#define LONGI_ADDU	addu
+#define LONGD_ADDI	addi
+#define LONGI_ADDI	addi
+#define LONGD_ADDIU	addiu
+#define LONGI_ADDIU	addiu
+#define LONGD_SUB	sub
+#define LONGI_SUB	sub
+#define LONGD_SUBU	subu
+#define LONGI_SUBU	subu
+#define LONGD_L		lw
+#define LONGI_L		lw
+#define LONGH_L		lw
+#define LONGD_S		sw
+#define LONGH_S		sw
+#define LONGI_S		sw
+#define LONGD_SLL	sll
+#define LONGI_SLL	sll
+#define LONGD_SLLV	sllv
+#define LONGI_SLLV	sllv
+#define LONGD_SRL	srl
+#define LONGI_SRL	srl
+#define LONGD_SRLV	srlv
+#define LONGI_SRLV	srlv
+#define LONGD_SRA	sra
+#define LONGI_SRA	sra
+#define LONGD_SRAV	srav
+#define LONGI_SRAV	srav
+#endif
 
 #define LONG		.word
 #define LONGSIZE	4
@@ -310,20 +405,44 @@ symbol		=	value
 #endif
 
 #if (_MIPS_SZLONG == 64)
-#define LONG_ADD	dadd
-#define LONG_ADDU	daddu
-#define LONG_ADDI	daddi
-#define LONG_ADDIU	daddiu
-#define LONG_SUB	dsub
-#define LONG_SUBU	dsubu
-#define LONG_L		ld
-#define LONG_S		sd
-#define LONG_SLL	dsll
-#define LONG_SLLV	dsllv
-#define LONG_SRL	dsrl
-#define LONG_SRLV	dsrlv
-#define LONG_SRA	dsra
-#define LONG_SRAV	dsrav
+#define LONGD_ADD	dadd
+#define LONGI_ADD	dadd
+#define LONGD_ADDU	daddu
+#define LONGI_ADDU	daddu
+#define LONGD_ADDI	daddi
+#define LONGI_ADDI	daddi
+#define LONGD_ADDIU	daddiu
+#define LONGI_ADDIU	daddiu
+#define LONGD_SUB	dsub
+#define LONGI_SUB	dsub
+#define LONGD_SUBU	dsubu
+#define LONGI_SUBU	dsubu
+#ifdef CONFIG_R5900_128BIT_SUPPORT
+#define LONGD_L		lq
+#else
+#define LONGD_L		ld
+#endif
+#define LONGI_L		ld
+#define LONGH_L		ld
+#ifdef CONFIG_R5900_128BIT_SUPPORT
+#define LONGD_S		sq
+#else
+#define LONGD_S		sd
+#endif
+#define LONGI_S		sd
+#define LONGH_S		sd
+#define LONGD_SLL	dsll
+#define LONGI_SLL	dsll
+#define LONGD_SLLV	dsllv
+#define LONGI_SLLV	dsllv
+#define LONGD_SRL	dsrl
+#define LONGI_SRL	dsrl
+#define LONGD_SRLV	dsrlv
+#define LONGI_SRLV	dsrlv
+#define LONGD_SRA	dsra
+#define LONGI_SRA	dsra
+#define LONGD_SRAV	dsrav
+#define LONGI_SRAV	dsrav
 
 #define LONG		.dword
 #define LONGSIZE	8
@@ -387,11 +506,11 @@ symbol		=	value
 /*
  * Some cp0 registers were extended to 64bit for MIPS III.
  */
-#if (_MIPS_SIM == _MIPS_SIM_ABI32)
+#if (_MIPS_SIM == _MIPS_SIM_ABI32) || defined(CONFIG_CPU_R5900)
 #define MFC0		mfc0
 #define MTC0		mtc0
 #endif
-#if (_MIPS_SIM == _MIPS_SIM_NABI32) || (_MIPS_SIM == _MIPS_SIM_ABI64)
+#if ((_MIPS_SIM == _MIPS_SIM_NABI32) || (_MIPS_SIM == _MIPS_SIM_ABI64)) && !defined(CONFIG_CPU_R5900)
 #define MFC0		dmfc0
 #define MTC0		dmtc0
 #endif

@@ -36,8 +36,11 @@ obj-$(CONFIG_MODULES_USE_ELF_RELA) += module-rela.o
 
 obj-$(CONFIG_FUNCTION_TRACER)	+= mcount.o ftrace.o
 
+ifndef CONFIG_CPU_R5900
 obj-$(CONFIG_CPU_R4K_FPU)	+= r4k_fpu.o r4k_switch.o
+endif
 obj-$(CONFIG_CPU_R3000)		+= r2300_fpu.o r2300_switch.o
+obj-$(CONFIG_CPU_R5900)		+= r5900_fpu.o r5900_switch.o
 obj-$(CONFIG_CPU_R6000)		+= r6000_fpu.o r4k_switch.o
 obj-$(CONFIG_CPU_TX39XX)	+= r2300_fpu.o r2300_switch.o
 obj-$(CONFIG_CPU_CAVIUM_OCTEON) += octeon_switch.o
@@ -69,6 +72,7 @@ obj-$(CONFIG_32BIT)		+= scall32-o32.o
 obj-$(CONFIG_64BIT)		+= scall64-64.o
 obj-$(CONFIG_MIPS32_COMPAT)	+= linux32.o ptrace32.o signal32.o
 obj-$(CONFIG_MIPS32_N32)	+= binfmt_elfn32.o scall64-n32.o signal_n32.o
+obj-$(CONFIG_MIPS_N32)		+= binfmt_elfn32.o scall32-n32.o linux64.o o32o64converter.o
 obj-$(CONFIG_MIPS32_O32)	+= binfmt_elfo32.o scall64-o32.o
 
 obj-$(CONFIG_KGDB)		+= kgdb.o

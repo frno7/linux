@@ -219,10 +219,12 @@ void output_sc_defines(void)
 	OFFSET(SC_FPC_EIR, sigcontext, sc_fpc_eir);
 	OFFSET(SC_HI1, sigcontext, sc_hi1);
 	OFFSET(SC_LO1, sigcontext, sc_lo1);
+#ifndef CONFIG_CPU_R5900
 	OFFSET(SC_HI2, sigcontext, sc_hi2);
 	OFFSET(SC_LO2, sigcontext, sc_lo2);
 	OFFSET(SC_HI3, sigcontext, sc_hi3);
 	OFFSET(SC_LO3, sigcontext, sc_lo3);
+#endif
 	BLANK();
 }
 #endif

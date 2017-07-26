@@ -52,7 +52,7 @@ asmlinkage int sysm_pipe(void)
 	int error = do_pipe_flags(fd, 0);
 	if (error)
 		return error;
-	current_pt_regs()->regs[3] = fd[1];
+	MIPS_WRITE_REG(current_pt_regs()->regs[3]) = fd[1];
 	return fd[0];
 }
 
@@ -85,6 +85,27 @@ SYSCALL_DEFINE6(mips_mmap2, unsigned long, addr, unsigned long, len,
 save_static_function(sys_fork);
 save_static_function(sys_clone);
 
+#ifdef CONFIG_MIPS_N32
+/* Same as _sys_clone() function above, but without CONFIG_32BIT. */
+save_static_function(sysn32_clone);
+static int __used noinline
+_sysn32_clone(nabi_no_regargs struct pt_regs regs)
+{
+	unsigned long clone_flags;
+	unsigned long newsp;
+	int __user *parent_tidptr, *child_tidptr;
+
+	clone_flags = MIPS_READ_REG(regs.regs[4]);
+	newsp = MIPS_READ_REG(regs.regs[5]);
+	if (!newsp)
+		newsp = MIPS_READ_REG_L(regs.regs[29]);
+	parent_tidptr = (int __user *) MIPS_READ_REG_L(regs.regs[6]);
+	child_tidptr = (int __user *) MIPS_READ_REG_L(regs.regs[8]);
+	return do_fork(clone_flags, newsp, 0,
+	               parent_tidptr, child_tidptr);
+}
+#endif
+
 SYSCALL_DEFINE1(set_thread_area, unsigned long, addr)
 {
 	struct thread_info *ti = task_thread_info(current);
@@ -99,7 +120,7 @@ SYSCALL_DEFINE1(set_thread_area, unsigned long, addr)
 static inline int mips_atomic_set(unsigned long addr, unsigned long new)
 {
 	unsigned long old, tmp;
-	struct pt_regs *regs;
+	volatile struct pt_regs *regs;
 	unsigned int err;
 
 	if (unlikely(addr & 3))
@@ -181,8 +202,8 @@ static inline int mips_atomic_set(unsigned long addr, unsigned long new)
 		return err;
 
 	regs = current_pt_regs();
-	regs->regs[2] = old;
-	regs->regs[7] = 0;	/* No error */
+	MIPS_WRITE_REG(regs->regs[2]) = old;
+	MIPS_WRITE_REG(regs->regs[7]) = 0;	/* No error */
 
 	/*
 	 * Don't let your children do this ...

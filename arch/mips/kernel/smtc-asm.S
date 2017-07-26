@@ -65,7 +65,7 @@ FEXPORT(__smtc_ipi_vector)
 1:
 	/*
 	 * The IPI sender has put some information on the anticipated
-	 * kernel stack frame.	If we were in user mode, this will be
+	 * kernel stack frame.  If we were in user mode, this will be
 	 * built above the saved kernel SP.  If we were already in the
 	 * kernel, it will be built above the current CPU SP.
 	 *
@@ -93,6 +93,9 @@ FEXPORT(__smtc_ipi_vector)
 	_ehb
 	lw	k0,PT_EPC(k1)
 	mtc0	k0,CP0_EPC
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	/* Save all will redundantly recompute the SP, but use it for now */
 	SAVE_ALL
 	CLI
