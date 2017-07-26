@@ -35,7 +35,11 @@ endif
 
 ifdef CONFIG_32BIT
 tool-archpref		= $(32bit-tool-archpref)
+ifdef CONFIG_MIPS_N32
+UTS_MACHINE		:= mips64
+else
 UTS_MACHINE		:= mips
+endif
 endif
 ifdef CONFIG_64BIT
 tool-archpref		= $(64bit-tool-archpref)
@@ -88,7 +92,9 @@ all-$(CONFIG_SYS_SUPPORTS_ZBOOT)+= vmlinuz
 # crossformat linking we rely on the elf2ecoff tool for format conversion.
 #
 cflags-y			+= -G 0 -mno-abicalls -fno-pic -pipe
+ifndef CONFIG_CPU_R5900
 cflags-y			+= -msoft-float
+endif
 LDFLAGS_vmlinux			+= -G 0 -static -n -nostdlib
 KBUILD_AFLAGS_MODULE		+= -mlong-calls
 KBUILD_CFLAGS_MODULE		+= -mlong-calls
@@ -98,8 +104,10 @@ KBUILD_CFLAGS_MODULE		+= -mlong-calls
 # (specifically newer than 2.24.51.20140728) we then also need to explicitly
 # set ".set hardfloat" in all files which manipulate floating point registers.
 #
+ifndef CONFIG_CPU_R5900
 ifneq ($(call as-option,-Wa$(comma)-msoft-float,),)
 	cflags-y		+= -DGAS_HAS_SET_HARDFLOAT -Wa,-msoft-float
+endif
 endif
 
 cflags-y += -ffreestanding
@@ -149,6 +157,8 @@ cflags-$(CONFIG_CPU_R5432)	+= $(call cc-option,-march=r5400,-march=r5000) \
 			-Wa,--trap
 cflags-$(CONFIG_CPU_R5500)	+= $(call cc-option,-march=r5500,-march=r5000) \
 			-Wa,--trap
+cflags-$(CONFIG_CPU_R5900)	+= -march=r5900 -mtune=r5900 \
+			-Wa,--trap -mno-llsc
 cflags-$(CONFIG_CPU_NEVADA)	+= $(call cc-option,-march=rm5200,-march=r5000) \
 			-Wa,--trap
 cflags-$(CONFIG_CPU_RM7000)	+= $(call cc-option,-march=rm7000,-march=r5000) \
@@ -231,6 +241,12 @@ load-y					= $(CONFIG_PHYSICAL_START)
 endif
 entry-y				= 0x$(shell $(NM) vmlinux 2>/dev/null \
 					| grep "\bkernel_entry\b" | cut -f1 -d \ )
+
+# Sony Playstation 2
+#
+core-$(CONFIG_SONY_PS2)	+= arch/mips/ps2/
+cflags-$(CONFIG_SONY_PS2)+= -I$(srctree)/arch/mips/include/asm/mach-ps2
+load-$(CONFIG_SONY_PS2)	+= 0x80010000
 
 cflags-y			+= -I$(srctree)/arch/mips/include/asm/mach-generic
 drivers-$(CONFIG_PCI)		+= arch/mips/pci/
