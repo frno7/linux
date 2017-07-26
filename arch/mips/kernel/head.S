@@ -35,10 +35,16 @@
 	 */
 	.macro	setup_c0_status set clr
 	.set	push
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	t0, CP0_STATUS
 	or	t0, ST0_CU0|\set|0x1f|\clr
 	xor	t0, 0x1f|\clr
 	mtc0	t0, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	.set	noreorder
 	sll	zero,3				# ehb
 	.set	pop
@@ -111,19 +117,22 @@ NESTED(kernel_entry, 16, sp)			# kernel entry point
 not_found:
 #endif
 	PTR_LA		t0, __bss_start		# clear .bss
-	LONG_S		zero, (t0)
+	LONGI_S		zero, (t0)
 	PTR_LA		t1, __bss_stop - LONGSIZE
 1:
 	PTR_ADDIU	t0, LONGSIZE
-	LONG_S		zero, (t0)
+	LONGI_S		zero, (t0)
 	bne		t0, t1, 1b
 
-	LONG_S		a0, fw_arg0		# firmware arguments
-	LONG_S		a1, fw_arg1
-	LONG_S		a2, fw_arg2
-	LONG_S		a3, fw_arg3
+	LONGI_S		a0, fw_arg0		# firmware arguments
+	LONGI_S		a1, fw_arg1
+	LONGI_S		a2, fw_arg2
+	LONGI_S		a3, fw_arg3
 
 	MTC0		zero, CP0_CONTEXT	# clear context register
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	PTR_LA		$28, init_thread_union
 	/* Set the SP after an empty pt_regs.  */
 	PTR_LI		sp, _THREAD_SIZE - 32 - PT_SIZE

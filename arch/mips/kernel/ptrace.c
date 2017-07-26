@@ -93,6 +93,7 @@ int ptrace_getregs(struct task_struct *child, struct user_pt_regs __user *data)
 
 	regs = task_pt_regs(child);
 
+	/* TBD: Add 128 bit support. */
 	for (i = 0; i < 32; i++)
 		__put_user((long)regs->regs[i], (__s64 __user *)&data->regs[i]);
 	__put_user((long)regs->lo, (__s64 __user *)&data->lo);
@@ -584,14 +585,16 @@ long arch_ptrace(struct task_struct *child, long request,
 	case PTRACE_PEEKUSR: {
 		struct pt_regs *regs;
 		union fpureg *fregs;
-		unsigned long tmp = 0;
+		/* TBD: Maybe not compatible with existing gdb when 128 bit registers are activated. */
+		MIPS_REG_T tmp = 0;
 
 		regs = task_pt_regs(child);
 		ret = 0;  /* Default return value. */
 
 		switch (addr) {
 		case 0 ... 31:
-			tmp = regs->regs[addr];
+			/* TBD: 128 bit support. */
+			tmp = MIPS_READ_REG(regs->regs[addr]);
 			break;
 		case FPR_BASE ... FPR_BASE + 31:
 			if (!tsk_used_math(child)) {
@@ -642,7 +645,11 @@ long arch_ptrace(struct task_struct *child, long request,
 			/* implementation / version register */
 			tmp = boot_cpu_data.fpu_id;
 			break;
+#ifdef CONFIG_CPU_R5900
+		case DSP_BASE ... DSP_BASE + 1: {
+#else
 		case DSP_BASE ... DSP_BASE + 5: {
+#endif
 			dspreg_t *dregs;
 
 			if (!cpu_has_dsp) {
@@ -654,6 +661,7 @@ long arch_ptrace(struct task_struct *child, long request,
 			tmp = (unsigned long) (dregs[addr - DSP_BASE]);
 			break;
 		}
+#ifndef CONFIG_CPU_R5900
 		case DSP_CONTROL:
 			if (!cpu_has_dsp) {
 				tmp = 0;
@@ -662,6 +670,7 @@ long arch_ptrace(struct task_struct *child, long request,
 			}
 			tmp = child->thread.dsp.dspcontrol;
 			break;
+#endif
 		default:
 			tmp = 0;
 			ret = -EIO;
@@ -684,7 +693,7 @@ long arch_ptrace(struct task_struct *child, long request,
 
 		switch (addr) {
 		case 0 ... 31:
-			regs->regs[addr] = data;
+			MIPS_WRITE_REG(regs->regs[addr]) = data;
 			break;
 		case FPR_BASE ... FPR_BASE + 31: {
 			union fpureg *fregs = get_fpu_regs(child);
@@ -722,7 +731,11 @@ long arch_ptrace(struct task_struct *child, long request,
 		case FPC_CSR:
 			child->thread.fpu.fcr31 = data & ~FPU_CSR_ALL_X;
 			break;
+#ifdef CONFIG_CPU_R5900
+		case DSP_BASE ... DSP_BASE + 1: {
+#else
 		case DSP_BASE ... DSP_BASE + 5: {
+#endif
 			dspreg_t *dregs;
 
 			if (!cpu_has_dsp) {
@@ -734,6 +747,7 @@ long arch_ptrace(struct task_struct *child, long request,
 			dregs[addr - DSP_BASE] = data;
 			break;
 		}
+#ifndef CONFIG_CPU_R5900
 		case DSP_CONTROL:
 			if (!cpu_has_dsp) {
 				ret = -EIO;
@@ -741,6 +755,7 @@ long arch_ptrace(struct task_struct *child, long request,
 			}
 			child->thread.dsp.dspcontrol = data;
 			break;
+#endif
 		default:
 			/* The rest are not allowed. */
 			ret = -EIO;
@@ -806,8 +821,11 @@ asmlinkage long syscall_trace_enter(struct pt_regs *regs, long syscall)
 	if (unlikely(test_thread_flag(TIF_SYSCALL_TRACEPOINT)))
 		trace_sys_enter(regs, regs->regs[2]);
 
-	audit_syscall_entry(syscall, regs->regs[4], regs->regs[5],
-			    regs->regs[6], regs->regs[7]);
+	audit_syscall_entry(syscall,
+			MIPS_READ_REG(regs->regs[4]),
+			MIPS_READ_REG(regs->regs[5]),
+			MIPS_READ_REG(regs->regs[6]),
+			MIPS_READ_REG(regs->regs[7]));
 	return syscall;
 }
 

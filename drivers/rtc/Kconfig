@@ -1596,5 +1596,14 @@ config RTC_DRV_HID_SENSOR_TIME
 	  If this driver is compiled as a module, it will be named
 	  rtc-hid-sensor-time.
 
+config RTC_DRV_PS2
+	tristate "PS2 RTC"
+	depends on SONY_PS2
+	default y
+	help
+	  If you say yes here you will get support for the RTC on PS2.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-ps2.
 
 endif # RTC_CLASS
