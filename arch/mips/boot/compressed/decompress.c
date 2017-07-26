@@ -76,16 +76,49 @@ void error(char *x)
 #include "../../../../lib/decompress_unxz.c"
 #endif
 
+
 const unsigned long __stack_chk_guard = 0x000a0dff;
+
+#define CP0_SET_STATUS(x) \
+	__asm__  __volatile__( \
+		"mtc0 %0, $12\n" \
+		"sync.p\n"::"r" (x))
+
+#define CP0_GET_STATUS(x) \
+	__asm__  __volatile__( \
+		"sync.p\n" \
+		"mfc0 %0, $12\n":"=r" (x))
+
+#define CP0_SET_CONFIG(x) \
+	__asm__ __volatile__( \
+		"mtc0 %0, $16\n" \
+		"sync.p\n"::"r" (x))
+
+#define CP0_GET_CONFIG(x) \
+	__asm__  __volatile__( \
+		"sync.p\n" \
+		"mfc0 %0, $16\n":"=r" (x))
 
 void __stack_chk_fail(void)
 {
 	error("stack-protector: Kernel stack is corrupted\n");
 }
 
+void invalidateICacheAll(void);
+void flushDCacheAll(void);
+
 void decompress_kernel(unsigned long boot_heap_start)
 {
+	const struct {
+		u32 status;
+		u32 config;
+	} cop0 = {
+		.status = read_c0_status(),
+		.config = read_c0_config(),
+	};
 	unsigned long zimage_start, zimage_size;
+	const u32 * const entry_words = (u32 *)KERNEL_ENTRY;
+	int i;
 
 	zimage_start = (unsigned long)(&__image_begin);
 	zimage_size = (unsigned long)(&__image_end) -
@@ -95,6 +128,12 @@ void decompress_kernel(unsigned long boot_heap_start)
 	puthex(zimage_start);
 	puts(" ");
 	puthex(zimage_size + zimage_start);
+	puts(" KERNEL_ENTRY ");
+	puthex(KERNEL_ENTRY);
+	puts(" COP0 status ");
+	puthex(cop0.status);
+	puts(" config ");
+	puthex(cop0.config);
 	puts("\n");
 
 	/* This area are prepared for mallocing when decompressing */
@@ -124,6 +163,28 @@ void decompress_kernel(unsigned long boot_heap_start)
 		       __appended_dtb, dtb_size);
 	}
 
-	/* FIXME: should we flush cache here? */
+	for (i = 0; i < 16; i++) {
+		puthex((u32)&entry_words[i]);
+		puts(" ");
+		puthex(entry_words[i]);
+		puts("\n");
+	}
+
+	flushDCacheAll();
+	invalidateICacheAll();
+
+	mb();
+
+	__asm__ __volatile__(
+		".set	push\n\t"
+		".set	noreorder\n\t"
+		".set	mips2\n\t"
+		"sync.p\n\t"
+		"sync\n\t"
+		".set	pop"
+		: /* no output */
+		: /* no input */
+		: "memory");
+
 	puts("Now, booting the kernel...\n");
 }

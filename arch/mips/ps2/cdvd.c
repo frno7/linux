@@ -14,8 +14,8 @@
 #include <linux/rtc.h>
 
 #include <asm/mach-ps2/cdvd.h>
-#include <asm/mach-ps2/sbios.h>
 
+#if 0
 #define SBIOS_RPC_CDVD_INIT	176
 #define SBIOS_RPC_CDVD_READRTC	182
 #define SBIOS_RPC_CDVD_WRITERTC	183
@@ -59,9 +59,13 @@ static int write_rtc(struct cdvd_rtc *rtc)
 
 	return err < 0 ? -1 : res;
 }
+#endif
 
 int cdvd_read_rtc(unsigned long *t)
 {
+#if 1
+	return -EIO;
+#else
 	struct cdvd_rtc rtc_arg;
 	int res = read_rtc(&rtc_arg);
 	unsigned int sec;
@@ -85,10 +89,14 @@ int cdvd_read_rtc(unsigned long *t)
 	*t = mktime(year + 2000, mon, day, hour, min, sec) - PS2_RTC_TZONE;
 
 	return 0;
+#endif
 }
 
 int cdvd_write_rtc(unsigned long t)
 {
+#if 1
+	return -EIO;
+#else
 	struct cdvd_rtc rtc_arg = { };
 	struct rtc_time tm;
 	int res;
@@ -107,10 +115,14 @@ int cdvd_write_rtc(unsigned long t)
 	res = write_rtc(&rtc_arg);
 
 	return res != 1 || rtc_arg.status != 0 ? -EIO : 0;
+#endif
 }
 
 int __init cdvd_init(void)
 {
+#if 1
+	return 0;
+#else
 	int res;
 
 #ifdef CONFIG_PS2_SBIOS_VER_CHECK
@@ -126,4 +138,5 @@ int __init cdvd_init(void)
 	} while (res < 0);
 
 	return res;
+#endif
 }

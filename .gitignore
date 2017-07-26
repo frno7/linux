@@ -45,6 +45,10 @@
 *.xz
 Module.symvers
 modules.builtin
+*.dwo
+*.su
+*.c.[012]*.*
+*.irx
 
 #
 # Top-level generic files
