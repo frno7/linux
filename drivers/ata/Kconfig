@@ -1035,6 +1035,14 @@ config PATA_PLATFORM
 
 	  If unsure, say N.
 
+config PATA_PS2
+	tristate "Playstation 2 PATA support"
+	depends on SONY_PS2
+	help
+	  This option enables support for the PATA HDD on a FAT PS2
+
+	  If unsure, say Y.
+
 config PATA_OF_PLATFORM
 	tristate "OpenFirmware platform device PATA support"
 	depends on PATA_PLATFORM && OF

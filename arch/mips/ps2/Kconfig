@@ -1,0 +1,26 @@
+config PS2_GS
+	tristate "PlayStation 2 Graphics Synthesizer"
+	depends on SONY_PS2
+	default y
+	help
+	  Say yes to enable the PlayStation 2 Graphics Synthesizer. The GS
+	  draws primitives such as triangles and sprites to its 4 MiB local
+	  frame buffer. It can handle shading, texture mapping,
+	  z-buffering, alpha blending, edge antialiasing and fogging.
+
+	  PAL, NTSC and VESA video modes are supported. Interlace and
+	  noninterlaced can be switched. The resolution is variable from
+	  256x224 to 1920x1080.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called gs.
+
+config PS2_IOP
+	tristate "PlayStation 2 I/O processor (IOP)"
+	depends on SONY_PS2
+	default y
+	help
+	  Say yes to enable the PlayStation 2 I/O processor (IOP).
+
+	  This driver can also be built as a module. If so, the module
+	  will be called iop.

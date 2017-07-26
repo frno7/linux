@@ -1,22 +1,25 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * PlayStation 2 I/O processor (IOP) memory
+ * PlayStation 2 I/O processor (IOP) memory operations
  *
- * Copyright (C) 2000-2002 Sony Computer Entertainment Inc.
- * Copyright (C) 2010-2013 Jürgen Urban
- * Copyright (C) 2017-2018 Fredrik Noring
- *
- * SPDX-License-Identifier: GPL-2.0
+ * Copyright (C) 2018 Fredrik Noring
  */
 
-#ifndef __ASM_PS2_IOP_MEMORY_H
-#define __ASM_PS2_IOP_MEMORY_H
+#ifndef PS2_IOP_MEMORY_H
+#define PS2_IOP_MEMORY_H
 
 #include <linux/types.h>
 
-dma_addr_t iop_phys_to_bus(phys_addr_t paddr);
-phys_addr_t iop_bus_to_phys(dma_addr_t baddr);
+typedef u32 iop_addr_t;
 
-dma_addr_t iop_alloc(size_t size);
-int iop_free(dma_addr_t baddr);
+iop_addr_t iop_phys_to_bus(phys_addr_t paddr);
+phys_addr_t iop_bus_to_phys(iop_addr_t baddr);
+void *iop_bus_to_virt(iop_addr_t baddr);
 
-#endif /* __ASM_PS2_IOP_MEMORY_H */
+int iop_read_memory(void *dst, const iop_addr_t src, size_t nbyte);
+int iop_write_memory(iop_addr_t dst, const void *src, size_t nbyte);
+
+iop_addr_t iop_alloc(size_t nbyte);
+int iop_free(iop_addr_t baddr);
+
+#endif /* PS2_IOP_MEMORY_H */
