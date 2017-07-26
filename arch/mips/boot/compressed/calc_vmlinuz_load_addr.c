@@ -44,12 +44,8 @@ int main(int argc, char *argv[])
 	vmlinux_size = (uint64_t)sb.st_size;
 	vmlinuz_load_addr = vmlinux_load_addr + vmlinux_size;
 
-	/*
-	 * Align with 16 bytes: "greater than that used for any standard data
-	 * types by a MIPS compiler." -- See MIPS Run Linux (Second Edition).
-	 */
-
-	vmlinuz_load_addr += (16 - vmlinux_size % 16);
+	/* The kexec system call requires page alignment. */
+	vmlinuz_load_addr += (4096 - vmlinux_size % 4096);
 
 	printf("0x%llx\n", vmlinuz_load_addr);
 
