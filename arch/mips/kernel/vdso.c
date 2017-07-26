@@ -51,6 +51,10 @@ static int __init init_vdso(void)
 	install_trampoline(vdso->rt_signal_trampoline, __NR_rt_sigreturn);
 #ifdef CONFIG_32BIT
 	install_trampoline(vdso->signal_trampoline, __NR_sigreturn);
+#ifdef CONFIG_MIPS_N32
+	install_trampoline(vdso->n32_rt_signal_trampoline,
+			   __NR_N32_rt_sigreturn);
+#endif
 #else
 	install_trampoline(vdso->n32_rt_signal_trampoline,
 			   __NR_N32_rt_sigreturn);

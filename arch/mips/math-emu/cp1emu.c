@@ -634,7 +634,7 @@ static int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
  */
 static inline int cop1_64bit(struct pt_regs *xcp)
 {
-	if (config_enabled(CONFIG_64BIT) && !config_enabled(CONFIG_MIPS32_O32))
+	if (config_enabled(CONFIG_64BIT) && !config_enabled(CONFIG_MIPS32_O32) && !config_enabled(CONFIG_R5900_128BIT_SUPPORT))
 		return 1;
 	else if (config_enabled(CONFIG_32BIT) &&
 		 !config_enabled(CONFIG_MIPS_O32_FP64_SUPPORT))
@@ -774,7 +774,7 @@ emul:
 	MIPS_FPU_EMU_INC_STATS(emulated);
 	switch (MIPSInst_OPCODE(ir)) {
 	case ldc1_op:
-		dva = (u64 __user *) (xcp->regs[MIPSInst_RS(ir)] +
+		dva = (u64 __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_RS(ir)]) +
 				     MIPSInst_SIMM(ir));
 		MIPS_FPU_EMU_INC_STATS(loads);
 
@@ -792,7 +792,7 @@ emul:
 		break;
 
 	case sdc1_op:
-		dva = (u64 __user *) (xcp->regs[MIPSInst_RS(ir)] +
+		dva = (u64 __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_RS(ir)]) +
 				      MIPSInst_SIMM(ir));
 		MIPS_FPU_EMU_INC_STATS(stores);
 		DIFROMREG(dval, MIPSInst_RT(ir));
@@ -809,7 +809,7 @@ emul:
 		break;
 
 	case lwc1_op:
-		wva = (u32 __user *) (xcp->regs[MIPSInst_RS(ir)] +
+		wva = (u32 __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_RS(ir)]) +
 				      MIPSInst_SIMM(ir));
 		MIPS_FPU_EMU_INC_STATS(loads);
 		if (!access_ok(VERIFY_READ, wva, sizeof(u32))) {
@@ -826,7 +826,7 @@ emul:
 		break;
 
 	case swc1_op:
-		wva = (u32 __user *) (xcp->regs[MIPSInst_RS(ir)] +
+		wva = (u32 __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_RS(ir)]) +
 				      MIPSInst_SIMM(ir));
 		MIPS_FPU_EMU_INC_STATS(stores);
 		SIFROMREG(wval, MIPSInst_RT(ir));
@@ -850,8 +850,9 @@ emul:
 
 			/* copregister fs -> gpr[rt] */
 			if (MIPSInst_RT(ir) != 0) {
-				DIFROMREG(xcp->regs[MIPSInst_RT(ir)],
-					MIPSInst_RD(ir));
+				MIPS_REG_T tmp;
+				DIFROMREG(tmp, MIPSInst_RD(ir));
+				MIPS_WRITE_REG(xcp->regs[MIPSInst_RT(ir)]) = tmp;
 			}
 			break;
 
@@ -860,7 +861,7 @@ emul:
 				return SIGILL;
 
 			/* copregister fs <- rt */
-			DITOREG(xcp->regs[MIPSInst_RT(ir)], MIPSInst_RD(ir));
+			DITOREG(MIPS_READ_REG(xcp->regs[MIPSInst_RT(ir)]), MIPSInst_RD(ir));
 			break;
 
 		case mfhc_op:
@@ -885,14 +886,15 @@ emul:
 		case mfc_op:
 			/* copregister rd -> gpr[rt] */
 			if (MIPSInst_RT(ir) != 0) {
-				SIFROMREG(xcp->regs[MIPSInst_RT(ir)],
-					MIPSInst_RD(ir));
+				MIPS_REG_T tmp;
+				SIFROMREG(tmp, MIPSInst_RD(ir));
+				MIPS_WRITE_REG(xcp->regs[MIPSInst_RT(ir)]) = tmp;
 			}
 			break;
 
 		case mtc_op:
 			/* copregister rd <- rt */
-			SITOREG(xcp->regs[MIPSInst_RT(ir)], MIPSInst_RD(ir));
+			SITOREG(MIPS_READ_REG(xcp->regs[MIPSInst_RT(ir)]), MIPSInst_RD(ir));
 			break;
 
 		case cfc_op:
@@ -909,7 +911,7 @@ emul:
 			else
 				value = 0;
 			if (MIPSInst_RT(ir))
-				xcp->regs[MIPSInst_RT(ir)] = value;
+				MIPS_WRITE_REG(xcp->regs[MIPSInst_RT(ir)]) = value;
 			break;
 
 		case ctc_op:
@@ -917,7 +919,7 @@ emul:
 			if (MIPSInst_RT(ir) == 0)
 				value = 0;
 			else
-				value = xcp->regs[MIPSInst_RT(ir)];
+				value = MIPS_READ_REG(xcp->regs[MIPSInst_RT(ir)]);
 
 			/* we only have one writable control reg
 			 */
@@ -1080,8 +1082,8 @@ emul:
 			return SIGILL;
 		cond = fpucondbit[MIPSInst_RT(ir) >> 2];
 		if (((ctx->fcr31 & cond) != 0) == ((MIPSInst_RT(ir) & 1) != 0))
-			xcp->regs[MIPSInst_RD(ir)] =
-				xcp->regs[MIPSInst_RS(ir)];
+			MIPS_WRITE_REG(xcp->regs[MIPSInst_RD(ir)]) =
+				MIPS_READ_REG(xcp->regs[MIPSInst_RS(ir)]);
 		break;
 	default:
 sigill:
@@ -1177,8 +1179,8 @@ static int fpux_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 
 		switch (MIPSInst_FUNC(ir)) {
 		case lwxc1_op:
-			va = (void __user *) (xcp->regs[MIPSInst_FR(ir)] +
-				xcp->regs[MIPSInst_FT(ir)]);
+			va = (void __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_FR(ir)]) +
+				MIPS_READ_REG_L(xcp->regs[MIPSInst_FT(ir)]));
 
 			MIPS_FPU_EMU_INC_STATS(loads);
 			if (!access_ok(VERIFY_READ, va, sizeof(u32))) {
@@ -1195,8 +1197,8 @@ static int fpux_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			break;
 
 		case swxc1_op:
-			va = (void __user *) (xcp->regs[MIPSInst_FR(ir)] +
-				xcp->regs[MIPSInst_FT(ir)]);
+			va = (void __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_FR(ir)]) +
+				MIPS_READ_REG_L(xcp->regs[MIPSInst_FT(ir)]));
 
 			MIPS_FPU_EMU_INC_STATS(stores);
 
@@ -1274,8 +1276,8 @@ static int fpux_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 
 		switch (MIPSInst_FUNC(ir)) {
 		case ldxc1_op:
-			va = (void __user *) (xcp->regs[MIPSInst_FR(ir)] +
-				xcp->regs[MIPSInst_FT(ir)]);
+			va = (void __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_FR(ir)]) +
+				MIPS_READ_REG_L(xcp->regs[MIPSInst_FT(ir)]));
 
 			MIPS_FPU_EMU_INC_STATS(loads);
 			if (!access_ok(VERIFY_READ, va, sizeof(u64))) {
@@ -1292,8 +1294,8 @@ static int fpux_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			break;
 
 		case sdxc1_op:
-			va = (void __user *) (xcp->regs[MIPSInst_FR(ir)] +
-				xcp->regs[MIPSInst_FT(ir)]);
+			va = (void __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_FR(ir)]) +
+				MIPS_READ_REG_L(xcp->regs[MIPSInst_FT(ir)]));
 
 			MIPS_FPU_EMU_INC_STATS(stores);
 			DIFROMREG(val, MIPSInst_FS(ir));
@@ -1437,7 +1439,7 @@ static int fpu_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			if (!cpu_has_mips_4_5_r)
 				return SIGILL;
 
-			if (xcp->regs[MIPSInst_FT(ir)] != 0)
+			if (MIPS_READ_REG(xcp->regs[MIPSInst_FT(ir)]) != 0)
 				return 0;
 			SPFROMREG(rv.s, MIPSInst_FS(ir));
 			break;
@@ -1446,7 +1448,7 @@ static int fpu_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			if (!cpu_has_mips_4_5_r)
 				return SIGILL;
 
-			if (xcp->regs[MIPSInst_FT(ir)] == 0)
+			if (MIPS_READ_REG(xcp->regs[MIPSInst_FT(ir)]) == 0)
 				return 0;
 			SPFROMREG(rv.s, MIPSInst_FS(ir));
 			break;
@@ -1636,7 +1638,7 @@ copcsr:
 			if (!cpu_has_mips_4_5_r)
 				return SIGILL;
 
-			if (xcp->regs[MIPSInst_FT(ir)] != 0)
+			if (MIPS_READ_REG(xcp->regs[MIPSInst_FT(ir)]) != 0)
 				return 0;
 			DPFROMREG(rv.d, MIPSInst_FS(ir));
 			break;
@@ -1644,7 +1646,7 @@ copcsr:
 			if (!cpu_has_mips_4_5_r)
 				return SIGILL;
 
-			if (xcp->regs[MIPSInst_FT(ir)] == 0)
+			if (MIPS_READ_REG(xcp->regs[MIPSInst_FT(ir)]) == 0)
 				return 0;
 			DPFROMREG(rv.d, MIPSInst_FS(ir));
 			break;
