@@ -38,6 +38,7 @@ Module.symvers
 *.dwo
 *.su
 *.c.[012]*.*
+*.irx
 
 #
 # Top-level generic files

@@ -24,6 +24,27 @@
 #define DSP_CONTROL	77
 #define ACX		78
 
+#ifdef CONFIG_R5900_128BIT_SUPPORT
+/* Cast larger R5900 register to smaller 32 bit. */
+#define MIPS_READ_REG_L(reg) ((unsigned long)((reg).lo))
+#define MIPS_READ_REG(reg) ((reg).lo)
+#define MIPS_READ_REG_HIGH(reg) ((reg).hi)
+#define MIPS_READ_REG_S(reg) ((long long)(reg).lo)
+#define MIPS_WRITE_REG(reg) ; ((reg).lo)
+#define MIPS_REG_T unsigned long long
+
+typedef struct __attribute__((aligned(16))) {
+	unsigned long long lo;
+	unsigned long long hi;
+} r5900_reg_t;
+#else
+#define MIPS_READ_REG_L(reg) (reg)
+#define MIPS_READ_REG(reg) (reg)
+#define MIPS_READ_REG_S(reg) ((long) (reg))
+#define MIPS_WRITE_REG(reg) (reg)
+#define MIPS_REG_T unsigned long
+#endif
+
 /*
  * This struct defines the registers as used by PTRACE_{GET,SET}REGS. The
  * format is the same for both 32- and 64-bit processes. Registers for 32-bit
@@ -35,11 +56,21 @@ struct user_pt_regs {
 struct pt_regs {
 #endif
 	/* Saved main processor registers. */
+#ifdef CONFIG_R5900_128BIT_SUPPORT
+	/* Support for 128 bit. */
+	r5900_reg_t regs[32];
+#else
 	__u64 regs[32];
+#endif
 
 	/* Saved special registers. */
+#ifdef CONFIG_CPU_R5900
+	__u64 hi;
+	__u64 lo;
+#else
 	__u64 lo;
 	__u64 hi;
+#endif
 	__u64 cp0_epc;
 	__u64 cp0_badvaddr;
 	__u64 cp0_status;

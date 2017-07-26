@@ -1,0 +1,69 @@
+#
+# Sony Playstation 2 configuration
+#
+
+menu "Sony Playstation 2 devices"
+
+config PS2_ETHER_SMAP
+	tristate "Ethernet driver for fat PS2"
+	default y
+	depends on SONY_PS2
+	depends on NET
+	select PHYLIB
+	help
+	   This enables the driver for the network adapter SCPH-10350 in the fat PS2.
+	   The network adapter SCPH-10281 should also work.
+
+	   If you don't know what to do here, say Y.
+
+config PS2_ETHER_SMAPRPC
+	tristate "Ethernet driver for slim PSTwo"
+	default y
+	depends on SONY_PS2
+	depends on NET
+	select PHYLIB
+	help
+	   This enables the driver for the builtin network adapter of the slim PSTwo.
+
+	   If you don't know what to do here, say Y.
+
+config PS2_PAD
+	tristate "Support for PS2 game pad device"
+	default y
+	depends on SONY_PS2
+
+config PS2_CDVD
+	tristate "Support for PS2 CD/DVD ROM drive"
+	default y
+	depends on SONY_PS2
+
+config PS2_MC
+	tristate "Support for PS2 Memory Card"
+	default y
+	depends on SONY_PS2
+
+config PS2_SD
+	tristate "Support for PS2 Sound device"
+	default y
+	depends on SONY_PS2 && SOUND_OSS_CORE
+
+config PS2_PAD_JS
+	tristate "Support for PS2 Joystick"
+	default y
+	depends on SONY_PS2 && PS2_PAD && INPUT
+
+config PS2_AUDIO
+	tristate "Support for PS2 Audio"
+	default y
+	depends on SONY_PS2 && SND
+	select SND_PCM
+	help
+	  Audio output for the Playstation 2. This driver requires that the
+	  echo /sbin/mdev >/proc/sys/kernel/hotplug
+	  audsrv.irx is loaded, e.g.:
+	  cp audsrv.irx /lib/firmware/
+	  echo audsrv.irx >/sys/firmare/iopmodule/load_module
+
+source "drivers/ps2/mcfs/Kconfig"
+
+endmenu

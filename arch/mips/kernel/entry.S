@@ -32,14 +32,14 @@ FEXPORT(ret_from_exception)
 	b	__ret_from_irq
 #endif
 FEXPORT(ret_from_irq)
-	LONG_S	s0, TI_REGS($28)
+	LONGI_S	s0, TI_REGS($28)
 FEXPORT(__ret_from_irq)
 /*
  * We can be coming here from a syscall done in the kernel space,
  * e.g. a failed kernel_execve().
  */
 resume_userspace_check:
-	LONG_L	t0, PT_STATUS(sp)		# returning to kernel mode?
+	LONGI_L	t0, PT_STATUS(sp)		# returning to kernel mode?
 	andi	t0, t0, KU_USER
 	beqz	t0, resume_kernel
 
@@ -52,7 +52,7 @@ resume_userspace:
 	bnez	k0, restore_all_from_r2_emul
 #endif
 
-	LONG_L	a2, TI_FLAGS($28)	# current->work
+	LONGI_L	a2, TI_FLAGS($28)	# current->work
 	andi	t0, a2, _TIF_WORK_MASK	# (ignoring syscall_trace)
 	bnez	t0, work_pending
 	j	restore_all
@@ -63,10 +63,10 @@ resume_kernel:
 	lw	t0, TI_PRE_COUNT($28)
 	bnez	t0, restore_all
 need_resched:
-	LONG_L	t0, TI_FLAGS($28)
+	LONGI_L	t0, TI_FLAGS($28)
 	andi	t1, t0, _TIF_NEED_RESCHED
 	beqz	t1, restore_all
-	LONG_L	t0, PT_STATUS(sp)		# Interrupts off?
+	LONGI_L	t0, PT_STATUS(sp)		# Interrupts off?
 	andi	t0, 1
 	beqz	t0, restore_all
 	jal	preempt_schedule_irq
@@ -86,7 +86,7 @@ FEXPORT(syscall_exit)
 	local_irq_disable		# make sure need_resched and
 					# signals dont change between
 					# sampling and return
-	LONG_L	a2, TI_FLAGS($28)	# current->work
+	LONGI_L	a2, TI_FLAGS($28)	# current->work
 	li	t0, _TIF_ALLWORK_MASK
 	and	t0, a2, t0
 	bnez	t0, syscall_exit_work
@@ -101,7 +101,7 @@ restore_partial:		# restore partial frame
 	SAVE_STATIC
 	SAVE_AT
 	SAVE_TEMP
-	LONG_L	v0, PT_STATUS(sp)
+	LONGI_L	v0, PT_STATUS(sp)
 #if defined(CONFIG_CPU_R3000) || defined(CONFIG_CPU_TX39XX)
 	and	v0, ST0_IEP
 #else
@@ -142,7 +142,7 @@ work_resched:
 	local_irq_disable		# make sure need_resched and
 					# signals dont change between
 					# sampling and return
-	LONG_L	a2, TI_FLAGS($28)
+	LONGI_L	a2, TI_FLAGS($28)
 	andi	t0, a2, _TIF_WORK_MASK	# is there any work to be done
 					# other than syscall tracing?
 	beqz	t0, restore_all
@@ -159,13 +159,14 @@ work_notifysig:				# deal with pending signals and
 FEXPORT(syscall_exit_partial)
 	local_irq_disable		# make sure need_resched doesn't
 					# change between and return
-	LONG_L	a2, TI_FLAGS($28)	# current->work
+	LONGI_L	a2, TI_FLAGS($28)	# current->work
 	li	t0, _TIF_ALLWORK_MASK
 	and	t0, a2
 	beqz	t0, restore_partial
+FEXPORT(syscall_exit_work_partial)
 	SAVE_STATIC
 syscall_exit_work:
-	LONG_L	t0, PT_STATUS(sp)		# returning to kernel mode?
+	LONGI_L	t0, PT_STATUS(sp)		# returning to kernel mode?
 	andi	t0, t0, KU_USER
 	beqz	t0, resume_kernel
 	li	t0, _TIF_WORK_SYSCALL_EXIT

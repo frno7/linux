@@ -43,6 +43,11 @@ typedef elf_fpreg_t elf_fpregset_t[ELF_NFPREG];
 #include <linux/math64.h>
 
 #define elf_prstatus elf_prstatus32
+
+#ifdef CONFIG_32BIT
+#define compat_timeval timeval
+#endif
+
 struct elf_prstatus32
 {
 	struct elf_siginfo pr_info;	/* Info associated with signal */
@@ -95,9 +100,6 @@ jiffies_to_compat_timeval(unsigned long jiffies, struct compat_timeval *value)
 }
 
 #define ELF_CORE_EFLAGS EF_MIPS_ABI2
-
-#undef TASK_SIZE
-#define TASK_SIZE TASK_SIZE32
 
 #undef cputime_to_timeval
 #define cputime_to_timeval cputime_to_compat_timeval
