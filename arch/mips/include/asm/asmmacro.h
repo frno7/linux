@@ -11,10 +11,10 @@
 #include <asm/hazards.h>
 #include <asm/asm-offsets.h>
 
-#ifdef CONFIG_32BIT
+#if defined(CONFIG_32BIT) || defined(CONFIG_CPU_R5900)
 #include <asm/asmmacro-32.h>
 #endif
-#ifdef CONFIG_64BIT
+#if defined(CONFIG_64BIT) && !defined(CONFIG_CPU_R5900)
 #include <asm/asmmacro-64.h>
 #endif
 
@@ -30,9 +30,15 @@
 	.endm
 #else
 	.macro	local_irq_enable reg=t0
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	\reg, CP0_STATUS
 	ori	\reg, \reg, 1
 	mtc0	\reg, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	irq_enable_hazard
 	.endm
 
@@ -42,10 +48,16 @@
 	addi    \reg, \reg, 1
 	sw      \reg, TI_PRE_COUNT($28)
 #endif
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	\reg, CP0_STATUS
 	ori	\reg, \reg, 1
 	xori	\reg, \reg, 1
 	mtc0	\reg, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	irq_disable_hazard
 #ifdef CONFIG_PREEMPT
 	lw      \reg, TI_PRE_COUNT($28)
@@ -98,6 +110,48 @@
 	.set	pop
 	.endm
 
+#ifdef CONFIG_CPU_R5900
+	/* Kernel expects that floating point registers are saved as 64-bit
+	 * with the sdc1 instruction, but this is not working with R5900.
+	 * The 64-bit write is simulated as two 32-bit writes.
+	 */
+	.macro fpu_save_double thread status tmp1=t0
+	cfc1	\tmp1,  fcr31
+	swc1	$f0,  THREAD_FPR0(\thread)
+	swc1	$f1,  (THREAD_FPR0 + 4)(\thread)
+	swc1	$f2,  THREAD_FPR2(\thread)
+	swc1	$f3,  (THREAD_FPR2 + 4)(\thread)
+	swc1	$f4,  THREAD_FPR4(\thread)
+	swc1	$f5,  (THREAD_FPR4 + 4)(\thread)
+	swc1	$f6,  THREAD_FPR6(\thread)
+	swc1	$f7,  (THREAD_FPR6 + 4)(\thread)
+	swc1	$f8,  THREAD_FPR8(\thread)
+	swc1	$f9,  (THREAD_FPR8 + 4)(\thread)
+	swc1	$f10, THREAD_FPR10(\thread)
+	swc1	$f11, (THREAD_FPR10 + 4)(\thread)
+	swc1	$f12, THREAD_FPR12(\thread)
+	swc1	$f13, (THREAD_FPR12 + 4)(\thread)
+	swc1	$f14, THREAD_FPR14(\thread)
+	swc1	$f15, (THREAD_FPR14 + 4)(\thread)
+	swc1	$f16, THREAD_FPR16(\thread)
+	swc1	$f17, (THREAD_FPR16 + 4)(\thread)
+	swc1	$f18, THREAD_FPR18(\thread)
+	swc1	$f19, (THREAD_FPR18 + 4)(\thread)
+	swc1	$f20, THREAD_FPR20(\thread)
+	swc1	$f21, (THREAD_FPR20 + 4)(\thread)
+	swc1	$f22, THREAD_FPR22(\thread)
+	swc1	$f23, (THREAD_FPR22 + 4)(\thread)
+	swc1	$f24, THREAD_FPR24(\thread)
+	swc1	$f25, (THREAD_FPR24 + 4)(\thread)
+	swc1	$f26, THREAD_FPR26(\thread)
+	swc1	$f27, (THREAD_FPR26 + 4)(\thread)
+	swc1	$f28, THREAD_FPR28(\thread)
+	swc1	$f29, (THREAD_FPR28 + 4)(\thread)
+	swc1	$f30, THREAD_FPR30(\thread)
+	swc1	$f31, (THREAD_FPR30 + 4)(\thread)
+	sw	\tmp1, THREAD_FCR31(\thread)
+	.endm
+#else
 	.macro	fpu_save_double thread status tmp
 #if defined(CONFIG_64BIT) || defined(CONFIG_CPU_MIPS32_R2)
 	sll	\tmp, \status, 5
@@ -107,6 +161,7 @@
 #endif
 	fpu_save_16even \thread \tmp
 	.endm
+#endif
 
 	.macro	fpu_restore_16even thread tmp=t0
 	lw	\tmp, THREAD_FCR31(\thread)
@@ -151,6 +206,48 @@
 	.set	pop
 	.endm
 
+#ifdef CONFIG_CPU_R5900
+	/* Kernel expects that floating point registers are read as 64-bit
+	 * with the ldc1 instruction, but this is not working with R5900.
+	 * The 64-bit read is simulated as two 32-bit reads.
+	 */
+	.macro	fpu_restore_double thread status tmp=t0
+	lw	\tmp, THREAD_FCR31(\thread)
+	lwc1	$f0,  THREAD_FPR0(\thread)
+	lwc1	$f1,  (THREAD_FPR0 + 4)(\thread)
+	lwc1	$f2,  THREAD_FPR2(\thread)
+	lwc1	$f3,  (THREAD_FPR2 + 4)(\thread)
+	lwc1	$f4,  THREAD_FPR4(\thread)
+	lwc1	$f5,  (THREAD_FPR4 + 4)(\thread)
+	lwc1	$f6,  THREAD_FPR6(\thread)
+	lwc1	$f7,  (THREAD_FPR6 + 4)(\thread)
+	lwc1	$f8,  THREAD_FPR8(\thread)
+	lwc1	$f9,  (THREAD_FPR8 + 4)(\thread)
+	lwc1	$f10, THREAD_FPR10(\thread)
+	lwc1	$f11, (THREAD_FPR10 + 4)(\thread)
+	lwc1	$f12, THREAD_FPR12(\thread)
+	lwc1	$f13, (THREAD_FPR12 + 4)(\thread)
+	lwc1	$f14, THREAD_FPR14(\thread)
+	lwc1	$f15, (THREAD_FPR14 + 4)(\thread)
+	lwc1	$f16, THREAD_FPR16(\thread)
+	lwc1	$f17, (THREAD_FPR16 + 4)(\thread)
+	lwc1	$f18, THREAD_FPR18(\thread)
+	lwc1	$f19, (THREAD_FPR18 + 4)(\thread)
+	lwc1	$f20, THREAD_FPR20(\thread)
+	lwc1	$f21, (THREAD_FPR20 + 4)(\thread)
+	lwc1	$f22, THREAD_FPR22(\thread)
+	lwc1	$f23, (THREAD_FPR22 + 4)(\thread)
+	lwc1	$f24, THREAD_FPR24(\thread)
+	lwc1	$f25, (THREAD_FPR24 + 4)(\thread)
+	lwc1	$f26, THREAD_FPR26(\thread)
+	lwc1	$f27, (THREAD_FPR26 + 4)(\thread)
+	lwc1	$f28, THREAD_FPR28(\thread)
+	lwc1	$f29, (THREAD_FPR28 + 4)(\thread)
+	lwc1	$f30, THREAD_FPR30(\thread)
+	lwc1	$f31, (THREAD_FPR30 + 4)(\thread)
+	ctc1	\tmp, fcr31
+	.endm
+#else
 	.macro	fpu_restore_double thread status tmp
 #if defined(CONFIG_64BIT) || defined(CONFIG_CPU_MIPS32_R2)
 	sll	\tmp, \status, 5
@@ -161,6 +258,7 @@
 #endif
 	fpu_restore_16even \thread \tmp
 	.endm
+#endif
 
 #ifdef CONFIG_CPU_MIPSR2
 	.macro	_EXT	rd, rs, p, s

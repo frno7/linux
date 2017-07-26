@@ -56,7 +56,7 @@ enum opcode {
 	insn_sd, insn_sll, insn_sllv, insn_slt, insn_sltiu, insn_sltu, insn_sra,
 	insn_srl, insn_srlv, insn_subu, insn_sw, insn_sync, insn_syscall,
 	insn_tlbp, insn_tlbr, insn_tlbwi, insn_tlbwr, insn_wait, insn_wsbh,
-	insn_xor, insn_xori, insn_yield,
+	insn_xor, insn_xori, insn_yield, insn_syncp,
 };
 
 struct insn {
@@ -256,8 +256,10 @@ I_u1s2(_bltz)
 I_u1s2(_bltzl)
 I_u1u2s3(_bne)
 I_u2s3u1(_cache)
+#ifndef CONFIG_CPU_R5900
 I_u1u2u3(_dmfc0)
 I_u1u2u3(_dmtc0)
+#endif
 I_u2u1s3(_daddiu)
 I_u3u1u2(_daddu)
 I_u1u2(_divu)
@@ -306,6 +308,7 @@ I_u2u1u3(_rotr)
 I_u3u1u2(_subu)
 I_u2s3u1(_sw)
 I_u1(_sync)
+I_0(_syncp)
 I_0(_tlbp)
 I_0(_tlbr)
 I_0(_tlbwi)
@@ -354,7 +357,7 @@ UASM_EXPORT_SYMBOL(ISAFUNC(uasm_build_label));
 int ISAFUNC(uasm_in_compat_space_p)(long addr)
 {
 	/* Is this address in 32bit compat space? */
-#ifdef CONFIG_64BIT
+#if defined(CONFIG_64BIT) && !defined(CONFIG_CPU_R5900)
 	return (((addr) & 0xffffffff00000000L) == 0xffffffff00000000L);
 #else
 	return 1;
@@ -364,7 +367,7 @@ UASM_EXPORT_SYMBOL(ISAFUNC(uasm_in_compat_space_p));
 
 static int uasm_rel_highest(long val)
 {
-#ifdef CONFIG_64BIT
+#if defined(CONFIG_64BIT) && !defined(CONFIG_CPU_R5900)
 	return ((((val + 0x800080008000L) >> 48) & 0xffff) ^ 0x8000) - 0x8000;
 #else
 	return 0;
@@ -373,7 +376,7 @@ static int uasm_rel_highest(long val)
 
 static int uasm_rel_higher(long val)
 {
-#ifdef CONFIG_64BIT
+#if defined(CONFIG_64BIT) && !defined(CONFIG_CPU_R5900)
 	return ((((val + 0x80008000L) >> 32) & 0xffff) ^ 0x8000) - 0x8000;
 #else
 	return 0;

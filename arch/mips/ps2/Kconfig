@@ -1,0 +1,8 @@
+config SYSFS_IOP_MODULES
+	bool "Support for managing firmware on PS2"
+	default y
+	depends on SONY_PS2
+	help
+	  This will add a sysfs entry at /sys/firmware/iopmodules.
+	  It is possible to manage the IRX modules on the IOP which handles
+	  hardware on the co-processor like sound, memory cards and cd/dvd.
