@@ -10,10 +10,10 @@
 
 #include <asm/hazards.h>
 
-#ifdef CONFIG_32BIT
+#if defined(CONFIG_32BIT) || defined(CONFIG_CPU_R5900)
 #include <asm/asmmacro-32.h>
 #endif
-#ifdef CONFIG_64BIT
+#if defined(CONFIG_64BIT) && !defined(CONFIG_CPU_R5900)
 #include <asm/asmmacro-64.h>
 #endif
 #ifdef CONFIG_MIPS_MT_SMTC
@@ -22,17 +22,29 @@
 
 #ifdef CONFIG_MIPS_MT_SMTC
 	.macro	local_irq_enable reg=t0
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	\reg, CP0_TCSTATUS
 	ori	\reg, \reg, TCSTATUS_IXMT
 	xori	\reg, \reg, TCSTATUS_IXMT
 	mtc0	\reg, CP0_TCSTATUS
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	_ehb
 	.endm
 
 	.macro	local_irq_disable reg=t0
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	\reg, CP0_TCSTATUS
 	ori	\reg, \reg, TCSTATUS_IXMT
 	mtc0	\reg, CP0_TCSTATUS
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	_ehb
 	.endm
 #elif defined(CONFIG_CPU_MIPSR2)
@@ -47,17 +59,29 @@
 	.endm
 #else
 	.macro	local_irq_enable reg=t0
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	\reg, CP0_STATUS
 	ori	\reg, \reg, 1
 	mtc0	\reg, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	irq_enable_hazard
 	.endm
 
 	.macro	local_irq_disable reg=t0
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	\reg, CP0_STATUS
 	ori	\reg, \reg, 1
 	xori	\reg, \reg, 1
 	mtc0	\reg, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	irq_disable_hazard
 	.endm
 #endif /* CONFIG_MIPS_MT_SMTC */

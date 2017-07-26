@@ -58,6 +58,12 @@
 #include <asm/stacktrace.h>
 #include <asm/uasm.h>
 
+#ifdef CONFIG_R5900_128BIT_SUPPORT
+#define SHOW_REG_MOD 2
+#else
+#define SHOW_REG_MOD 4
+#endif
+
 extern void check_wait(void);
 extern asmlinkage void rollback_handle_int(void);
 extern asmlinkage void handle_int(void);
@@ -126,8 +132,8 @@ __setup("raw_show_trace", set_raw_show_trace);
 
 static void show_backtrace(struct task_struct *task, const struct pt_regs *regs)
 {
-	unsigned long sp = regs->regs[29];
-	unsigned long ra = regs->regs[31];
+	unsigned long sp = MIPS_READ_REG_L(regs->regs[29]);
+	unsigned long ra = MIPS_READ_REG_L(regs->regs[31]);
 	unsigned long pc = regs->cp0_epc;
 
 	if (!task)
@@ -155,7 +161,7 @@ static void show_stacktrace(struct task_struct *task,
 	const int field = 2 * sizeof(unsigned long);
 	long stackdata;
 	int i;
-	unsigned long __user *sp = (unsigned long __user *)regs->regs[29];
+	unsigned long __user *sp = (unsigned long __user *) MIPS_READ_REG_L(regs->regs[29]);
 
 	printk("Stack :");
 	i = 0;
@@ -183,14 +189,14 @@ void show_stack(struct task_struct *task, unsigned long *sp)
 {
 	struct pt_regs regs;
 	if (sp) {
-		regs.regs[29] = (unsigned long)sp;
-		regs.regs[31] = 0;
+		MIPS_WRITE_REG(regs.regs[29]) = (unsigned long)sp;
+		MIPS_WRITE_REG(regs.regs[31]) = 0;
 		regs.cp0_epc = 0;
 	} else {
 		if (task && task != current) {
-			regs.regs[29] = task->thread.reg29;
-			regs.regs[31] = 0;
-			regs.cp0_epc = task->thread.reg31;
+			MIPS_WRITE_REG(regs.regs[29]) = MIPS_READ_REG(task->thread.reg29);
+			MIPS_WRITE_REG(regs.regs[31]) = 0;
+			regs.cp0_epc = MIPS_READ_REG_L(task->thread.reg31);
 #ifdef CONFIG_KGDB_KDB
 		} else if (atomic_read(&kgdb_active) != -1 &&
 			   kdb_current_regs) {
@@ -224,7 +230,11 @@ static void show_code(unsigned int __user *pc)
 
 static void __show_regs(const struct pt_regs *regs)
 {
+#ifdef CONFIG_R5900_128BIT_SUPPORT
 	const int field = 2 * sizeof(unsigned long);
+#else
+	const int field = 32;
+#endif
 	unsigned int cause = regs->cp0_cause;
 	int i;
 
@@ -234,25 +244,35 @@ static void __show_regs(const struct pt_regs *regs)
 	 * Saved main processor registers
 	 */
 	for (i = 0; i < 32; ) {
-		if ((i % 4) == 0)
+		if ((i % SHOW_REG_MOD) == 0)
 			printk("$%2d   :", i);
 		if (i == 0)
 			printk(" %0*lx", field, 0UL);
 		else if (i == 26 || i == 27)
 			printk(" %*s", field, "");
 		else
-			printk(" %0*lx", field, regs->regs[i]);
+#ifdef CONFIG_R5900_128BIT_SUPPORT
+			printk(" %016llx%016llx", MIPS_READ_REG_HIGH(regs->regs[i]), MIPS_READ_REG(regs->regs[i]));
+#else
+			printk(" %0*lx", field, MIPS_READ_REG_L(regs->regs[i]));
+#endif
 
 		i++;
-		if ((i % 4) == 0)
+		if ((i % SHOW_REG_MOD) == 0)
 			printk("\n");
 	}
 
 #ifdef CONFIG_CPU_HAS_SMARTMIPS
 	printk("Acx    : %0*lx\n", field, regs->acx);
 #endif
+#ifdef CONFIG_CPU_R5900
+	printk("Hi    : %0*llx\n", field, regs->hi);
+	printk("Lo    : %0*llx\n", field, regs->lo);
+	/* TBD: Print hi1 and lo1. */
+#else
 	printk("Hi    : %0*lx\n", field, regs->hi);
 	printk("Lo    : %0*lx\n", field, regs->lo);
+#endif
 
 	/*
 	 * Saved cp0 registers
@@ -260,8 +280,8 @@ static void __show_regs(const struct pt_regs *regs)
 	printk("epc   : %0*lx %pS\n", field, regs->cp0_epc,
 	       (void *) regs->cp0_epc);
 	printk("    %s\n", print_tainted());
-	printk("ra    : %0*lx %pS\n", field, regs->regs[31],
-	       (void *) regs->regs[31]);
+	printk("ra    : %0*lx %pS\n", field, MIPS_READ_REG_L(regs->regs[31]),
+	       (void *) MIPS_READ_REG_L(regs->regs[31]));
 
 	printk("Status: %08x	", (uint32_t) regs->cp0_status);
 
@@ -455,7 +475,7 @@ asmlinkage void do_be(struct pt_regs *regs)
 	 */
 	printk(KERN_ALERT "%s bus error, epc == %0*lx, ra == %0*lx\n",
 	       data ? "Data" : "Instruction",
-	       field, regs->cp0_epc, field, regs->regs[31]);
+	       field, regs->cp0_epc, field, MIPS_READ_REG_L(regs->regs[31]));
 	if (notify_die(DIE_OOPS, "bus error", regs, 0, regs_to_trapnr(regs), SIGBUS)
 	    == NOTIFY_STOP)
 		goto out;
@@ -474,15 +494,22 @@ out:
 #define OPCODE 0xfc000000
 #define BASE   0x03e00000
 #define RT     0x001f0000
+#define RS     0x03e00000
 #define OFFSET 0x0000ffff
 #define LL     0xc0000000
+#define LLD    0xd0000000
 #define SC     0xe0000000
+#define SCD    0xf0000000
 #define SPEC0  0x00000000
 #define SPEC3  0x7c000000
 #define RD     0x0000f800
 #define FUNC   0x0000003f
 #define SYNC   0x0000000f
 #define RDHWR  0x0000003b
+#define DMULT  0x0000001c
+#define DMULTU 0x0000001d
+#define DDIV   0x0000001e
+#define DDIVU  0x0000001f
 
 /*  microMIPS definitions   */
 #define MM_POOL32A_FUNC 0xfc00ffff
@@ -513,7 +540,7 @@ static inline int simulate_ll(struct pt_regs *regs, unsigned int opcode)
 	offset >>= 16;
 
 	vaddr = (unsigned long __user *)
-		((unsigned long)(regs->regs[(opcode & BASE) >> 21]) + offset);
+	        ((unsigned long)(MIPS_READ_REG_L(regs->regs[(opcode & BASE) >> 21])) + offset);
 
 	if ((unsigned long)vaddr & 3)
 		return SIGBUS;
@@ -531,7 +558,7 @@ static inline int simulate_ll(struct pt_regs *regs, unsigned int opcode)
 
 	preempt_enable();
 
-	regs->regs[(opcode & RT) >> 16] = value;
+	MIPS_WRITE_REG(regs->regs[(opcode & RT) >> 16]) = value;
 
 	return 0;
 }
@@ -553,7 +580,7 @@ static inline int simulate_sc(struct pt_regs *regs, unsigned int opcode)
 	offset >>= 16;
 
 	vaddr = (unsigned long __user *)
-		((unsigned long)(regs->regs[(opcode & BASE) >> 21]) + offset);
+	        ((unsigned long)(MIPS_READ_REG_L(regs->regs[(opcode & BASE) >> 21])) + offset);
 	reg = (opcode & RT) >> 16;
 
 	if ((unsigned long)vaddr & 3)
@@ -562,20 +589,100 @@ static inline int simulate_sc(struct pt_regs *regs, unsigned int opcode)
 	preempt_disable();
 
 	if (ll_bit == 0 || ll_task != current) {
-		regs->regs[reg] = 0;
+		MIPS_WRITE_REG(regs->regs[reg]) = 0;
 		preempt_enable();
 		return 0;
 	}
 
+	if (put_user_atomic(MIPS_READ_REG(regs->regs[reg]), vaddr))
+		return SIGSEGV;
 	preempt_enable();
 
-	if (put_user(regs->regs[reg], vaddr))
-		return SIGSEGV;
-
-	regs->regs[reg] = 1;
+	MIPS_WRITE_REG(regs->regs[reg]) = 1;
 
 	return 0;
 }
+
+#ifdef CONFIG_R5900_128BIT_SUPPORT
+static inline int simulate_lld(struct pt_regs *regs, unsigned int opcode)
+{
+	unsigned long long value, __user *vaddr;
+	long offset;
+
+	/*
+	 * analyse the lld instruction that just caused a ri exception
+	 * and put the referenced address to addr.
+	 */
+
+	/* sign extend offset */
+	offset = opcode & OFFSET;
+	offset <<= 16;
+	offset >>= 16;
+
+	vaddr = (unsigned long __user *)
+	        ((unsigned long)(MIPS_READ_REG_L(regs->regs[(opcode & BASE) >> 21])) + offset);
+
+	if ((unsigned long)vaddr & 7)
+		return SIGBUS;
+	if (get_user(value, vaddr))
+		return SIGSEGV;
+
+	preempt_disable();
+
+	if (ll_task == NULL || ll_task == current) {
+		ll_bit = 1;
+	} else {
+		ll_bit = 0;
+	}
+	ll_task = current;
+
+		preempt_enable();
+
+	MIPS_WRITE_REG(regs->regs[(opcode & RT) >> 16]) = value;
+
+		return 0;
+	}
+
+static inline int simulate_scd(struct pt_regs *regs, unsigned int opcode)
+{
+	unsigned long long __user *vaddr;
+	unsigned long reg;
+	long offset;
+
+	/*
+	 * analyse the sc instruction that just caused a ri exception
+	 * and put the referenced address to addr.
+	 */
+
+	/* sign extend offset */
+	offset = opcode & OFFSET;
+	offset <<= 16;
+	offset >>= 16;
+
+	vaddr = (unsigned long __user *)
+	        ((unsigned long)(MIPS_READ_REG_L(regs->regs[(opcode & BASE) >> 21])) + offset);
+	reg = (opcode & RT) >> 16;
+
+	if ((unsigned long)vaddr & 7)
+		return SIGBUS;
+
+	preempt_disable();
+
+	if (ll_bit == 0 || ll_task != current) {
+		MIPS_WRITE_REG(regs->regs[reg]) = 0;
+	preempt_enable();
+		return 0;
+	}
+
+	if (put_user_atomic(MIPS_READ_REG(regs->regs[reg]), vaddr))
+		return SIGSEGV;
+	preempt_enable();
+
+	MIPS_WRITE_REG(regs->regs[reg]) = 1;
+
+	return 0;
+}
+#endif
 
 /*
  * ll uses the opcode of lwc0 and sc uses the opcode of swc0.  That is both
@@ -596,6 +703,19 @@ static int simulate_llsc(struct pt_regs *regs, unsigned int opcode)
 				1, regs, 0);
 		return simulate_sc(regs, opcode);
 	}
+#ifdef CONFIG_R5900_128BIT_SUPPORT
+	/* lld and scd are not supported by r5900, but it supported mips3. */
+	if ((opcode & OPCODE) == LLD) {
+		perf_sw_event(PERF_COUNT_SW_EMULATION_FAULTS,
+				1, regs, 0);
+		return simulate_lld(regs, opcode);
+	}
+	if ((opcode & OPCODE) == SCD) {
+		perf_sw_event(PERF_COUNT_SW_EMULATION_FAULTS,
+				1, regs, 0);
+		return simulate_scd(regs, opcode);
+	}
+#endif
 
 	return -1;			/* Must be something else ... */
 }
@@ -612,27 +732,27 @@ static int simulate_rdhwr(struct pt_regs *regs, int rd, int rt)
 			1, regs, 0);
 	switch (rd) {
 	case 0:		/* CPU number */
-		regs->regs[rt] = smp_processor_id();
+			MIPS_WRITE_REG(regs->regs[rt]) = smp_processor_id();
 		return 0;
 	case 1:		/* SYNCI length */
-		regs->regs[rt] = min(current_cpu_data.dcache.linesz,
+			MIPS_WRITE_REG(regs->regs[rt]) = min(current_cpu_data.dcache.linesz,
 				     current_cpu_data.icache.linesz);
 		return 0;
 	case 2:		/* Read count register */
-		regs->regs[rt] = read_c0_count();
+			MIPS_WRITE_REG(regs->regs[rt]) = read_c0_count();
 		return 0;
 	case 3:		/* Count register resolution */
 		switch (current_cpu_data.cputype) {
 		case CPU_20KC:
 		case CPU_25KF:
-			regs->regs[rt] = 1;
+				MIPS_WRITE_REG(regs->regs[rt]) = 1;
 			break;
 		default:
-			regs->regs[rt] = 2;
+				MIPS_WRITE_REG(regs->regs[rt]) = 2;
 		}
 		return 0;
 	case 29:
-		regs->regs[rt] = ti->tp_value;
+			MIPS_WRITE_REG(regs->regs[rt]) = ti->tp_value;
 		return 0;
 	default:
 		return -1;
@@ -676,6 +796,167 @@ static int simulate_sync(struct pt_regs *regs, unsigned int opcode)
 
 	return -1;			/* Must be something else ... */
 }
+
+#ifdef CONFIG_CPU_R5900
+typedef unsigned int UDItype	__attribute__ ((mode (DI)));
+
+UDItype __udivmoddi4(UDItype n, UDItype d, UDItype *rp);
+
+/** Multiply 64 bit x 64 bit = 128 bit (all unsigned). */
+void dmultu(uint64_t *hi, uint64_t *lo, uint64_t a, uint64_t b)
+{
+	/* Devide input into 32 bit parts. */
+	uint64_t alo = a & 0xFFFFFFFF;
+	uint64_t ahi = (a >> 32) & 0xFFFFFFFF;
+	uint64_t blo = b & 0xFFFFFFFF;
+	uint64_t bhi = (b >> 32) & 0xFFFFFFFF;
+	uint64_t x0; /* bits 32..0 of result including overflow bits. */
+	uint64_t x32; /* bits 63..32 of result including overflow bits. */
+	uint64_t x64; /* bits 127..64 of result. */
+
+	/* Use binomial formula to calculate ((ahi << 32) + alo) * ((bhi << 32) + blo). */
+	x0 = alo * blo;
+	x32 = ahi * blo;
+	x64 = ahi * bhi;
+
+	/* Handle overflow bits of x32. */
+	x64 += x32 >> 32;
+	x32 = (uint32_t) x32;
+
+	/* Handle overflow bits of x0. */
+	x32 += x0 >> 32;
+	x0 = (uint32_t) x0;
+
+	/* Handle overflow bits of x32. */
+	x64 += x32 >> 32;
+	x32 = (uint32_t) x32;
+
+	x32 += alo * bhi;
+
+	/* Handle overflow bits of x32. */
+	x64 += x32 >> 32;
+	x32 = (uint32_t) x32;
+
+	/* Get bits 63..0 */
+	*lo = (x32 << 32) + x0;
+	/* Get bits 127..64 */
+	*hi = x64;
+}
+
+/** Multiply 64 bit x 64 bit = 128 bit (all signed). */
+void dmult(uint64_t *hi, uint64_t *lo, int64_t a, int64_t b)
+{
+	uint64_t ax;
+	uint64_t bx;
+
+	if (a < 0) {
+		/* Value is negative, use positive value for calculation. */
+		ax = -a;
+	} else {
+		ax = a;
+	}
+	if (b < 0) {
+		/* Value is negative, use positive value for calculation. */
+		bx = -b;
+	} else {
+		bx = b;
+	}
+	/* Use multiplication function for unsigned values. */
+	dmultu(hi, lo, ax, bx);
+
+	/* Check if negative and positive value is calculated. Fix sign if so. */
+	if ((a < 0) ^ (b < 0)) {
+		uint64_t x0; /* bits 31..0 of result including overflow. */
+		uint64_t x32; /* bits 63..32 of result including overflow. */
+		uint64_t x64; /* bits 95..64 of result including overflow. */
+		uint64_t x96; /* bits 127..96 of result including overflow. */
+
+		/* Calculate 2's complement. */
+
+		/* Invert all bits. */
+		*hi = ~*hi;
+		*lo = ~*lo;
+
+		x0 = (uint32_t) *lo;
+		x32 = (uint32_t) (*lo >> 32);
+		x64 = (uint32_t) *hi;
+		x96 = (uint32_t) (*hi >> 32);
+
+		/* Add one and handle overflow. */
+		x0 += 1;
+		x32 += x0 >> 32;
+		x0 = (uint32_t) x0;
+		x64 += x32 >> 32;
+		x32 = (uint32_t) x32;
+		x96 += x64 >> 32;
+		x64 = (uint32_t) x64;
+
+		*lo = x0 + (x32 << 32);
+		*hi = x64 + (x96 << 32);
+	}
+}
+
+static int simulate_mips3(struct pt_regs *regs, unsigned int opcode)
+{
+	int rv = -1;
+
+	/* Emulate missing 64 bit instructions. */
+	if ((opcode & OPCODE) == SPEC0) {
+		int rt;
+		int rs;
+
+		rt = (opcode & RT) >> 16;
+		rs = (opcode & RS) >> 21;
+		switch(opcode & FUNC) {
+		case DMULT:
+			/* Emulate 64 bit calculation. */
+			dmult(&regs->hi, &regs->lo,
+				MIPS_READ_REG_S(regs->regs[rt]),
+				MIPS_READ_REG_S(regs->regs[rs]));
+			rv = 0;
+			break;
+
+		case DMULTU:
+			/* Emulate 64 bit calculation. */
+			dmultu(&regs->hi, &regs->lo,
+				MIPS_READ_REG(regs->regs[rt]),
+				MIPS_READ_REG(regs->regs[rs]));
+			rv = 0;
+			break;
+
+		case DDIV:
+			if (MIPS_READ_REG_S(regs->regs[rt]) == 0) {
+				/* The result is undefined. */
+				regs->lo = 0;
+				regs->hi = 0;
+			} else {
+				/* TBD: Optimize, use one function for calculation divisor and remainder at the same time. */
+				regs->lo = MIPS_READ_REG_S(regs->regs[rs]) / MIPS_READ_REG_S(regs->regs[rt]);
+				regs->hi = MIPS_READ_REG_S(regs->regs[rs]) % MIPS_READ_REG_S(regs->regs[rt]);
+			}
+			rv = 0;
+			break;
+
+		case DDIVU:
+			if (MIPS_READ_REG_S(regs->regs[rt]) == 0) {
+				/* The result is undefined. */
+				regs->lo = 0;
+				regs->hi = 0;
+			} else {
+				regs->lo = __udivmoddi4(MIPS_READ_REG(regs->regs[rs]), MIPS_READ_REG(regs->regs[rt]), &regs->hi);
+			}
+			rv = 0;
+			break;
+		default:
+			/* Must be something else ... */
+			rv = -1;
+			break;
+		}
+	}
+
+	return rv;
+}
+#endif
 
 asmlinkage void do_ov(struct pt_regs *regs)
 {
@@ -994,6 +1275,40 @@ asmlinkage void do_ri(struct pt_regs *regs)
 			status = simulate_sync(regs, opcode);
 	}
 
+#ifdef CONFIG_CPU_R5900
+	if (status < 0)
+		status = simulate_mips3(regs, opcode);
+
+	/* R5900 supports 32 bit FPU operation, but no 64 bit instructions. */
+	/* The instructions are reserved on this CPU. */
+	/* We need to emulate it here. */
+	if (status < 0) {
+		void __user *fault_addr = NULL;
+
+		/* Undo skip-over.  */
+		regs->cp0_epc = old_epc;
+
+		/* Assume that this is an FPU instruction and prepare FPU.
+		 * If this assumption is wrong, this will only cost time.
+		 */
+		if (used_math())	/* Using the FPU again.  */
+			own_fpu(1);
+		else {			/* First time FPU user.  */
+			init_fpu();
+			set_used_math();
+		}
+
+		/* Ensure 'resume' not overwrite saved fp context again. */
+		lose_fpu(1);
+
+		/* Run the emulator */
+		status = fpu_emulator_cop1Handler(regs, &current->thread.fpu, 1, &fault_addr);
+
+		/* Restore the hardware register state */
+		own_fpu(1);	/* Using the FPU again.  */
+	}
+#endif
+
 	if (status < 0)
 		status = SIGILL;
 
@@ -1282,8 +1597,10 @@ asmlinkage void do_mt(struct pt_regs *regs)
 
 asmlinkage void do_dsp(struct pt_regs *regs)
 {
+#ifndef CONFIG_CPU_R5900
 	if (cpu_has_dsp)
 		panic("Unexpected DSP exception");
+#endif
 
 	force_sig(SIGILL, current);
 }
@@ -1526,12 +1843,36 @@ void __init *set_except_vector(int n, void *addr)
 		u32 *buf = (u32 *)(ebase + 0x200);
 		unsigned int k0 = 26;
 		if ((handler & jump_mask) == ((ebase + 0x200) & jump_mask)) {
+#ifdef CONFIG_CPU_R5900
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+#endif
 			uasm_i_j(&buf, handler & ~jump_mask);
 			uasm_i_nop(&buf);
+#ifdef CONFIG_CPU_R5900
+			/* There are no data allowed which could be interpreted as cache instruction. */
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+#endif
 		} else {
+#ifdef CONFIG_CPU_R5900
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+#endif
 			UASM_i_LA(&buf, k0, handler);
 			uasm_i_jr(&buf, k0);
 			uasm_i_nop(&buf);
+#ifdef CONFIG_CPU_R5900
+			/* There are no data allowed which could be interpreted as cache instruction. */
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+#endif
 		}
 		local_flush_icache_range(ebase + 0x200, (unsigned long)buf);
 	}

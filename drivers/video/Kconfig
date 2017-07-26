@@ -2472,6 +2472,14 @@ config FB_SIMPLE
 	  through device tree, or potentially plain old platform data in the
 	  future.
 
+config FB_PS2
+	tristate "Frame buffer driver for Sony Playstation 2"
+	depends on FB && SONY_PS2
+	default y
+	help
+	  This driver implements support for framebuffer of the Sony
+	  Playstation 2.
+
 source "drivers/video/omap/Kconfig"
 source "drivers/video/omap2/Kconfig"
 source "drivers/video/exynos/Kconfig"

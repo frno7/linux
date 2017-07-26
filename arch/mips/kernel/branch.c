@@ -207,9 +207,12 @@ int __MIPS16e_compute_return_epc(struct pt_regs *regs)
 int __compute_return_epc_for_insn(struct pt_regs *regs,
 				   union mips_instruction insn)
 {
-	unsigned int bit, fcr31, dspcontrol;
+	unsigned int bit, fcr31;
 	long epc = regs->cp0_epc;
 	int ret = 0;
+#ifndef CONFIG_CPU_R5900
+	unsigned int dspcontrol;
+#endif
 
 	switch (insn.i_format.opcode) {
 	/*
@@ -218,10 +221,10 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 	case spec_op:
 		switch (insn.r_format.func) {
 		case jalr_op:
-			regs->regs[insn.r_format.rd] = epc + 8;
+			MIPS_WRITE_REG(regs->regs[insn.r_format.rd]) = epc + 8;
 			/* Fall through */
 		case jr_op:
-			regs->cp0_epc = regs->regs[insn.r_format.rs];
+			regs->cp0_epc = MIPS_READ_REG_L(regs->regs[insn.r_format.rs]);
 			break;
 		}
 		break;
@@ -235,7 +238,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 		switch (insn.i_format.rt) {
 		case bltz_op:
 		case bltzl_op:
-			if ((long)regs->regs[insn.i_format.rs] < 0) {
+			if (MIPS_READ_REG_S(regs->regs[insn.i_format.rs]) < 0) {
 				epc = epc + 4 + (insn.i_format.simmediate << 2);
 				if (insn.i_format.rt == bltzl_op)
 					ret = BRANCH_LIKELY_TAKEN;
@@ -246,7 +249,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 
 		case bgez_op:
 		case bgezl_op:
-			if ((long)regs->regs[insn.i_format.rs] >= 0) {
+			if (MIPS_READ_REG_S(regs->regs[insn.i_format.rs]) >= 0) {
 				epc = epc + 4 + (insn.i_format.simmediate << 2);
 				if (insn.i_format.rt == bgezl_op)
 					ret = BRANCH_LIKELY_TAKEN;
@@ -257,8 +260,8 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 
 		case bltzal_op:
 		case bltzall_op:
-			regs->regs[31] = epc + 8;
-			if ((long)regs->regs[insn.i_format.rs] < 0) {
+			MIPS_WRITE_REG(regs->regs[31]) = epc + 8;
+			if (MIPS_READ_REG_S(regs->regs[insn.i_format.rs]) < 0) {
 				epc = epc + 4 + (insn.i_format.simmediate << 2);
 				if (insn.i_format.rt == bltzall_op)
 					ret = BRANCH_LIKELY_TAKEN;
@@ -269,8 +272,8 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 
 		case bgezal_op:
 		case bgezall_op:
-			regs->regs[31] = epc + 8;
-			if ((long)regs->regs[insn.i_format.rs] >= 0) {
+			MIPS_WRITE_REG(regs->regs[31]) = epc + 8;
+			if (MIPS_READ_REG_S(regs->regs[insn.i_format.rs]) >= 0) {
 				epc = epc + 4 + (insn.i_format.simmediate << 2);
 				if (insn.i_format.rt == bgezall_op)
 					ret = BRANCH_LIKELY_TAKEN;
@@ -280,9 +283,12 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 			break;
 
 		case bposge32_op:
+#ifndef CONFIG_CPU_R5900
 			if (!cpu_has_dsp)
+#endif
 				goto sigill;
 
+#ifndef CONFIG_CPU_R5900
 			dspcontrol = rddsp(0x01);
 
 			if (dspcontrol >= 32) {
@@ -290,6 +296,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 			} else
 				epc += 8;
 			regs->cp0_epc = epc;
+#endif
 			break;
 		}
 		break;
@@ -298,7 +305,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 	 * These are unconditional and in j_format.
 	 */
 	case jal_op:
-		regs->regs[31] = regs->cp0_epc + 8;
+		MIPS_WRITE_REG(regs->regs[31]) = regs->cp0_epc + 8;
 	case j_op:
 		epc += 4;
 		epc >>= 28;
@@ -314,8 +321,8 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 	 */
 	case beq_op:
 	case beql_op:
-		if (regs->regs[insn.i_format.rs] ==
-		    regs->regs[insn.i_format.rt]) {
+		if (MIPS_READ_REG(regs->regs[insn.i_format.rs]) ==
+		    MIPS_READ_REG(regs->regs[insn.i_format.rt])) {
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
 			if (insn.i_format.rt == beql_op)
 				ret = BRANCH_LIKELY_TAKEN;
@@ -326,8 +333,8 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 
 	case bne_op:
 	case bnel_op:
-		if (regs->regs[insn.i_format.rs] !=
-		    regs->regs[insn.i_format.rt]) {
+		if (MIPS_READ_REG(regs->regs[insn.i_format.rs]) !=
+		    MIPS_READ_REG(regs->regs[insn.i_format.rt])) {
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
 			if (insn.i_format.rt == bnel_op)
 				ret = BRANCH_LIKELY_TAKEN;
@@ -339,7 +346,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 	case blez_op: /* not really i_format */
 	case blezl_op:
 		/* rt field assumed to be zero */
-		if ((long)regs->regs[insn.i_format.rs] <= 0) {
+		if (MIPS_READ_REG_S(regs->regs[insn.i_format.rs]) <= 0) {
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
 			if (insn.i_format.rt == bnel_op)
 				ret = BRANCH_LIKELY_TAKEN;
@@ -351,7 +358,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 	case bgtz_op:
 	case bgtzl_op:
 		/* rt field assumed to be zero */
-		if ((long)regs->regs[insn.i_format.rs] > 0) {
+		if (MIPS_READ_REG_S(regs->regs[insn.i_format.rs]) > 0) {
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
 			if (insn.i_format.rt == bnel_op)
 				ret = BRANCH_LIKELY_TAKEN;
@@ -400,7 +407,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 		break;
 #ifdef CONFIG_CPU_CAVIUM_OCTEON
 	case lwc2_op: /* This is bbit0 on Octeon */
-		if ((regs->regs[insn.i_format.rs] & (1ull<<insn.i_format.rt))
+		if ((MIPS_READ_REG(regs->regs[insn.i_format.rs]) & (1ull<<insn.i_format.rt))
 		     == 0)
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
 		else
@@ -408,7 +415,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 		regs->cp0_epc = epc;
 		break;
 	case ldc2_op: /* This is bbit032 on Octeon */
-		if ((regs->regs[insn.i_format.rs] &
+		if ((MIPS_READ_REG(regs->regs[insn.i_format.rs]) &
 		    (1ull<<(insn.i_format.rt+32))) == 0)
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
 		else
@@ -416,14 +423,14 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 		regs->cp0_epc = epc;
 		break;
 	case swc2_op: /* This is bbit1 on Octeon */
-		if (regs->regs[insn.i_format.rs] & (1ull<<insn.i_format.rt))
+		if (MIPS_READ_REG(regs->regs[insn.i_format.rs]) & (1ull<<insn.i_format.rt))
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
 		else
 			epc += 8;
 		regs->cp0_epc = epc;
 		break;
 	case sdc2_op: /* This is bbit132 on Octeon */
-		if (regs->regs[insn.i_format.rs] &
+		if (MIPS_READ_REG(regs->regs[insn.i_format.rs]) &
 		    (1ull<<(insn.i_format.rt+32)))
 			epc = epc + 4 + (insn.i_format.simmediate << 2);
 		else

@@ -171,6 +171,17 @@
 
 #define VIOTAPE_MAJOR		230
 
+/* "PlayStation 2" local devices */
+#define PS2DEV_MAJOR		240	/* PS2 Graphics Synthesizer */
+#define PERFDEV_MAJOR		241	/* EE performance counter device */
+#define TASDEV_MAJOR		242	/* MIPS test and set helper device */
+#define PS2CDVD_MAJOR		243	/* PS2 CD/DVD */
+#define PS2PAD_MAJOR		244	/* PS2 PAD */
+#define PS2MC_MAJOR		245	/* PS2 Memory Card */
+#define PS2RM_MAJOR		247	/* PS2 Remote Controller */
+#define PS2SYSCONF_MAJOR	248	/* PS2 System configration */
+#define AKMEM_MAJOR		249	/* AKMEM */
+
 #define BLOCK_EXT_MAJOR		259
 #define SCSI_OSD_MAJOR		260	/* open-osd's OSD scsi device */
 

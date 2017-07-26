@@ -232,4 +232,8 @@
 /* SH-SCI */
 #define PORT_HSCIF	104
 
+/* PS2 ports */
+#define PORT_PS2_SBIOS 105
+#define PORT_PS2_UART  106
+
 #endif /* _UAPILINUX_SERIAL_CORE_H */

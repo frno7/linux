@@ -1,0 +1,12 @@
+#
+# Sony Playstation 2 configuration
+#
+
+menu "Sony Playstation 2 Memory Card"
+
+config PS2_MCFS
+	tristate "Support for PS2MCFS"
+	default y
+	depends on SONY_PS2 && PS2_MC
+
+endmenu
