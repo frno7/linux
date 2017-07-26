@@ -29,7 +29,11 @@ void __delay(unsigned long loops)
 	"	.set	noreorder				\n"
 	"	.align	3					\n"
 	"1:	bnez	%0, 1b					\n"
+#ifdef CONFIG_CPU_R5900
+	"	subu	%0, 1					\n"
+#else
 	"	 " __stringify(LONG_SUBU) "	%0, %1		\n"
+#endif
 	"	.set	reorder					\n"
 	: "=r" (loops)
 	: GCC_DADDI_IMM_ASM() (1), "0" (loops));

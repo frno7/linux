@@ -445,7 +445,7 @@ int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 		switch (insn.r_format.func) {
 		case jalr_op:
 			if (insn.r_format.rd != 0) {
-				regs->regs[insn.r_format.rd] =
+				MIPS_WRITE_REG(regs->regs[insn.r_format.rd]) =
 					regs->cp0_epc + dec_insn.pc_inc +
 					dec_insn.next_pc_inc;
 			}
@@ -454,7 +454,7 @@ int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 			/* For R6, JR already emulated in jalr_op */
 			if (NO_R6EMU && insn.r_format.func == jr_op)
 				break;
-			*contpc = regs->regs[insn.r_format.rs];
+			*contpc = MIPS_READ_REG(regs->regs[insn.r_format.rs]);
 			return 1;
 		}
 		break;
@@ -466,7 +466,7 @@ int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 			    insn.i_format.rt == bltzall_op))
 				break;
 
-			regs->regs[31] = regs->cp0_epc +
+			MIPS_WRITE_REG(regs->regs[31]) = regs->cp0_epc +
 				dec_insn.pc_inc +
 				dec_insn.next_pc_inc;
 			/* Fall through */
@@ -474,7 +474,7 @@ int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 			if (NO_R6EMU)
 				break;
 		case bltz_op:
-			if ((long)regs->regs[insn.i_format.rs] < 0)
+			if ((long)MIPS_READ_REG(regs->regs[insn.i_format.rs]) < 0)
 				*contpc = regs->cp0_epc +
 					dec_insn.pc_inc +
 					(insn.i_format.simmediate << 2);
@@ -489,7 +489,7 @@ int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 			    insn.i_format.rt == bgezall_op))
 				break;
 
-			regs->regs[31] = regs->cp0_epc +
+			MIPS_WRITE_REG(regs->regs[31]) = regs->cp0_epc +
 				dec_insn.pc_inc +
 				dec_insn.next_pc_inc;
 			/* Fall through */
@@ -497,7 +497,7 @@ int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 			if (NO_R6EMU)
 				break;
 		case bgez_op:
-			if ((long)regs->regs[insn.i_format.rs] >= 0)
+			if ((long)MIPS_READ_REG(regs->regs[insn.i_format.rs]) >= 0)
 				*contpc = regs->cp0_epc +
 					dec_insn.pc_inc +
 					(insn.i_format.simmediate << 2);
@@ -511,7 +511,7 @@ int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 	case jalx_op:
 		set_isa16_mode(bit);
 	case jal_op:
-		regs->regs[31] = regs->cp0_epc +
+		MIPS_WRITE_REG(regs->regs[31]) = regs->cp0_epc +
 			dec_insn.pc_inc +
 			dec_insn.next_pc_inc;
 		/* Fall through */
@@ -527,8 +527,8 @@ int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 		if (NO_R6EMU)
 			break;
 	case beq_op:
-		if (regs->regs[insn.i_format.rs] ==
-		    regs->regs[insn.i_format.rt])
+		if (MIPS_READ_REG(regs->regs[insn.i_format.rs]) ==
+		    MIPS_READ_REG(regs->regs[insn.i_format.rt]))
 			*contpc = regs->cp0_epc +
 				dec_insn.pc_inc +
 				(insn.i_format.simmediate << 2);
@@ -541,8 +541,8 @@ int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 		if (NO_R6EMU)
 			break;
 	case bne_op:
-		if (regs->regs[insn.i_format.rs] !=
-		    regs->regs[insn.i_format.rt])
+		if (MIPS_READ_REG(regs->regs[insn.i_format.rs]) !=
+		    MIPS_READ_REG(regs->regs[insn.i_format.rt]))
 			*contpc = regs->cp0_epc +
 				dec_insn.pc_inc +
 				(insn.i_format.simmediate << 2);
@@ -572,14 +572,14 @@ int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 			if ((insn.i_format.opcode == blez_op) &&
 			    ((!insn.i_format.rs && insn.i_format.rt) ||
 			     (insn.i_format.rs == insn.i_format.rt)))
-				regs->regs[31] = regs->cp0_epc +
+				MIPS_WRITE_REG(regs->regs[31]) = regs->cp0_epc +
 					dec_insn.pc_inc;
 			*contpc = regs->cp0_epc + dec_insn.pc_inc +
 				dec_insn.next_pc_inc;
 
 			return 1;
 		}
-		if ((long)regs->regs[insn.i_format.rs] <= 0)
+		if ((long)MIPS_READ_REG(regs->regs[insn.i_format.rs]) <= 0)
 			*contpc = regs->cp0_epc +
 				dec_insn.pc_inc +
 				(insn.i_format.simmediate << 2);
@@ -609,7 +609,7 @@ int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 			if ((insn.i_format.opcode == blez_op) &&
 			    ((!insn.i_format.rs && insn.i_format.rt) ||
 			     (insn.i_format.rs == insn.i_format.rt)))
-				regs->regs[31] = regs->cp0_epc +
+				MIPS_WRITE_REG(regs->regs[31]) = regs->cp0_epc +
 					dec_insn.pc_inc;
 			*contpc = regs->cp0_epc + dec_insn.pc_inc +
 				dec_insn.next_pc_inc;
@@ -617,7 +617,7 @@ int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 			return 1;
 		}
 
-		if ((long)regs->regs[insn.i_format.rs] > 0)
+		if ((long)MIPS_READ_REG(regs->regs[insn.i_format.rs]) > 0)
 			*contpc = regs->cp0_epc +
 				dec_insn.pc_inc +
 				(insn.i_format.simmediate << 2);
@@ -631,32 +631,32 @@ int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 		if (!cpu_has_mips_r6)
 			break;
 		if (insn.i_format.rt && !insn.i_format.rs)
-			regs->regs[31] = regs->cp0_epc + 4;
+			MIPS_WRITE_REG(regs->regs[31]) = regs->cp0_epc + 4;
 		*contpc = regs->cp0_epc + dec_insn.pc_inc +
 			dec_insn.next_pc_inc;
 
 		return 1;
 #ifdef CONFIG_CPU_CAVIUM_OCTEON
 	case lwc2_op: /* This is bbit0 on Octeon */
-		if ((regs->regs[insn.i_format.rs] & (1ull<<insn.i_format.rt)) == 0)
+		if ((MIPS_READ_REG(regs->regs[insn.i_format.rs]) & (1ull<<insn.i_format.rt)) == 0)
 			*contpc = regs->cp0_epc + 4 + (insn.i_format.simmediate << 2);
 		else
 			*contpc = regs->cp0_epc + 8;
 		return 1;
 	case ldc2_op: /* This is bbit032 on Octeon */
-		if ((regs->regs[insn.i_format.rs] & (1ull<<(insn.i_format.rt + 32))) == 0)
+		if ((MIPS_READ_REG(regs->regs[insn.i_format.rs]) & (1ull<<(insn.i_format.rt + 32))) == 0)
 			*contpc = regs->cp0_epc + 4 + (insn.i_format.simmediate << 2);
 		else
 			*contpc = regs->cp0_epc + 8;
 		return 1;
 	case swc2_op: /* This is bbit1 on Octeon */
-		if (regs->regs[insn.i_format.rs] & (1ull<<insn.i_format.rt))
+		if (MIPS_READ_REG(regs->regs[insn.i_format.rs]) & (1ull<<insn.i_format.rt))
 			*contpc = regs->cp0_epc + 4 + (insn.i_format.simmediate << 2);
 		else
 			*contpc = regs->cp0_epc + 8;
 		return 1;
 	case sdc2_op: /* This is bbit132 on Octeon */
-		if (regs->regs[insn.i_format.rs] & (1ull<<(insn.i_format.rt + 32)))
+		if (MIPS_READ_REG(regs->regs[insn.i_format.rs]) & (1ull<<(insn.i_format.rt + 32)))
 			*contpc = regs->cp0_epc + 4 + (insn.i_format.simmediate << 2);
 		else
 			*contpc = regs->cp0_epc + 8;
@@ -677,7 +677,7 @@ int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 	case balc6_op:
 		if (!cpu_has_mips_r6)
 			break;
-		regs->regs[31] = regs->cp0_epc + 4;
+		MIPS_WRITE_REG(regs->regs[31]) = regs->cp0_epc + 4;
 		*contpc = regs->cp0_epc + dec_insn.pc_inc +
 			dec_insn.next_pc_inc;
 
@@ -693,7 +693,7 @@ int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 		if (!cpu_has_mips_r6)
 			break;
 		if (!insn.i_format.rs)
-			regs->regs[31] = regs->cp0_epc + 4;
+			MIPS_WRITE_REG(regs->regs[31]) = regs->cp0_epc + 4;
 		*contpc = regs->cp0_epc + dec_insn.pc_inc +
 			dec_insn.next_pc_inc;
 
@@ -783,7 +783,7 @@ int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
  */
 static inline int cop1_64bit(struct pt_regs *xcp)
 {
-	if (IS_ENABLED(CONFIG_64BIT) && !IS_ENABLED(CONFIG_MIPS32_O32))
+	if (IS_ENABLED(CONFIG_64BIT) && !IS_ENABLED(CONFIG_MIPS32_O32) && !IS_ENABLED(CONFIG_R5900_128BIT_SUPPORT))
 		return 1;
 	else if (IS_ENABLED(CONFIG_32BIT) &&
 		 !IS_ENABLED(CONFIG_MIPS_O32_FP64_SUPPORT))
@@ -898,7 +898,7 @@ static inline void cop1_cfc(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 	}
 
 	if (MIPSInst_RT(ir))
-		xcp->regs[MIPSInst_RT(ir)] = value;
+		MIPS_WRITE_REG(xcp->regs[MIPSInst_RT(ir)]) = value;
 }
 
 /*
@@ -914,7 +914,7 @@ static inline void cop1_ctc(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 	if (MIPSInst_RT(ir) == 0)
 		value = 0;
 	else
-		value = xcp->regs[MIPSInst_RT(ir)];
+		value = MIPS_READ_REG(xcp->regs[MIPSInst_RT(ir)]);
 
 	switch (MIPSInst_RD(ir)) {
 	case FPCREG_CSR:
@@ -1049,7 +1049,7 @@ emul:
 	MIPS_FPU_EMU_INC_STATS(emulated);
 	switch (MIPSInst_OPCODE(ir)) {
 	case ldc1_op:
-		dva = (u64 __user *) (xcp->regs[MIPSInst_RS(ir)] +
+		dva = (u64 __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_RS(ir)]) +
 				     MIPSInst_SIMM(ir));
 		MIPS_FPU_EMU_INC_STATS(loads);
 
@@ -1067,7 +1067,7 @@ emul:
 		break;
 
 	case sdc1_op:
-		dva = (u64 __user *) (xcp->regs[MIPSInst_RS(ir)] +
+		dva = (u64 __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_RS(ir)]) +
 				      MIPSInst_SIMM(ir));
 		MIPS_FPU_EMU_INC_STATS(stores);
 		DIFROMREG(dval, MIPSInst_RT(ir));
@@ -1084,7 +1084,7 @@ emul:
 		break;
 
 	case lwc1_op:
-		wva = (u32 __user *) (xcp->regs[MIPSInst_RS(ir)] +
+		wva = (u32 __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_RS(ir)]) +
 				      MIPSInst_SIMM(ir));
 		MIPS_FPU_EMU_INC_STATS(loads);
 		if (!access_ok(VERIFY_READ, wva, sizeof(u32))) {
@@ -1101,7 +1101,7 @@ emul:
 		break;
 
 	case swc1_op:
-		wva = (u32 __user *) (xcp->regs[MIPSInst_RS(ir)] +
+		wva = (u32 __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_RS(ir)]) +
 				      MIPSInst_SIMM(ir));
 		MIPS_FPU_EMU_INC_STATS(stores);
 		SIFROMREG(wval, MIPSInst_RT(ir));
@@ -1125,8 +1125,9 @@ emul:
 
 			/* copregister fs -> gpr[rt] */
 			if (MIPSInst_RT(ir) != 0) {
-				DIFROMREG(xcp->regs[MIPSInst_RT(ir)],
-					MIPSInst_RD(ir));
+				MIPS_REG_T tmp;
+				DIFROMREG(tmp, MIPSInst_RD(ir));
+				MIPS_WRITE_REG(xcp->regs[MIPSInst_RT(ir)]) = tmp;
 			}
 			break;
 
@@ -1135,7 +1136,7 @@ emul:
 				return SIGILL;
 
 			/* copregister fs <- rt */
-			DITOREG(xcp->regs[MIPSInst_RT(ir)], MIPSInst_RD(ir));
+			DITOREG(MIPS_READ_REG(xcp->regs[MIPSInst_RT(ir)]), MIPSInst_RD(ir));
 			break;
 
 		case mfhc_op:
@@ -1144,7 +1145,7 @@ emul:
 
 			/* copregister rd -> gpr[rt] */
 			if (MIPSInst_RT(ir) != 0) {
-				SIFROMHREG(xcp->regs[MIPSInst_RT(ir)],
+				SIFROMHREG(MIPS_WRITE_REG(xcp->regs[MIPSInst_RT(ir)]),
 					MIPSInst_RD(ir));
 			}
 			break;
@@ -1154,20 +1155,21 @@ emul:
 				goto sigill;
 
 			/* copregister rd <- gpr[rt] */
-			SITOHREG(xcp->regs[MIPSInst_RT(ir)], MIPSInst_RD(ir));
+			SITOHREG(MIPS_WRITE_REG(xcp->regs[MIPSInst_RT(ir)]), MIPSInst_RD(ir));
 			break;
 
 		case mfc_op:
 			/* copregister rd -> gpr[rt] */
 			if (MIPSInst_RT(ir) != 0) {
-				SIFROMREG(xcp->regs[MIPSInst_RT(ir)],
-					MIPSInst_RD(ir));
+				MIPS_REG_T tmp;
+				SIFROMREG(tmp, MIPSInst_RD(ir));
+				MIPS_WRITE_REG(xcp->regs[MIPSInst_RT(ir)]) = tmp;
 			}
 			break;
 
 		case mtc_op:
 			/* copregister rd <- rt */
-			SITOREG(xcp->regs[MIPSInst_RT(ir)], MIPSInst_RD(ir));
+			SITOREG(MIPS_READ_REG(xcp->regs[MIPSInst_RT(ir)]), MIPSInst_RD(ir));
 			break;
 
 		case cfc_op:
@@ -1370,8 +1372,8 @@ branch_common:
 			return SIGILL;
 		cond = fpucondbit[MIPSInst_RT(ir) >> 2];
 		if (((ctx->fcr31 & cond) != 0) == ((MIPSInst_RT(ir) & 1) != 0))
-			xcp->regs[MIPSInst_RD(ir)] =
-				xcp->regs[MIPSInst_RS(ir)];
+			MIPS_WRITE_REG(xcp->regs[MIPSInst_RD(ir)]) =
+				MIPS_READ_REG(xcp->regs[MIPSInst_RS(ir)]);
 		break;
 	default:
 sigill:
@@ -1475,8 +1477,8 @@ static int fpux_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 
 		switch (MIPSInst_FUNC(ir)) {
 		case lwxc1_op:
-			va = (void __user *) (xcp->regs[MIPSInst_FR(ir)] +
-				xcp->regs[MIPSInst_FT(ir)]);
+			va = (void __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_FR(ir)]) +
+				MIPS_READ_REG_L(xcp->regs[MIPSInst_FT(ir)]));
 
 			MIPS_FPU_EMU_INC_STATS(loads);
 			if (!access_ok(VERIFY_READ, va, sizeof(u32))) {
@@ -1493,8 +1495,8 @@ static int fpux_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			break;
 
 		case swxc1_op:
-			va = (void __user *) (xcp->regs[MIPSInst_FR(ir)] +
-				xcp->regs[MIPSInst_FT(ir)]);
+			va = (void __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_FR(ir)]) +
+				MIPS_READ_REG_L(xcp->regs[MIPSInst_FT(ir)]));
 
 			MIPS_FPU_EMU_INC_STATS(stores);
 
@@ -1572,8 +1574,8 @@ static int fpux_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 
 		switch (MIPSInst_FUNC(ir)) {
 		case ldxc1_op:
-			va = (void __user *) (xcp->regs[MIPSInst_FR(ir)] +
-				xcp->regs[MIPSInst_FT(ir)]);
+			va = (void __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_FR(ir)]) +
+				MIPS_READ_REG_L(xcp->regs[MIPSInst_FT(ir)]));
 
 			MIPS_FPU_EMU_INC_STATS(loads);
 			if (!access_ok(VERIFY_READ, va, sizeof(u64))) {
@@ -1590,8 +1592,8 @@ static int fpux_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			break;
 
 		case sdxc1_op:
-			va = (void __user *) (xcp->regs[MIPSInst_FR(ir)] +
-				xcp->regs[MIPSInst_FT(ir)]);
+			va = (void __user *) (MIPS_READ_REG_L(xcp->regs[MIPSInst_FR(ir)]) +
+				MIPS_READ_REG_L(xcp->regs[MIPSInst_FT(ir)]));
 
 			MIPS_FPU_EMU_INC_STATS(stores);
 			DIFROMREG(val, MIPSInst_FS(ir));
@@ -1735,7 +1737,7 @@ static int fpu_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			if (!cpu_has_mips_4_5_r)
 				return SIGILL;
 
-			if (xcp->regs[MIPSInst_FT(ir)] != 0)
+			if (MIPS_READ_REG(xcp->regs[MIPSInst_FT(ir)]) != 0)
 				return 0;
 			SPFROMREG(rv.s, MIPSInst_FS(ir));
 			break;
@@ -1744,7 +1746,7 @@ static int fpu_emu(struct pt_regs *xcp, struct mips_fpu_struct *ctx,
 			if (!cpu_has_mips_4_5_r)
 				return SIGILL;
 
-			if (xcp->regs[MIPSInst_FT(ir)] == 0)
+			if (MIPS_READ_REG(xcp->regs[MIPSInst_FT(ir)]) == 0)
 				return 0;
 			SPFROMREG(rv.s, MIPSInst_FS(ir));
 			break;
@@ -2065,7 +2067,7 @@ copcsr:
 			if (!cpu_has_mips_4_5_r)
 				return SIGILL;
 
-			if (xcp->regs[MIPSInst_FT(ir)] != 0)
+			if (MIPS_READ_REG(xcp->regs[MIPSInst_FT(ir)]) != 0)
 				return 0;
 			DPFROMREG(rv.d, MIPSInst_FS(ir));
 			break;
@@ -2073,7 +2075,7 @@ copcsr:
 			if (!cpu_has_mips_4_5_r)
 				return SIGILL;
 
-			if (xcp->regs[MIPSInst_FT(ir)] == 0)
+			if (MIPS_READ_REG(xcp->regs[MIPSInst_FT(ir)]) == 0)
 				return 0;
 			DPFROMREG(rv.d, MIPSInst_FS(ir));
 			break;

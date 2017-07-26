@@ -68,4 +68,8 @@
 
 #endif /* !__ASSEMBLY__ */
 
+#ifdef CONFIG_MIPS_N32
+#define COMPAT_UTS_MACHINE	"mips\0\0\0"
+#endif
+
 #endif /* _ASM_UNISTD_H */

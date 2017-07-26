@@ -18,7 +18,7 @@ void build_get_pmde64(u32 **p, struct uasm_label **l, struct uasm_reloc **r,
 		      unsigned int tmp, unsigned int ptr);
 void build_get_pgde32(u32 **p, unsigned int tmp, unsigned int ptr);
 void build_get_ptep(u32 **p, unsigned int tmp, unsigned int ptr);
-void build_update_entries(u32 **p, unsigned int tmp, unsigned int ptep);
+void build_update_entries(u32 **p, struct uasm_label **l, struct uasm_reloc **r, unsigned int tmp, unsigned int ptep);
 void build_tlb_write_entry(u32 **p, struct uasm_label **l,
 			   struct uasm_reloc **r,
 			   enum tlb_write_entry wmode);

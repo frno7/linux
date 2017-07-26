@@ -119,7 +119,7 @@ EXPORT_SYMBOL(csum_partial)
 	 andi	t8, src, 0x2
 
 	lbu	t0, (src)
-	LONG_SUBU	a1, a1, 0x1
+	LONGI_SUBU	a1, a1, 0x1
 #ifdef __MIPSEL__
 	sll	t0, t0, 8
 #endif
@@ -132,7 +132,7 @@ EXPORT_SYMBOL(csum_partial)
 	 sltiu	t8, a1, 56
 
 	lhu	t0, (src)
-	LONG_SUBU	a1, a1, 0x2
+	LONGI_SUBU	a1, a1, 0x2
 	ADDC(sum, t0)
 	sltiu	t8, a1, 56
 	PTR_ADDU	src, src, 0x2
@@ -146,7 +146,7 @@ EXPORT_SYMBOL(csum_partial)
 	 andi	t8, src, 0x8
 
 	LOAD32	t0, 0x00(src)
-	LONG_SUBU	a1, a1, 0x4
+	LONGI_SUBU	a1, a1, 0x4
 	ADDC(sum, t0)
 	PTR_ADDU	src, src, 0x4
 	andi	t8, src, 0x8
@@ -157,12 +157,12 @@ EXPORT_SYMBOL(csum_partial)
 
 #ifdef USE_DOUBLE
 	ld	t0, 0x00(src)
-	LONG_SUBU	a1, a1, 0x8
+	LONGI_SUBU	a1, a1, 0x8
 	ADDC(sum, t0)
 #else
 	lw	t0, 0x00(src)
 	lw	t1, 0x04(src)
-	LONG_SUBU	a1, a1, 0x8
+	LONGI_SUBU	a1, a1, 0x8
 	ADDC(sum, t0)
 	ADDC(sum, t1)
 #endif
@@ -171,7 +171,7 @@ EXPORT_SYMBOL(csum_partial)
 
 .Loword_align:
 	beqz	t8, .Lbegin_movement
-	 LONG_SRL	t8, a1, 0x7
+	 LONGI_SRL	t8, a1, 0x7
 
 #ifdef USE_DOUBLE
 	ld	t0, 0x00(src)
@@ -181,9 +181,9 @@ EXPORT_SYMBOL(csum_partial)
 #else
 	CSUM_BIGCHUNK1(src, 0x00, sum, t0, t1, t3, t4)
 #endif
-	LONG_SUBU	a1, a1, 0x10
+	LONGI_SUBU	a1, a1, 0x10
 	PTR_ADDU	src, src, 0x10
-	LONG_SRL	t8, a1, 0x7
+	LONGI_SRL	t8, a1, 0x7
 
 .Lbegin_movement:
 	beqz	t8, 1f
@@ -194,7 +194,7 @@ EXPORT_SYMBOL(csum_partial)
 	CSUM_BIGCHUNK(src, 0x20, sum, t0, t1, t3, t4)
 	CSUM_BIGCHUNK(src, 0x40, sum, t0, t1, t3, t4)
 	CSUM_BIGCHUNK(src, 0x60, sum, t0, t1, t3, t4)
-	LONG_SUBU	t8, t8, 0x01
+	LONGI_SUBU	t8, t8, 0x01
 	.set	reorder				/* DADDI_WAR */
 	PTR_ADDU	src, src, 0x80
 	bnez	t8, .Lmove_128bytes
@@ -221,11 +221,11 @@ EXPORT_SYMBOL(csum_partial)
 .Ldo_end_words:
 	beqz	t8, .Lsmall_csumcpy
 	 andi	t2, a1, 0x3
-	LONG_SRL	t8, t8, 0x2
+	LONGI_SRL	t8, t8, 0x2
 
 .Lend_words:
 	LOAD32	t0, (src)
-	LONG_SUBU	t8, t8, 0x1
+	LONGI_SUBU	t8, t8, 0x1
 	ADDC(sum, t0)
 	.set	reorder				/* DADDI_WAR */
 	PTR_ADDU	src, src, 0x4
@@ -357,7 +357,10 @@ EXPORT_SYMBOL(csum_partial)
  * addr    : Address
  * handler : Exception handler
  */
+/* FIXME: #ifdef CONFIG_CPU_R5900 */
 #define EXC(insn, type, reg, addr, handler)	\
+	/* In an error exception handler the user space could be uncached. */ \
+	sync.l;						\
 	.if \mode == LEGACY_MODE;		\
 9:		insn reg, addr;			\
 		.section __ex_table,"a";	\

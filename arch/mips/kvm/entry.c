@@ -398,8 +398,8 @@ static void *kvm_mips_build_enter_guest(void *addr)
 void *kvm_mips_build_tlb_refill_exception(void *addr, void *handler)
 {
 	u32 *p = addr;
-	struct uasm_label labels[2];
-	struct uasm_reloc relocs[2];
+	struct uasm_label labels[8];
+	struct uasm_reloc relocs[8];
 	struct uasm_label *l = labels;
 	struct uasm_reloc *r = relocs;
 
@@ -441,7 +441,7 @@ void *kvm_mips_build_tlb_refill_exception(void *addr, void *handler)
 	/* we don't support huge pages yet */
 
 	build_get_ptep(&p, K0, K1);
-	build_update_entries(&p, K0, K1);
+	build_update_entries(&p, &l, &r, K0, K1);
 	build_tlb_write_entry(&p, &l, &r, tlb_random);
 
 	preempt_enable();
