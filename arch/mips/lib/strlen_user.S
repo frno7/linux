@@ -3,62 +3,60 @@
  * License.  See the file "COPYING" in the main directory of this archive
  * for more details.
  *
- * Copyright (C) 1996, 1998, 1999, 2004 by Ralf Baechle
- * Copyright (C) 1999 Silicon Graphics, Inc.
- * Copyright (C) 2011 MIPS Technologies, Inc.
+ * Copyright (c) 1996, 1998, 1999, 2004 by Ralf Baechle
+ * Copyright (c) 1999 Silicon Graphics, Inc.
  */
 #include <asm/asm.h>
 #include <asm/asm-offsets.h>
 #include <asm/regdef.h>
 
+#ifdef CONFIG_CPU_R5900
+#define EX(insn,reg,addr,handler)			\
+	/* In an error exception handler the user space could be uncached. */ \
+	sync.l;						\
+9:	insn	reg, addr;				\
+	.section __ex_table,"a";			\
+	PTR	9b, handler;				\
+	.previous
+#else
 #define EX(insn,reg,addr,handler)			\
 9:	insn	reg, addr;				\
 	.section __ex_table,"a";			\
 	PTR	9b, handler;				\
 	.previous
+#endif
 
 /*
  * Return the size of a string (including the ending 0)
  *
  * Return 0 for error
  */
-	.macro __BUILD_STRLEN_ASM func
-LEAF(__strlen_\func\()_asm)
-	LONG_L		v0, TI_ADDR_LIMIT($28)	# pointer ok?
+LEAF(__strlen_kernel_asm)
+	LONGI_L		v0, TI_ADDR_LIMIT($28)	# pointer ok?
 	and		v0, a0
-	bnez		v0, .Lfault\@
+	bnez		v0, .Lfault
 
-FEXPORT(__strlen_\func\()_nocheck_asm)
+FEXPORT(__strlen_kernel_nocheck_asm)
 	move		v0, a0
-.ifeqs "\func", "kernel"
-1:	EX(lbu, v1, (v0), .Lfault\@)
-.else
-1:	EX(lbue, v1, (v0), .Lfault\@)
-.endif
+1:	EX(lb, t0, (v0), .Lfault)
 	PTR_ADDIU	v0, 1
-	bnez		v1, 1b
+#ifdef CONFIG_CPU_R5900
+	/* no short loops. */
+	nop
+	nop
+	nop
+	nop
+#endif
+	bnez		t0, 1b
 	PTR_SUBU	v0, a0
 	jr		ra
-	END(__strlen_\func\()_asm)
+	END(__strlen_kernel_asm)
 
-.Lfault\@:	move		v0, zero
+.Lfault:	move		v0, zero
 	jr		ra
-	.endm
 
-#ifndef CONFIG_EVA
 	/* Set aliases */
 	.global __strlen_user_asm
 	.global __strlen_user_nocheck_asm
 	.set __strlen_user_asm, __strlen_kernel_asm
 	.set __strlen_user_nocheck_asm, __strlen_kernel_nocheck_asm
-#endif
-
-__BUILD_STRLEN_ASM kernel
-
-#ifdef CONFIG_EVA
-
-	.set push
-	.set eva
-__BUILD_STRLEN_ASM user
-	.set pop
-#endif

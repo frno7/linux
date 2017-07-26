@@ -35,6 +35,7 @@
 modules.builtin
 Module.symvers
 *.dwo
+*.irx
 
 #
 # Top-level generic files

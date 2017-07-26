@@ -244,4 +244,8 @@
 /* SC16IS74xx */
 #define PORT_SC16IS7XX   108
 
+/* PS2 ports */
+#define PORT_PS2_SBIOS 109
+#define PORT_PS2_UART  110
+
 #endif /* _UAPILINUX_SERIAL_CORE_H */
