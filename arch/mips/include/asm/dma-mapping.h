@@ -32,4 +32,40 @@ static inline void dma_mark_clean(void *addr, size_t size) {}
 extern void dma_cache_sync(struct device *dev, void *vaddr, size_t size,
 	       enum dma_data_direction direction);
 
+#define dma_alloc_coherent(d,s,h,f)	dma_alloc_attrs(d,s,h,f,NULL)
+
+static inline void *dma_alloc_attrs(struct device *dev, size_t size,
+				    dma_addr_t *dma_handle, gfp_t gfp,
+				    struct dma_attrs *attrs)
+{
+	void *ret;
+	struct dma_map_ops *ops = get_dma_ops(dev);
+
+	ret = ops->alloc(dev, size, dma_handle, gfp, attrs);
+
+	debug_dma_alloc_coherent(dev, size, *dma_handle, ret);
+
+	return ret;
+}
+
+#define dma_free_coherent(d,s,c,h) dma_free_attrs(d,s,c,h,NULL)
+
+static inline void dma_free_attrs(struct device *dev, size_t size,
+				  void *vaddr, dma_addr_t dma_handle,
+				  struct dma_attrs *attrs)
+{
+	struct dma_map_ops *ops = get_dma_ops(dev);
+
+	ops->free(dev, size, vaddr, dma_handle, attrs);
+
+	debug_dma_free_coherent(dev, size, vaddr, dma_handle);
+}
+
+
+void *dma_alloc_noncoherent(struct device *dev, size_t size,
+			   dma_addr_t *dma_handle, gfp_t flag);
+
+void dma_free_noncoherent(struct device *dev, size_t size,
+			 void *vaddr, dma_addr_t dma_handle);
+
 #endif /* _ASM_DMA_MAPPING_H */
