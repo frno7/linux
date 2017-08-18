@@ -8,6 +8,9 @@
  * Copyright (C) 1999, 2000 Silicon Graphics, Inc.
  * Copyright (C) 2014, Imagination Technologies Ltd.
  */
+
+#define __ASM_GENERIC_UCONTEXT_H
+
 #include <linux/cache.h>
 #include <linux/context_tracking.h>
 #include <linux/irqflags.h>
@@ -26,6 +29,8 @@
 #include <linux/syscalls.h>
 #include <linux/uaccess.h>
 #include <linux/tracehook.h>
+
+#include <uapi/asm/ucontext.h>
 
 #include <asm/abi.h>
 #include <asm/asm.h>
