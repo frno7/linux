@@ -794,8 +794,6 @@ struct mips_abi mips_abi = {
 #ifdef CONFIG_MIPS_N32
 struct mips_abi mips_abi_n32 = {
 	.setup_rt_frame	= setup_rt_frame,
-	.rt_signal_return_offset =
-		offsetof(struct mips_vdso, n32_rt_signal_trampoline),
 	.restart	= __NR_N32_restart_syscall
 };
 #endif

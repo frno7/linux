@@ -19,6 +19,7 @@
 #include <asm/cpu-info.h>
 #include <asm/mipsregs.h>
 #include <asm/prefetch.h>
+#include <uapi/asm/ptrace.h>
 
 /*
  * Return current * instruction pointer ("program counter").
