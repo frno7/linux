@@ -81,20 +81,18 @@ asmlinkage int sysn32_readahead(nabi_no_regargs struct pt_regs regs)
 static long long n32_lseek(unsigned int fd, loff_t offset, unsigned int origin)
 {
 	loff_t retval;
-	struct file * file;
-	int fput_needed;
+	struct fd f = fdget(fd);
 
 	retval = -EBADF;
-	file = fget_light(fd, &fput_needed);
-	if (!file)
+	if (!f.file)
 		goto bad;
 
 	retval = -EINVAL;
 	if (origin <= SEEK_MAX) {
-		loff_t res = vfs_llseek(file, offset, origin);
+		loff_t res = vfs_llseek(f.file, offset, origin);
 		retval = res;
 	}
-	fput_light(file, fput_needed);
+	fdput(f);
 bad:
 	return retval;
 }
