@@ -443,12 +443,12 @@ static int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 	case spec_op:
 		switch (insn.r_format.func) {
 		case jalr_op:
-			regs->regs[insn.r_format.rd] =
+			MIPS_WRITE_REG(regs->regs[insn.r_format.rd]) =
 				regs->cp0_epc + dec_insn.pc_inc +
 				dec_insn.next_pc_inc;
 			/* Fall through */
 		case jr_op:
-			*contpc = regs->regs[insn.r_format.rs];
+			*contpc = MIPS_READ_REG(regs->regs[insn.r_format.rs]);
 			return 1;
 		}
 		break;
@@ -456,13 +456,13 @@ static int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 		switch (insn.i_format.rt) {
 		case bltzal_op:
 		case bltzall_op:
-			regs->regs[31] = regs->cp0_epc +
+			MIPS_WRITE_REG(regs->regs[31]) = regs->cp0_epc +
 				dec_insn.pc_inc +
 				dec_insn.next_pc_inc;
 			/* Fall through */
 		case bltz_op:
 		case bltzl_op:
-			if ((long)regs->regs[insn.i_format.rs] < 0)
+			if ((long)MIPS_READ_REG(regs->regs[insn.i_format.rs]) < 0)
 				*contpc = regs->cp0_epc +
 					dec_insn.pc_inc +
 					(insn.i_format.simmediate << 2);
@@ -473,13 +473,13 @@ static int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 			return 1;
 		case bgezal_op:
 		case bgezall_op:
-			regs->regs[31] = regs->cp0_epc +
+			MIPS_WRITE_REG(regs->regs[31]) = regs->cp0_epc +
 				dec_insn.pc_inc +
 				dec_insn.next_pc_inc;
 			/* Fall through */
 		case bgez_op:
 		case bgezl_op:
-			if ((long)regs->regs[insn.i_format.rs] >= 0)
+			if ((long)MIPS_READ_REG(regs->regs[insn.i_format.rs]) >= 0)
 				*contpc = regs->cp0_epc +
 					dec_insn.pc_inc +
 					(insn.i_format.simmediate << 2);
@@ -493,7 +493,7 @@ static int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 	case jalx_op:
 		set_isa16_mode(bit);
 	case jal_op:
-		regs->regs[31] = regs->cp0_epc +
+		MIPS_WRITE_REG(regs->regs[31]) = regs->cp0_epc +
 			dec_insn.pc_inc +
 			dec_insn.next_pc_inc;
 		/* Fall through */
@@ -507,8 +507,8 @@ static int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 		return 1;
 	case beq_op:
 	case beql_op:
-		if (regs->regs[insn.i_format.rs] ==
-		    regs->regs[insn.i_format.rt])
+		if (MIPS_READ_REG(regs->regs[insn.i_format.rs]) ==
+		    MIPS_READ_REG(regs->regs[insn.i_format.rt]))
 			*contpc = regs->cp0_epc +
 				dec_insn.pc_inc +
 				(insn.i_format.simmediate << 2);
@@ -519,8 +519,8 @@ static int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 		return 1;
 	case bne_op:
 	case bnel_op:
-		if (regs->regs[insn.i_format.rs] !=
-		    regs->regs[insn.i_format.rt])
+		if (MIPS_READ_REG(regs->regs[insn.i_format.rs]) !=
+		    MIPS_READ_REG(regs->regs[insn.i_format.rt]))
 			*contpc = regs->cp0_epc +
 				dec_insn.pc_inc +
 				(insn.i_format.simmediate << 2);
@@ -531,7 +531,7 @@ static int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 		return 1;
 	case blez_op:
 	case blezl_op:
-		if ((long)regs->regs[insn.i_format.rs] <= 0)
+		if ((long)MIPS_READ_REG(regs->regs[insn.i_format.rs]) <= 0)
 			*contpc = regs->cp0_epc +
 				dec_insn.pc_inc +
 				(insn.i_format.simmediate << 2);
@@ -542,7 +542,7 @@ static int isBranchInstr(struct pt_regs *regs, struct mm_decoded_insn dec_insn,
 		return 1;
 	case bgtz_op:
 	case bgtzl_op:
-		if ((long)regs->regs[insn.i_format.rs] > 0)
+		if ((long)MIPS_READ_REG(regs->regs[insn.i_format.rs]) > 0)
 			*contpc = regs->cp0_epc +
 				dec_insn.pc_inc +
 				(insn.i_format.simmediate << 2);
@@ -875,7 +875,7 @@ emul:
 
 			/* copregister rd -> gpr[rt] */
 			if (MIPSInst_RT(ir) != 0) {
-				SIFROMHREG(xcp->regs[MIPSInst_RT(ir)],
+				SIFROMHREG(MIPS_WRITE_REG(xcp->regs[MIPSInst_RT(ir)]),
 					MIPSInst_RD(ir));
 			}
 			break;
@@ -885,7 +885,7 @@ emul:
 				goto sigill;
 
 			/* copregister rd <- gpr[rt] */
-			SITOHREG(xcp->regs[MIPSInst_RT(ir)], MIPSInst_RD(ir));
+			SITOHREG(MIPS_WRITE_REG(xcp->regs[MIPSInst_RT(ir)]), MIPSInst_RD(ir));
 			break;
 
 		case mfc_op:
