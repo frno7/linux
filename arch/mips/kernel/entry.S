@@ -90,7 +90,7 @@ FEXPORT(syscall_exit)
 	and	t0, a2, t0
 	bnez	t0, syscall_exit_work
 
-restore_all:				# restore full frame
+EXPORT(restore_all)			# restore full frame
 	.set	noat
 	RESTORE_TEMP
 	RESTORE_AT
