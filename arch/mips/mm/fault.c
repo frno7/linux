@@ -219,8 +219,8 @@ bad_area_nosemaphore:
 				(unsigned long) regs->cp0_epc);
 			print_vma_addr(" ", regs->cp0_epc);
 			pr_info("ra  = %0*lx in", field,
-				(unsigned long) regs->regs[31]);
-			print_vma_addr(" ", regs->regs[31]);
+				(unsigned long) MIPS_READ_REG_L(regs->regs[31]));
+			print_vma_addr(" ", MIPS_READ_REG(regs->regs[31]));
 			pr_info("\n");
 		}
 		info.si_signo = SIGSEGV;
