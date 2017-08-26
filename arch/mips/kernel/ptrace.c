@@ -74,7 +74,7 @@ int ptrace_getregs(struct task_struct *child, struct user_pt_regs __user *data)
 
 	/* TBD: Add 128 bit support. */
 	for (i = 0; i < 32; i++)
-		__put_user((long)regs->regs[i], (__s64 __user *)&data->regs[i]);
+		__put_user((long)MIPS_WRITE_REG(regs->regs[i]), (__s64 __user *)&data->regs[i]);
 	__put_user((long)regs->lo, (__s64 __user *)&data->lo);
 	__put_user((long)regs->hi, (__s64 __user *)&data->hi);
 	__put_user((long)regs->cp0_epc, (__s64 __user *)&data->cp0_epc);
@@ -101,7 +101,7 @@ int ptrace_setregs(struct task_struct *child, struct user_pt_regs __user *data)
 	regs = task_pt_regs(child);
 
 	for (i = 0; i < 32; i++)
-		__get_user(regs->regs[i], (__s64 __user *)&data->regs[i]);
+		__get_user(MIPS_WRITE_REG(regs->regs[i]), (__s64 __user *)&data->regs[i]);
 	__get_user(regs->lo, (__s64 __user *)&data->lo);
 	__get_user(regs->hi, (__s64 __user *)&data->hi);
 	__get_user(regs->cp0_epc, (__s64 __user *)&data->cp0_epc);
@@ -263,7 +263,7 @@ static int gpr32_get(struct task_struct *target,
 		if (i == MIPS32_EF_R26 || i == MIPS32_EF_R27)
 			continue;
 
-		uregs[i] = regs->regs[i - MIPS32_EF_R0];
+		uregs[i] = MIPS_READ_REG(regs->regs[i - MIPS32_EF_R0]);
 	}
 
 	uregs[MIPS32_EF_LO] = regs->lo;
@@ -307,7 +307,7 @@ static int gpr32_set(struct task_struct *target,
 		case MIPS32_EF_R1 ... MIPS32_EF_R25:
 			/* k0/k1 are ignored. */
 		case MIPS32_EF_R28 ... MIPS32_EF_R31:
-			regs->regs[i - MIPS32_EF_R0] = (s32)uregs[i];
+			MIPS_WRITE_REG(regs->regs[i - MIPS32_EF_R0]) = (s32)uregs[i];
 			break;
 		case MIPS32_EF_LO:
 			regs->lo = (s32)uregs[i];
@@ -793,7 +793,7 @@ asmlinkage long syscall_trace_enter(struct pt_regs *regs, long syscall)
 		ret = -1;
 
 	if (unlikely(test_thread_flag(TIF_SYSCALL_TRACEPOINT)))
-		trace_sys_enter(regs, regs->regs[2]);
+		trace_sys_enter(regs, MIPS_READ_REG(regs->regs[2]));
 
 	audit_syscall_entry(syscall,
 			MIPS_READ_REG(regs->regs[4]),
@@ -819,7 +819,7 @@ asmlinkage void syscall_trace_leave(struct pt_regs *regs)
 	audit_syscall_exit(regs);
 
 	if (unlikely(test_thread_flag(TIF_SYSCALL_TRACEPOINT)))
-		trace_sys_exit(regs, regs->regs[2]);
+		trace_sys_exit(regs, MIPS_READ_REG(regs->regs[2]));
 
 	if (test_thread_flag(TIF_SYSCALL_TRACE))
 		tracehook_report_syscall_exit(regs, 0);
