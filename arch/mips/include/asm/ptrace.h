@@ -32,12 +32,22 @@ struct pt_regs {
 #endif
 
 	/* Saved main processor registers. */
+#ifdef CONFIG_R5900_128BIT_SUPPORT
+	/* Support for 128 bit. */
+	r5900_reg_t regs[32];
+#else
 	unsigned long regs[32];
+#endif
 
 	/* Saved special registers. */
 	unsigned long cp0_status;
+#ifdef CONFIG_CPU_R5900
+	unsigned long long hi;
+	unsigned long long lo;
+#else
 	unsigned long hi;
 	unsigned long lo;
+#endif
 #ifdef CONFIG_CPU_HAS_SMARTMIPS
 	unsigned long acx;
 #endif
@@ -53,7 +63,7 @@ struct pt_regs {
 
 static inline unsigned long kernel_stack_pointer(struct pt_regs *regs)
 {
-	return regs->regs[31];
+	return MIPS_READ_REG(regs->regs[31]);
 }
 
 /*

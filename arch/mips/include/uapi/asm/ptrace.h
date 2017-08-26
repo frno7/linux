@@ -30,7 +30,7 @@
 #define MIPS_READ_REG(reg) ((reg).lo)
 #define MIPS_READ_REG_HIGH(reg) ((reg).hi)
 #define MIPS_READ_REG_S(reg) ((long long)(reg).lo)
-#define MIPS_WRITE_REG(reg) ; ((reg).lo)
+#define MIPS_WRITE_REG(reg) ((reg).lo)
 #define MIPS_REG_T unsigned long long
 
 typedef struct __attribute__((aligned(16))) {
