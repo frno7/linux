@@ -468,7 +468,7 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 	mm_segment_t seg;
 #endif
 	origpc = (unsigned long)pc;
-	orig31 = regs->regs[31];
+	orig31 = MIPS_READ_REG(regs->regs[31]);
 
 	perf_sw_event(PERF_COUNT_SW_EMULATION_FAULTS, 1, regs, 0);
 
@@ -779,7 +779,7 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 fault:
 	/* roll back jump/branch */
 	regs->cp0_epc = origpc;
-	regs->regs[31] = orig31;
+	MIPS_WRITE_REG(regs->regs[31]) = orig31;
 	/* Did we have an exception handler installed? */
 	if (fixup_exception(regs))
 		return;
@@ -824,7 +824,7 @@ static void emulate_load_store_microMIPS(struct pt_regs *regs,
 	void __user *fault_addr = NULL;
 
 	origpc = regs->cp0_epc;
-	orig31 = regs->regs[31];
+	orig31 = MIPS_READ_REG(regs->regs[31]);
 
 	mminsn.micro_mips_mode = 1;
 
@@ -891,12 +891,12 @@ static void emulate_load_store_microMIPS(struct pt_regs *regs,
 			LoadW(addr, value, res);
 			if (res)
 				goto fault;
-			regs->regs[reg] = value;
+			MIPS_WRITE_REG(regs->regs[reg]) = value;
 			addr += 4;
 			LoadW(addr, value, res);
 			if (res)
 				goto fault;
-			regs->regs[reg + 1] = value;
+			MIPS_WRITE_REG(regs->regs[reg + 1]) = value;
 			goto success;
 
 		case mm_swp_func:
@@ -907,12 +907,12 @@ static void emulate_load_store_microMIPS(struct pt_regs *regs,
 			if (!access_ok(VERIFY_WRITE, addr, 8))
 				goto sigbus;
 
-			value = regs->regs[reg];
+			value = MIPS_READ_REG(regs->regs[reg]);
 			StoreW(addr, value, res);
 			if (res)
 				goto fault;
 			addr += 4;
-			value = regs->regs[reg + 1];
+			value = MIPS_READ_REG(regs->regs[reg + 1]);
 			StoreW(addr, value, res);
 			if (res)
 				goto fault;
@@ -930,12 +930,12 @@ static void emulate_load_store_microMIPS(struct pt_regs *regs,
 			LoadDW(addr, value, res);
 			if (res)
 				goto fault;
-			regs->regs[reg] = value;
+			MIPS_WRITE_REG(regs->regs[reg]) = value;
 			addr += 8;
 			LoadDW(addr, value, res);
 			if (res)
 				goto fault;
-			regs->regs[reg + 1] = value;
+			MIPS_WRITE_REG(regs->regs[reg + 1]) = value;
 			goto success;
 #endif /* CONFIG_64BIT */
 
@@ -950,12 +950,12 @@ static void emulate_load_store_microMIPS(struct pt_regs *regs,
 			if (!access_ok(VERIFY_WRITE, addr, 16))
 				goto sigbus;
 
-			value = regs->regs[reg];
+			value = MIPS_READ_REG(regs->regs[reg]);
 			StoreDW(addr, value, res);
 			if (res)
 				goto fault;
 			addr += 8;
-			value = regs->regs[reg + 1];
+			value = MIPS_READ_REG(regs->regs[reg + 1]);
 			StoreDW(addr, value, res);
 			if (res)
 				goto fault;
@@ -984,20 +984,20 @@ static void emulate_load_store_microMIPS(struct pt_regs *regs,
 				if (res)
 					goto fault;
 				addr += 4;
-				regs->regs[i] = value;
+				MIPS_WRITE_REG(regs->regs[i]) = value;
 			}
 			if ((reg & 0xf) == 9) {
 				LoadW(addr, value, res);
 				if (res)
 					goto fault;
 				addr += 4;
-				regs->regs[30] = value;
+				MIPS_WRITE_REG(regs->regs[30]) = value;
 			}
 			if (reg & 0x10) {
 				LoadW(addr, value, res);
 				if (res)
 					goto fault;
-				regs->regs[31] = value;
+				MIPS_WRITE_REG(regs->regs[31]) = value;
 			}
 			goto success;
 
@@ -1017,21 +1017,21 @@ static void emulate_load_store_microMIPS(struct pt_regs *regs,
 			if (rvar == 9)
 				rvar = 8;
 			for (i = 16; rvar; rvar--, i++) {
-				value = regs->regs[i];
+				value = MIPS_READ_REG(regs->regs[i]);
 				StoreW(addr, value, res);
 				if (res)
 					goto fault;
 				addr += 4;
 			}
 			if ((reg & 0xf) == 9) {
-				value = regs->regs[30];
+				value = MIPS_READ_REG(regs->regs[30]);
 				StoreW(addr, value, res);
 				if (res)
 					goto fault;
 				addr += 4;
 			}
 			if (reg & 0x10) {
-				value = regs->regs[31];
+				value = MIPS_READ_REG(regs->regs[31]);
 				StoreW(addr, value, res);
 				if (res)
 					goto fault;
@@ -1060,20 +1060,20 @@ static void emulate_load_store_microMIPS(struct pt_regs *regs,
 				if (res)
 					goto fault;
 				addr += 4;
-				regs->regs[i] = value;
+				MIPS_WRITE_REG(regs->regs[i]) = value;
 			}
 			if ((reg & 0xf) == 9) {
 				LoadDW(addr, value, res);
 				if (res)
 					goto fault;
 				addr += 8;
-				regs->regs[30] = value;
+				MIPS_WRITE_REG(regs->regs[30]) = value;
 			}
 			if (reg & 0x10) {
 				LoadDW(addr, value, res);
 				if (res)
 					goto fault;
-				regs->regs[31] = value;
+				MIPS_WRITE_REG(regs->regs[31]) = value;
 			}
 			goto success;
 #endif /* CONFIG_64BIT */
@@ -1098,21 +1098,21 @@ static void emulate_load_store_microMIPS(struct pt_regs *regs,
 				rvar = 8;
 
 			for (i = 16; rvar; rvar--, i++) {
-				value = regs->regs[i];
+				value = MIPS_READ_REG(regs->regs[i]);
 				StoreDW(addr, value, res);
 				if (res)
 					goto fault;
 				addr += 8;
 			}
 			if ((reg & 0xf) == 9) {
-				value = regs->regs[30];
+				value = MIPS_READ_REG(regs->regs[30]);
 				StoreDW(addr, value, res);
 				if (res)
 					goto fault;
 				addr += 8;
 			}
 			if (reg & 0x10) {
-				value = regs->regs[31];
+				value = MIPS_READ_REG(regs->regs[31]);
 				StoreDW(addr, value, res);
 				if (res)
 					goto fault;
@@ -1155,7 +1155,7 @@ static void emulate_load_store_microMIPS(struct pt_regs *regs,
 fpu_emul:
 		/* roll back jump/branch */
 		regs->cp0_epc = origpc;
-		regs->regs[31] = orig31;
+		MIPS_WRITE_REG(regs->regs[31]) = orig31;
 
 		die_if_kernel("Unaligned FP access in kernel code", regs);
 		BUG_ON(!used_math());
@@ -1214,12 +1214,12 @@ fpu_emul:
 				if (res)
 					goto fault;
 				addr += 4;
-				regs->regs[i] = value;
+				MIPS_WRITE_REG(regs->regs[i]) = value;
 			}
 			LoadW(addr, value, res);
 			if (res)
 				goto fault;
-			regs->regs[31] = value;
+			MIPS_WRITE_REG(regs->regs[31]) = value;
 
 			goto success;
 
@@ -1230,13 +1230,13 @@ fpu_emul:
 				goto sigbus;
 
 			for (i = 16; rvar; rvar--, i++) {
-				value = regs->regs[i];
+				value = MIPS_READ_REG(regs->regs[i]);
 				StoreW(addr, value, res);
 				if (res)
 					goto fault;
 				addr += 4;
 			}
-			value = regs->regs[31];
+			value = MIPS_READ_REG(regs->regs[31]);
 			StoreW(addr, value, res);
 			if (res)
 				goto fault;
@@ -1286,7 +1286,7 @@ loadHW:
 	LoadHW(addr, value, res);
 	if (res)
 		goto fault;
-	regs->regs[reg] = value;
+	MIPS_WRITE_REG(regs->regs[reg]) = value;
 	goto success;
 
 loadHWU:
@@ -1296,7 +1296,7 @@ loadHWU:
 	LoadHWU(addr, value, res);
 	if (res)
 		goto fault;
-	regs->regs[reg] = value;
+	MIPS_WRITE_REG(regs->regs[reg]) = value;
 	goto success;
 
 loadW:
@@ -1306,7 +1306,7 @@ loadW:
 	LoadW(addr, value, res);
 	if (res)
 		goto fault;
-	regs->regs[reg] = value;
+	MIPS_WRITE_REG(regs->regs[reg]) = value;
 	goto success;
 
 loadWU:
@@ -1324,7 +1324,7 @@ loadWU:
 	LoadWU(addr, value, res);
 	if (res)
 		goto fault;
-	regs->regs[reg] = value;
+	MIPS_WRITE_REG(regs->regs[reg]) = value;
 	goto success;
 #endif /* CONFIG_64BIT */
 
@@ -1346,7 +1346,7 @@ loadDW:
 	LoadDW(addr, value, res);
 	if (res)
 		goto fault;
-	regs->regs[reg] = value;
+	MIPS_WRITE_REG(regs->regs[reg]) = value;
 	goto success;
 #endif /* CONFIG_64BIT */
 
@@ -1357,7 +1357,7 @@ storeHW:
 	if (!access_ok(VERIFY_WRITE, addr, 2))
 		goto sigbus;
 
-	value = regs->regs[reg];
+	value = MIPS_READ_REG(regs->regs[reg]);
 	StoreHW(addr, value, res);
 	if (res)
 		goto fault;
@@ -1367,7 +1367,7 @@ storeW:
 	if (!access_ok(VERIFY_WRITE, addr, 4))
 		goto sigbus;
 
-	value = regs->regs[reg];
+	value = MIPS_READ_REG(regs->regs[reg]);
 	StoreW(addr, value, res);
 	if (res)
 		goto fault;
@@ -1385,7 +1385,7 @@ storeDW:
 	if (!access_ok(VERIFY_WRITE, addr, 8))
 		goto sigbus;
 
-	value = regs->regs[reg];
+	value = MIPS_READ_REG(regs->regs[reg]);
 	StoreDW(addr, value, res);
 	if (res)
 		goto fault;
@@ -1406,7 +1406,7 @@ success:
 fault:
 	/* roll back jump/branch */
 	regs->cp0_epc = origpc;
-	regs->regs[31] = orig31;
+	MIPS_WRITE_REG(regs->regs[31]) = orig31;
 	/* Did we have an exception handler installed? */
 	if (fixup_exception(regs))
 		return;
@@ -1439,7 +1439,7 @@ static void emulate_load_store_MIPS16e(struct pt_regs *regs, void __user * addr)
 	union mips16e_instruction mips16inst, oldinst;
 
 	origpc = regs->cp0_epc;
-	orig31 = regs->regs[31];
+	orig31 = MIPS_READ_REG(regs->regs[31]);
 	pc16 = (unsigned short __user *)msk_isa16_mode(origpc);
 	/*
 	 * This load never faults.
@@ -1512,7 +1512,7 @@ static void emulate_load_store_MIPS16e(struct pt_regs *regs, void __user * addr)
 		if (res)
 			goto fault;
 		MIPS16e_compute_return_epc(regs, &oldinst);
-		regs->regs[reg] = value;
+		MIPS_WRITE_REG(regs->regs[reg]) = value;
 		break;
 
 	case MIPS16e_lhu_op:
@@ -1523,7 +1523,7 @@ static void emulate_load_store_MIPS16e(struct pt_regs *regs, void __user * addr)
 		if (res)
 			goto fault;
 		MIPS16e_compute_return_epc(regs, &oldinst);
-		regs->regs[reg] = value;
+		MIPS_WRITE_REG(regs->regs[reg]) = value;
 		break;
 
 	case MIPS16e_lw_op:
@@ -1536,7 +1536,7 @@ static void emulate_load_store_MIPS16e(struct pt_regs *regs, void __user * addr)
 		if (res)
 			goto fault;
 		MIPS16e_compute_return_epc(regs, &oldinst);
-		regs->regs[reg] = value;
+		MIPS_WRITE_REG(regs->regs[reg]) = value;
 		break;
 
 	case MIPS16e_lwu_op:
@@ -1555,7 +1555,7 @@ static void emulate_load_store_MIPS16e(struct pt_regs *regs, void __user * addr)
 		if (res)
 			goto fault;
 		MIPS16e_compute_return_epc(regs, &oldinst);
-		regs->regs[reg] = value;
+		MIPS_WRITE_REG(regs->regs[reg]) = value;
 		break;
 #endif /* CONFIG_64BIT */
 
@@ -1579,7 +1579,7 @@ loadDW:
 		if (res)
 			goto fault;
 		MIPS16e_compute_return_epc(regs, &oldinst);
-		regs->regs[reg] = value;
+		MIPS_WRITE_REG(regs->regs[reg]) = value;
 		break;
 #endif /* CONFIG_64BIT */
 
@@ -1591,7 +1591,7 @@ loadDW:
 			goto sigbus;
 
 		MIPS16e_compute_return_epc(regs, &oldinst);
-		value = regs->regs[reg];
+		value = MIPS_READ_REG(regs->regs[reg]);
 		StoreHW(addr, value, res);
 		if (res)
 			goto fault;
@@ -1604,7 +1604,7 @@ loadDW:
 			goto sigbus;
 
 		MIPS16e_compute_return_epc(regs, &oldinst);
-		value = regs->regs[reg];
+		value = MIPS_READ_REG(regs->regs[reg]);
 		StoreW(addr, value, res);
 		if (res)
 			goto fault;
@@ -1624,7 +1624,7 @@ writeDW:
 			goto sigbus;
 
 		MIPS16e_compute_return_epc(regs, &oldinst);
-		value = regs->regs[reg];
+		value = MIPS_READ_REG(regs->regs[reg]);
 		StoreDW(addr, value, res);
 		if (res)
 			goto fault;
@@ -1651,7 +1651,7 @@ writeDW:
 fault:
 	/* roll back jump/branch */
 	regs->cp0_epc = origpc;
-	regs->regs[31] = orig31;
+	MIPS_WRITE_REG(regs->regs[31]) = orig31;
 	/* Did we have an exception handler installed? */
 	if (fixup_exception(regs))
 		return;
