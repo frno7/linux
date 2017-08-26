@@ -1209,7 +1209,7 @@ asmlinkage void do_ri(struct pt_regs *regs)
 {
 	unsigned int __user *epc = (unsigned int __user *)exception_epc(regs);
 	unsigned long old_epc = regs->cp0_epc;
-	unsigned long old31 = regs->regs[31];
+	unsigned long old31 = MIPS_READ_REG(regs->regs[31]);
 	unsigned int opcode = 0;
 	int status = -1;
 
@@ -1286,7 +1286,7 @@ asmlinkage void do_ri(struct pt_regs *regs)
 
 	if (unlikely(status > 0)) {
 		regs->cp0_epc = old_epc;		/* Undo skip-over.  */
-		regs->regs[31] = old31;
+		MIPS_WRITE_REG(regs->regs[31]) = old31;
 		force_sig(status, current);
 	}
 }
@@ -1370,7 +1370,7 @@ asmlinkage void do_cpu(struct pt_regs *regs)
 	case 0:
 		epc = (unsigned int __user *)exception_epc(regs);
 		old_epc = regs->cp0_epc;
-		old31 = regs->regs[31];
+		old31 = MIPS_READ_REG(regs->regs[31]);
 		opcode = 0;
 		status = -1;
 
@@ -1404,7 +1404,7 @@ asmlinkage void do_cpu(struct pt_regs *regs)
 
 		if (unlikely(status > 0)) {
 			regs->cp0_epc = old_epc;	/* Undo skip-over.  */
-			regs->regs[31] = old31;
+			MIPS_WRITE_REG(regs->regs[31]) = old31;
 			force_sig(status, current);
 		}
 
@@ -1735,12 +1735,12 @@ void ejtag_exception_handler(struct pt_regs *regs)
 		 * calculation.
 		 */
 		old_epc = regs->cp0_epc;
-		old_ra = regs->regs[31];
+		old_ra = MIPS_READ_REG(regs->regs[31]);
 		regs->cp0_epc = depc;
 		compute_return_epc(regs);
 		depc = regs->cp0_epc;
 		regs->cp0_epc = old_epc;
-		regs->regs[31] = old_ra;
+		MIPS_WRITE_REG(regs->regs[31]) = old_ra;
 	} else
 		depc += 4;
 	write_c0_depc(depc);

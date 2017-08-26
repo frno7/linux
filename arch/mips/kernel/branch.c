@@ -144,7 +144,7 @@ int __MIPS16e_compute_return_epc(struct pt_regs *regs)
 			return -EFAULT;
 		}
 		fullinst = ((unsigned)inst.full << 16) | inst2;
-		regs->regs[31] = epc + 6;
+		MIPS_WRITE_REG(regs->regs[31]) = epc + 6;
 		epc += 4;
 		epc >>= 28;
 		epc <<= 28;
@@ -169,16 +169,16 @@ int __MIPS16e_compute_return_epc(struct pt_regs *regs)
 		if (inst.rr.func == MIPS16e_jr_func) {
 
 			if (inst.rr.ra)
-				regs->cp0_epc = regs->regs[31];
+				regs->cp0_epc = MIPS_READ_REG_L(regs->regs[31]);
 			else
 				regs->cp0_epc =
-				    regs->regs[reg16to32[inst.rr.rx]];
+				    MIPS_READ_REG_L(regs->regs[reg16to32[inst.rr.rx]]);
 
 			if (inst.rr.l) {
 				if (inst.rr.nd)
-					regs->regs[31] = epc + 2;
+					MIPS_WRITE_REG(regs->regs[31]) = epc + 2;
 				else
-					regs->regs[31] = epc + 4;
+					MIPS_WRITE_REG(regs->regs[31]) = epc + 4;
 			}
 			return 0;
 		}
