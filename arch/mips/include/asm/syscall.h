@@ -35,11 +35,11 @@ static inline long syscall_get_nr(struct task_struct *task,
 static inline unsigned long mips_get_syscall_arg(unsigned long *arg,
 	struct task_struct *task, struct pt_regs *regs, unsigned int n)
 {
-	unsigned long usp __maybe_unused = regs->regs[29];
+	unsigned long usp __maybe_unused = MIPS_READ_REG(regs->regs[29]);
 
 	switch (n) {
 	case 0: case 1: case 2: case 3:
-		*arg = regs->regs[4 + n];
+		*arg = MIPS_READ_REG(regs->regs[4 + n]);
 
 		return 0;
 
@@ -55,7 +55,7 @@ static inline unsigned long mips_get_syscall_arg(unsigned long *arg,
 			return get_user(*arg, (int *)usp + n);
 		else
 #endif
-			*arg = regs->regs[4 + n];
+			*arg = MIPS_READ_REG(regs->regs[4 + n]);
 
 		return 0;
 #endif
@@ -70,7 +70,7 @@ static inline unsigned long mips_get_syscall_arg(unsigned long *arg,
 static inline long syscall_get_return_value(struct task_struct *task,
 					    struct pt_regs *regs)
 {
-	return regs->regs[2];
+	return MIPS_READ_REG(regs->regs[2]);
 }
 
 static inline void syscall_rollback(struct task_struct *task,
@@ -84,11 +84,11 @@ static inline void syscall_set_return_value(struct task_struct *task,
 					    int error, long val)
 {
 	if (error) {
-		regs->regs[2] = -error;
-		regs->regs[7] = -1;
+		MIPS_WRITE_REG(regs->regs[2]) = -error;
+		MIPS_WRITE_REG(regs->regs[7]) = -1;
 	} else {
-		regs->regs[2] = val;
-		regs->regs[7] = 0;
+		MIPS_WRITE_REG(regs->regs[2]) = val;
+		MIPS_WRITE_REG(regs->regs[7]) = 0;
 	}
 }
 
@@ -101,7 +101,7 @@ static inline void syscall_get_arguments(struct task_struct *task,
 	/* O32 ABI syscall() - Either 64-bit with O32 or 32-bit */
 	if ((config_enabled(CONFIG_32BIT) ||
 	    test_tsk_thread_flag(task, TIF_32BIT_REGS)) &&
-	    (regs->regs[2] == __NR_syscall)) {
+	    (MIPS_READ_REG(regs->regs[2]) == __NR_syscall)) {
 		i++;
 		n++;
 	}
