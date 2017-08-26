@@ -23,17 +23,17 @@
 static inline long syscall_get_nr(struct task_struct *task,
 				  struct pt_regs *regs)
 {
-	return regs->regs[2];
+	return MIPS_READ_REG(regs->regs[2]);
 }
 
 static inline unsigned long mips_get_syscall_arg(unsigned long *arg,
 	struct task_struct *task, struct pt_regs *regs, unsigned int n)
 {
-	unsigned long usp = regs->regs[29];
+	unsigned long usp = MIPS_READ_REG(regs->regs[29]);
 
 	switch (n) {
 	case 0: case 1: case 2: case 3:
-		*arg = regs->regs[4 + n];
+		*arg = MIPS_READ_REG(regs->regs[4 + n]);
 
 		return 0;
 
@@ -49,7 +49,7 @@ static inline unsigned long mips_get_syscall_arg(unsigned long *arg,
 			return get_user(*arg, (int *)usp + 4 * n);
 		else
 #endif
-			*arg = regs->regs[4 + n];
+			*arg = MIPS_READ_REG(regs->regs[4 + n]);
 
 		return 0;
 #endif
@@ -62,7 +62,7 @@ static inline unsigned long mips_get_syscall_arg(unsigned long *arg,
 static inline long syscall_get_return_value(struct task_struct *task,
 					    struct pt_regs *regs)
 {
-	return regs->regs[2];
+	return MIPS_READ_REG(regs->regs[2]);
 }
 
 static inline void syscall_set_return_value(struct task_struct *task,
@@ -70,11 +70,11 @@ static inline void syscall_set_return_value(struct task_struct *task,
 					    int error, long val)
 {
 	if (error) {
-		regs->regs[2] = -error;
-		regs->regs[7] = -1;
+		MIPS_WRITE_REG(regs->regs[2]) = -error;
+		MIPS_WRITE_REG(regs->regs[7]) = -1;
 	} else {
-		regs->regs[2] = val;
-		regs->regs[7] = 0;
+		MIPS_WRITE_REG(regs->regs[2]) = val;
+		MIPS_WRITE_REG(regs->regs[7]) = 0;
 	}
 }
 

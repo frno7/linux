@@ -698,7 +698,7 @@ asmlinkage void syscall_trace_enter(struct pt_regs *regs)
 		ret = -1;
 
 	if (unlikely(test_thread_flag(TIF_SYSCALL_TRACEPOINT)))
-		trace_sys_enter(regs, regs->regs[2]);
+		trace_sys_enter(regs, MIPS_READ_REG(regs->regs[2]));
 
 	audit_syscall_entry(__syscall_get_arch(),
 			    MIPS_READ_REG(regs->regs[2]),
@@ -724,7 +724,7 @@ asmlinkage void syscall_trace_leave(struct pt_regs *regs)
 	audit_syscall_exit(regs);
 
 	if (unlikely(test_thread_flag(TIF_SYSCALL_TRACEPOINT)))
-		trace_sys_exit(regs, regs->regs[2]);
+		trace_sys_exit(regs, MIPS_READ_REG(regs->regs[2]));
 
 	if (test_thread_flag(TIF_SYSCALL_TRACE))
 		tracehook_report_syscall_exit(regs, 0);
