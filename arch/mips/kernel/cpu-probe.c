@@ -1400,6 +1400,14 @@ static inline void cpu_probe_legacy(struct cpuinfo_mips *c, unsigned int cpu)
 			     MIPS_CPU_WATCH | MIPS_CPU_LLSC;
 		c->tlbsize = 48;
 		break;
+	case PRID_IMP_R5900:
+		c->cputype = CPU_R5900;
+		__cpu_name[cpu] = "R5900";
+		c->isa_level = MIPS_CPU_ISA_III;
+		c->fpu_msk31 |= FPU_CSR_CONDX;
+		c->options = R4K_OPTS | MIPS_CPU_DIVEC;
+		c->tlbsize = 48;
+		break;
 	case PRID_IMP_NEVADA:
 		c->cputype = CPU_NEVADA;
 		__cpu_name[cpu] = "Nevada";
