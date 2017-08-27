@@ -111,6 +111,8 @@ search_module_dbetables(unsigned long addr)
 #define MODULE_PROC_FAMILY "R5000 "
 #elif defined CONFIG_CPU_R5500
 #define MODULE_PROC_FAMILY "R5500 "
+#elif defined CONFIG_CPU_R5900
+#define MODULE_PROC_FAMILY "R5900 "
 #elif defined CONFIG_CPU_NEVADA
 #define MODULE_PROC_FAMILY "NEVADA "
 #elif defined CONFIG_CPU_R10000
