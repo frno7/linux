@@ -1730,6 +1730,14 @@ config CPU_BMIPS
 	help
 	  Support for BMIPS32/3300/4350/4380 and BMIPS5000 processors.
 
+config CPU_R5900
+	bool "R5900"
+	depends on SYS_HAS_CPU_R5900
+	select CPU_SUPPORTS_32BIT_KERNEL
+	select IRQ_MIPS_CPU
+	help
+	  Toshiba R5900 processor (Emotion Engine in the Sony PlayStation 2).
+
 config CPU_XLR
 	bool "Netlogic XLR SoC"
 	depends on SYS_HAS_CPU_XLR
@@ -1963,6 +1971,9 @@ config SYS_HAS_CPU_R5432
 	bool
 
 config SYS_HAS_CPU_R5500
+	bool
+
+config SYS_HAS_CPU_R5900
 	bool
 
 config SYS_HAS_CPU_NEVADA
@@ -2259,7 +2270,7 @@ config CPU_GENERIC_DUMP_TLB
 
 config CPU_R4K_FPU
 	bool
-	default y if !(CPU_R3000 || CPU_TX39XX)
+	default y if !(CPU_R3000 || CPU_R5900 || CPU_TX39XX)
 
 config CPU_R4K_CACHE_TLB
 	bool

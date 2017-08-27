@@ -1226,6 +1226,18 @@ static void probe_pcache(void)
 		c->options |= MIPS_CPU_CACHE_CDEX_P | MIPS_CPU_PREFETCH;
 		break;
 
+	case CPU_R5900:
+		icache_size = 1 << (12 + ((config & CONF_IC) >> 9));
+		c->icache.linesz = 64;
+		c->icache.ways = 2;
+		c->icache.waybit = 0;
+
+		dcache_size = 1 << (12 + ((config & CONF_DC) >> 6));
+		c->dcache.linesz = 64;
+		c->dcache.ways = 2;
+		c->dcache.waybit = 0;
+		break;
+
 	case CPU_TX49XX:
 		icache_size = 1 << (12 + ((config & CONF_IC) >> 9));
 		c->icache.linesz = 16 << ((config & CONF_IB) >> 5);
@@ -1498,6 +1510,13 @@ static void probe_pcache(void)
 	case CPU_R12000:
 	case CPU_R14000:
 	case CPU_R16000:
+		break;
+
+	case CPU_R5900:
+		if (c->icache.waysize > PAGE_SIZE)
+			c->dcache.flags |= MIPS_CACHE_ALIASES;
+		if (c->dcache.waysize > PAGE_SIZE)
+			c->dcache.flags |= MIPS_CACHE_ALIASES;
 		break;
 
 	case CPU_74K:
