@@ -9,6 +9,7 @@
  * Copyright (C) 2011, 2012 MIPS Technologies, Inc.
  */
 #include <asm/asm.h>
+#include <asm/asmmacro.h>
 #include <asm/asm-offsets.h>
 #include <asm/export.h>
 #include <asm/regdef.h>
@@ -222,6 +223,7 @@
 1:	PTR_ADDIU	a0, 1			/* fill bytewise */
 	R10KCBARRIER(0(ra))
 	.set		noreorder
+	short_loop_war(1b)
 	bne		t1, a0, 1b
 	 EX(sb, a1, -1(a0), .Lsmall_fixup\@)
 	.set		reorder
