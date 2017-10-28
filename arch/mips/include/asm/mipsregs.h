@@ -1337,6 +1337,29 @@ do {								\
  * Macros to access the system control coprocessor
  */
 
+#ifdef CONFIG_CPU_R5900
+#define ___read_32bit_c0_register(source, sel, vol)			\
+({ int __res;								\
+	if (sel == 0)							\
+		__asm__ vol(						\
+			".set push\n\t"					\
+			".set noreorder\n\t"				\
+			"sync.p\n\t"					\
+			"mfc0\t%0, " #source "\n\t"			\
+			".set pop\n\t"					\
+			: "=r" (__res));				\
+	else								\
+		__asm__ vol(						\
+			".set push\n\t"					\
+			".set noreorder\n\t"				\
+			".set\tmips32\n\t"				\
+			"sync.p\n\t"					\
+			"mfc0\t%0, " #source ", " #sel "\n\t"		\
+			".set pop\n\t"					\
+			: "=r" (__res));				\
+	__res;								\
+})
+#else
 #define ___read_32bit_c0_register(source, sel, vol)			\
 ({ unsigned int __res;							\
 	if (sel == 0)							\
@@ -1351,6 +1374,7 @@ do {								\
 			: "=r" (__res));				\
 	__res;								\
 })
+#endif
 
 #define ___read_64bit_c0_register(source, sel, vol)			\
 ({ unsigned long long __res;						\
@@ -1383,6 +1407,28 @@ do {								\
 #define __read_const_64bit_c0_register(source, sel)			\
 	___read_64bit_c0_register(source, sel,)
 
+#ifdef CONFIG_CPU_R5900
+#define __write_32bit_c0_register(register, sel, value)			\
+do {									\
+	if (sel == 0)							\
+		__asm__ __volatile__(					\
+			".set push\n\t"					\
+			".set noreorder\n\t"				\
+			"mtc0\t%z0, " #register "\n\t"			\
+			"sync.p\n\t"					\
+			".set pop\n\t"					\
+			: : "Jr" ((unsigned int)(value)));		\
+	else								\
+		__asm__ __volatile__(					\
+			".set push\n\t"					\
+			".set noreorder\n\t"				\
+			".set\tmips32\n\t"				\
+			"mtc0\t%z0, " #register ", " #sel "\n\t"	\
+			"sync.p\n\t"					\
+			".set pop\n\t"					\
+			: : "Jr" ((unsigned int)(value)));		\
+} while (0)
+#else
 #define __write_32bit_c0_register(register, sel, value)			\
 do {									\
 	if (sel == 0)							\
@@ -1396,6 +1442,7 @@ do {									\
 			".set\tmips0"					\
 			: : "Jr" ((unsigned int)(value)));		\
 } while (0)
+#endif
 
 #define __write_64bit_c0_register(register, sel, value)			\
 do {									\
@@ -2628,6 +2675,14 @@ static inline void tlb_probe(void)
 	__asm__ __volatile__(
 		".set noreorder\n\t"
 		"tlbp\n\t"
+#ifdef CONFIG_CPU_R5900
+		/* No memory access behind the tlbp instruction. */
+		"sync.p\n\t"
+		"nop\n\t"
+		"nop\n\t"
+		"nop\n\t"
+		"nop\n\t"
+#endif
 		".set reorder");
 }
 
@@ -2653,6 +2708,14 @@ static inline void tlb_read(void)
 	__asm__ __volatile__(
 		".set noreorder\n\t"
 		"tlbr\n\t"
+#ifdef CONFIG_CPU_R5900
+		"sync.p\n\t"
+		/* No branch behind tlbr. */
+		"nop\n\t"
+		"nop\n\t"
+		"nop\n\t"
+		"nop\n\t"
+#endif
 		".set reorder");
 
 #if MIPS34K_MISSED_ITLB_WAR
@@ -2673,6 +2736,9 @@ static inline void tlb_write_indexed(void)
 	__asm__ __volatile__(
 		".set noreorder\n\t"
 		"tlbwi\n\t"
+#ifdef CONFIG_CPU_R5900
+		"sync.p\n\t"
+#endif
 		".set reorder");
 }
 
@@ -2681,6 +2747,9 @@ static inline void tlb_write_random(void)
 	__asm__ __volatile__(
 		".set noreorder\n\t"
 		"tlbwr\n\t"
+#ifdef CONFIG_CPU_R5900
+		"sync.p\n\t"
+#endif
 		".set reorder");
 }
 

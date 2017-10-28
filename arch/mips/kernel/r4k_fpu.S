@@ -98,10 +98,16 @@ LEAF(_init_msa_upper)
 	SET_HARDFLOAT
 
 LEAF(_init_fpu)
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	t0, CP0_STATUS
 	li	t1, ST0_CU1
 	or	t0, t1
 	mtc0	t0, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	enable_fpu_hazard
 
 	ctc1	a0, fcr31
