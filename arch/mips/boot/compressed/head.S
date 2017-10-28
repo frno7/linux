@@ -15,7 +15,6 @@
 #include <asm/asm.h>
 #include <asm/regdef.h>
 
-	.set noreorder
 	.cprestore
 	LEAF(start)
 start:
@@ -26,11 +25,11 @@ start:
 	move	s3, a3
 
 	/* Clear BSS */
-	PTR_LA	a0, _edata
+	PTR_LA	a0, _edata - 4
 	PTR_LA	a2, _end
-1:	sw	zero, 0(a0)
+1:	addiu	a0, a0, 4
+	sw	zero, 0(a0)
 	bne	a2, a0, 1b
-	 addiu	a0, a0, 4
 
 	PTR_LA	a0, (.heap)	     /* heap address */
 	PTR_LA	sp, (.stack + 8192)  /* stack address */
