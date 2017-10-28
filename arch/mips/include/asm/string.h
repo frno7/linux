@@ -10,6 +10,9 @@
 #ifndef _ASM_STRING_H
 #define _ASM_STRING_H
 
+#if defined(CONFIG_CPU_R5900)
+#define IN_STRING_C
+#endif
 
 /*
  * Most of the inline functions are rather naive implementations so I just
