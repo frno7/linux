@@ -56,9 +56,15 @@
 	.endm
 #else
 	.macro	local_irq_enable reg=t0
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	\reg, CP0_STATUS
 	ori	\reg, \reg, 1
 	mtc0	\reg, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	irq_enable_hazard
 	.endm
 
@@ -68,10 +74,16 @@
 	addi    \reg, \reg, 1
 	sw      \reg, TI_PRE_COUNT($28)
 #endif
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	\reg, CP0_STATUS
 	ori	\reg, \reg, 1
 	xori	\reg, \reg, 1
 	mtc0	\reg, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	irq_disable_hazard
 #ifdef CONFIG_PREEMPT
 	lw      \reg, TI_PRE_COUNT($28)
