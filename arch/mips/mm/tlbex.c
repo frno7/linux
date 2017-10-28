@@ -688,6 +688,9 @@ static void build_restore_pagemask(u32 **p, struct uasm_reloc **r,
 			uasm_i_mtc0(p, 0, C0_PAGEMASK);
 		}
 	}
+#ifdef CONFIG_CPU_R5900
+	uasm_i_syncp(p);
+#endif
 }
 
 static void build_huge_tlb_write_entry(u32 **p, struct uasm_label **l,
@@ -700,6 +703,9 @@ static void build_huge_tlb_write_entry(u32 **p, struct uasm_label **l,
 	uasm_i_lui(p, tmp, PM_HUGE_MASK >> 16);
 	uasm_i_ori(p, tmp, tmp, PM_HUGE_MASK & 0xffff);
 	uasm_i_mtc0(p, tmp, C0_PAGEMASK);
+#ifdef CONFIG_CPU_R5900
+	uasm_i_syncp(p);
+#endif
 
 	build_tlb_write_entry(p, l, r, wmode);
 
@@ -958,21 +964,21 @@ void build_get_pgde32(u32 **p, unsigned int tmp, unsigned int ptr)
 {
 	if (pgd_reg != -1) {
 		/* pgd is in pgd_reg */
-		uasm_i_mfc0(p, ptr, c0_kscratch(), pgd_reg);
-		uasm_i_mfc0(p, tmp, C0_BADVADDR); /* get faulting address */
+		UASM_i_MFC0(p, ptr, c0_kscratch(), pgd_reg);
+		UASM_i_MFC0(p, tmp, C0_BADVADDR); /* get faulting address */
 	} else {
 		long pgdc = (long)pgd_current;
 
 		/* 32 bit SMP has smp_processor_id() stored in CONTEXT. */
 #ifdef CONFIG_SMP
-		uasm_i_mfc0(p, ptr, SMP_CPUID_REG);
+		UASM_i_MFC0(p, ptr, SMP_CPUID_REG);
 		UASM_i_LA_mostly(p, tmp, pgdc);
 		uasm_i_srl(p, ptr, ptr, SMP_CPUID_PTRSHIFT);
 		uasm_i_addu(p, ptr, tmp, ptr);
 #else
 		UASM_i_LA_mostly(p, ptr, pgdc);
 #endif
-		uasm_i_mfc0(p, tmp, C0_BADVADDR); /* get faulting address */
+		UASM_i_MFC0(p, tmp, C0_BADVADDR); /* get faulting address */
 		uasm_i_lw(p, ptr, uasm_rel_lo(pgdc), ptr);
 	}
 	uasm_i_srl(p, tmp, tmp, PGDIR_SHIFT); /* get pgd only bits */
