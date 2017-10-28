@@ -32,6 +32,9 @@
  */
 	.align	5
 	LEAF(resume)
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	t1, CP0_STATUS
 	LONG_S	t1, THREAD_STATUS(a0)
 	cpu_save_nonscratch a0
@@ -52,6 +55,9 @@
 
 	PTR_ADDU	t0, $28, _THREAD_SIZE - 32
 	set_saved_sp	t0, t1, t2
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	t1, CP0_STATUS		/* Do we really need this? */
 	li	a3, 0xff01
 	and	t1, a3
@@ -60,6 +66,9 @@
 	and	a2, a3
 	or	a2, t1
 	mtc0	a2, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	move	v0, a0
 	jr	ra
 	END(resume)
@@ -73,6 +82,9 @@ LEAF(_save_fp)
 EXPORT_SYMBOL(_save_fp)
 #if defined(CONFIG_64BIT) || defined(CONFIG_CPU_MIPS32_R2) || \
 		defined(CONFIG_CPU_MIPS32_R6)
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	t0, CP0_STATUS
 #endif
 	fpu_save_double a0 t0 t1		# clobbers t1
@@ -85,6 +97,9 @@ EXPORT_SYMBOL(_save_fp)
 LEAF(_restore_fp)
 #if defined(CONFIG_64BIT) || defined(CONFIG_CPU_MIPS32_R2) || \
 		defined(CONFIG_CPU_MIPS32_R6)
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	t0, CP0_STATUS
 #endif
 	fpu_restore_double a0 t0 t1		# clobbers t1
@@ -129,10 +144,16 @@ LEAF(_init_msa_upper)
 	SET_HARDFLOAT
 
 LEAF(_init_fpu)
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	t0, CP0_STATUS
 	li	t1, ST0_CU1
 	or	t0, t1
 	mtc0	t0, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	enable_fpu_hazard
 
 	ctc1	a0, fcr31
