@@ -27,11 +27,10 @@
 void __delay(unsigned long loops)
 {
 	__asm__ __volatile__ (
-	"	.set	noreorder				\n"
 	"	.align	3					\n"
-	"1:	bnez	%0, 1b					\n"
-	"	 " __stringify(LONG_SUBU) "	%0, %1		\n"
-	"	.set	reorder					\n"
+	"	" __stringify(LONG_ADDU) "	%0, %1		\n"
+	"1:	" __stringify(LONG_SUBU) "	%0, %1		\n"
+	"	bnez	%0, 1b					\n"
 	: "=r" (loops)
 	: GCC_DADDI_IMM_ASM() (1), "0" (loops));
 }
