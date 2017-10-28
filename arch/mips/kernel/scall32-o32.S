@@ -28,6 +28,18 @@
 	.align	5
 NESTED(handle_sys, PT_SIZE, sp)
 	.set	noat
+#ifdef CONFIG_CPU_R5900
+	/*
+	 * We don't want to stumble over broken sign extensions from
+	 * userland. O32 does never use the upper half, but since the
+	 * R5900 does not implement CP0.Status.UX it cannot enforce it.
+	 */
+	sll	v0, v0, 0
+	sll	a0, a0, 0
+	sll	a1, a1, 0
+	sll	a2, a2, 0
+	sll	a3, a3, 0
+#endif
 	SAVE_SOME
 	TRACE_IRQS_ON_RELOAD
 	STI
