@@ -62,6 +62,7 @@ enum opcode {
 	insn_srlv, insn_subu, insn_sw, insn_sync, insn_syscall, insn_tlbp,
 	insn_tlbr, insn_tlbwi, insn_tlbwr, insn_wait, insn_wsbh, insn_xor,
 	insn_xori, insn_yield, insn_lddir, insn_ldpte, insn_lhu,
+	insn_syncp,
 };
 
 struct insn {
@@ -329,6 +330,7 @@ I_u2u1u3(_rotr)
 I_u3u1u2(_subu)
 I_u2s3u1(_sw)
 I_u1(_sync)
+I_0(_syncp)
 I_0(_tlbp)
 I_0(_tlbr)
 I_0(_tlbwi)
