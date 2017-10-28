@@ -160,6 +160,12 @@
 1:	PTR_ADDIU	a0, 64
 	R10KCBARRIER(0(ra))
 	f_fill64 a0, -64, FILL64RG, .Lfwd_fixup\@, \mode
+#ifdef CONFIG_CPU_R5900
+	/* No short loops. */
+	nop
+	nop
+	nop
+#endif
 	bne		t1, a0, 1b
 
 .Lmemset_partial\@:
@@ -222,6 +228,12 @@
 1:	PTR_ADDIU	a0, 1			/* fill bytewise */
 	R10KCBARRIER(0(ra))
 	.set		noreorder
+#ifdef CONFIG_CPU_R5900
+	/* No short loops. */
+	nop
+	nop
+	nop
+#endif
 	bne		t1, a0, 1b
 	 EX(sb, a1, -1(a0), .Lsmall_fixup\@)
 	.set		reorder
