@@ -38,6 +38,12 @@ extern void (*r4k_blast_icache)(void);
  *    without ifdefs we let the compiler do it by a type cast.
  */
 #define INDEX_BASE	CKSEG0
+#ifdef CONFIG_CPU_R5900
+/* Workaround for short loops on R5900. */
+#define R5900_LOOP_WAR() do { __asm__ __volatile__("nop;nop;\n"); } while(0)
+#else
+#define R5900_LOOP_WAR() do { } while(0)
+#endif
 
 #define cache_op(op,addr)						\
 	__asm__ __volatile__(						\
@@ -622,6 +628,7 @@ static inline void prot##extra##blast_##pfx##cache##_range(unsigned long start, 
 									\
 	while (1) {							\
 		prot##cache_op(hitop, addr);				\
+		R5900_LOOP_WAR();  /* FIXME: Is this needed in C? */	\
 		if (addr == aend)					\
 			break;						\
 		addr += lsize;						\
