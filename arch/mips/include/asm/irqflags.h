@@ -78,9 +78,15 @@ static inline void arch_local_irq_restore(unsigned long flags)
 	/*
 	 * Fast, dangerous.  Life is fun, life is good.
 	 */
+#ifdef CONFIG_CPU_R5900
+	"	sync.p							\n"
+#endif
 	"	mfc0	$1, $12						\n"
 	"	ins	$1, %[flags], 0, 1				\n"
 	"	mtc0	$1, $12						\n"
+#ifdef CONFIG_CPU_R5900
+	"	sync.p							\n"
+#endif
 #endif
 	"	" __stringify(__irq_disable_hazard) "			\n"
 	"	.set	pop						\n"
@@ -105,10 +111,16 @@ static inline void arch_local_irq_enable(void)
 #if   defined(CONFIG_CPU_MIPSR2) || defined(CONFIG_CPU_MIPSR6)
 	"	ei							\n"
 #else
+#ifdef CONFIG_CPU_R5900
+	"	sync.p							\n"
+#endif
 	"	mfc0	$1,$12						\n"
 	"	ori	$1,0x1f						\n"
 	"	xori	$1,0x1e						\n"
 	"	mtc0	$1,$12						\n"
+#ifdef CONFIG_CPU_R5900
+	"	sync.p							\n"
+#endif
 #endif
 	"	" __stringify(__irq_enable_hazard) "			\n"
 	"	.set	pop						\n"
@@ -124,6 +136,9 @@ static inline unsigned long arch_local_save_flags(void)
 	asm __volatile__(
 	"	.set	push						\n"
 	"	.set	reorder						\n"
+#ifdef CONFIG_CPU_R5900
+	"	sync.p							\n"
+#endif
 	"	mfc0	%[flags], $12					\n"
 	"	.set	pop						\n"
 	: [flags] "=r" (flags));
