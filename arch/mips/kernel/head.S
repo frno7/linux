@@ -120,6 +120,14 @@ dtb_found:
 1:
 	PTR_ADDIU	t0, LONGSIZE
 	LONG_S		zero, (t0)
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
 	bne		t0, t1, 1b
 
 	LONG_S		a0, fw_arg0		# firmware arguments
