@@ -205,8 +205,19 @@ static inline void uasm_l##lb(struct uasm_label **lab, u32 *addr)	\
 # define UASM_i_LL(buf, rs, rt, off) uasm_i_lld(buf, rs, rt, off)
 # define UASM_i_LW(buf, rs, rt, off) uasm_i_ld(buf, rs, rt, off)
 # define UASM_i_LWX(buf, rs, rt, rd) uasm_i_ldx(buf, rs, rt, rd)
+#ifndef CONFIG_CPU_R5900
 # define UASM_i_MFC0(buf, rt, rd...) uasm_i_dmfc0(buf, rt, rd)
 # define UASM_i_MTC0(buf, rt, rd...) uasm_i_dmtc0(buf, rt, rd)
+#else
+# define UASM_i_MFC0(buf, rt, rd...) do { \
+		uasm_i_syncp(buf); \
+		uasm_i_mfc0(buf, rt, rd); \
+	} while(0)
+# define UASM_i_MTC0(buf, rt, rd...) do { \
+		uasm_i_mtc0(buf, rt, rd); \
+		uasm_i_syncp(buf); \
+	} while(0)
+#endif
 # define UASM_i_ROTR(buf, rs, rt, sh) uasm_i_drotr(buf, rs, rt, sh)
 # define UASM_i_SC(buf, rs, rt, off) uasm_i_scd(buf, rs, rt, off)
 # define UASM_i_SLL(buf, rs, rt, sh) uasm_i_dsll(buf, rs, rt, sh)
@@ -221,8 +232,19 @@ static inline void uasm_l##lb(struct uasm_label **lab, u32 *addr)	\
 # define UASM_i_LL(buf, rs, rt, off) uasm_i_ll(buf, rs, rt, off)
 # define UASM_i_LW(buf, rs, rt, off) uasm_i_lw(buf, rs, rt, off)
 # define UASM_i_LWX(buf, rs, rt, rd) uasm_i_lwx(buf, rs, rt, rd)
+#ifndef CONFIG_CPU_R5900
 # define UASM_i_MFC0(buf, rt, rd...) uasm_i_mfc0(buf, rt, rd)
 # define UASM_i_MTC0(buf, rt, rd...) uasm_i_mtc0(buf, rt, rd)
+#else
+# define UASM_i_MFC0(buf, rt, rd...) do { \
+		uasm_i_syncp(buf); \
+		uasm_i_mfc0(buf, rt, rd); \
+	} while(0)
+# define UASM_i_MTC0(buf, rt, rd...) do { \
+		uasm_i_mtc0(buf, rt, rd); \
+		uasm_i_syncp(buf); \
+	} while(0)
+#endif
 # define UASM_i_ROTR(buf, rs, rt, sh) uasm_i_rotr(buf, rs, rt, sh)
 # define UASM_i_SC(buf, rs, rt, off) uasm_i_sc(buf, rs, rt, off)
 # define UASM_i_SLL(buf, rs, rt, sh) uasm_i_sll(buf, rs, rt, sh)
