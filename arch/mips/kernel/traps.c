@@ -1923,6 +1923,12 @@ void __init *set_except_vector(int n, void *addr)
 #endif
 		u32 *buf = (u32 *)(ebase + 0x200);
 		unsigned int k0 = 26;
+
+#ifdef CONFIG_CPU_R5900
+		/* Workaround for R5900 exception execution bug (FLX05). */
+		uasm_i_nop(&buf);
+		uasm_i_nop(&buf);
+#endif
 		if ((handler & jump_mask) == ((ebase + 0x200) & jump_mask)) {
 			uasm_i_j(&buf, handler & ~jump_mask);
 			uasm_i_nop(&buf);
