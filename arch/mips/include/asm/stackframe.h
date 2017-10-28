@@ -85,6 +85,9 @@
 
 #ifdef CONFIG_SMP
 		.macro	get_saved_sp	/* SMP variation */
+#ifdef CONFIG_CPU_R5900
+		sync.p
+#endif
 		ASM_CPUID_MFC0	k0, ASM_SMP_CPUID_REG
 #if defined(CONFIG_32BIT) || defined(KBUILD_64BIT_SYM32)
 		lui	k1, %hi(kernelsp)
@@ -101,6 +104,9 @@
 		.endm
 
 		.macro	set_saved_sp stackp temp temp2
+#ifdef CONFIG_CPU_R5900
+		sync.p
+#endif
 		ASM_CPUID_MFC0	\temp, ASM_SMP_CPUID_REG
 		LONG_SRL	\temp, SMP_CPUID_PTRSHIFT
 		LONG_S	\stackp, kernelsp(\temp)
@@ -125,6 +131,9 @@
 1:		move	ra, k0
 		li	k0, 3
 		mtc0	k0, $22
+#ifdef CONFIG_CPU_R5900
+		sync.p
+#endif
 #endif /* CONFIG_CPU_JUMP_WORKAROUNDS */
 #if defined(CONFIG_32BIT) || defined(KBUILD_64BIT_SYM32)
 		lui	k1, %hi(kernelsp)
@@ -147,6 +156,9 @@
 		.set	push
 		.set	noat
 		.set	reorder
+#ifdef CONFIG_CPU_R5900
+		sync.p
+#endif
 		mfc0	k0, CP0_STATUS
 		sll	k0, 3		/* extract cu0 bit */
 		.set	noreorder
@@ -198,14 +210,23 @@
 		 * need it to operate correctly
 		 */
 		LONG_S	$0, PT_R0(sp)
+#ifdef CONFIG_CPU_R5900
+		sync.p
+#endif
 		mfc0	v1, CP0_STATUS
 		LONG_S	$2, PT_R2(sp)
 		LONG_S	v1, PT_STATUS(sp)
 		LONG_S	$4, PT_R4(sp)
+#ifdef CONFIG_CPU_R5900
+		sync.p
+#endif
 		mfc0	v1, CP0_CAUSE
 		LONG_S	$5, PT_R5(sp)
 		LONG_S	v1, PT_CAUSE(sp)
 		LONG_S	$6, PT_R6(sp)
+#ifdef CONFIG_CPU_R5900
+		sync.p
+#endif
 		MFC0	v1, CP0_EPC
 		LONG_S	$7, PT_R7(sp)
 #ifdef CONFIG_64BIT
@@ -217,6 +238,9 @@
 		LONG_S	$28, PT_R28(sp)
 		LONG_S	$31, PT_R31(sp)
 
+#ifdef CONFIG_CPU_R5900
+		sync.p
+#endif
 		/* Set thread_info if we're coming from user mode */
 		mfc0	k0, CP0_STATUS
 		sll	k0, 3		/* extract cu0 bit */
@@ -387,10 +411,16 @@
 		.set	reorder
 		.set	noat
 		RESET_MMR
+#ifdef CONFIG_CPU_R5900
+		sync.p
+#endif
 		mfc0	a0, CP0_STATUS
 		ori	a0, STATMASK
 		xori	a0, STATMASK
 		mtc0	a0, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+		sync.p
+#endif
 		li	v1, ST0_CU1 | ST0_FR | ST0_IM
 		and	a0, v1
 		LONG_L	v0, PT_STATUS(sp)
@@ -398,8 +428,14 @@
 		and	v0, v1
 		or	v0, a0
 		mtc0	v0, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+		sync.p
+#endif
 		LONG_L	v1, PT_EPC(sp)
 		MTC0	v1, CP0_EPC
+#ifdef CONFIG_CPU_R5900
+		sync.p
+#endif
 		LONG_L	$31, PT_R31(sp)
 		LONG_L	$28, PT_R28(sp)
 		LONG_L	$25, PT_R25(sp)
@@ -446,11 +482,17 @@
  * Set cp0 enable bit as sign that we're running on the kernel stack
  */
 		.macro	CLI
+#ifdef CONFIG_CPU_R5900
+		sync.p
+#endif
 		mfc0	t0, CP0_STATUS
 		li	t1, ST0_CU0 | STATMASK
 		or	t0, t1
 		xori	t0, STATMASK
 		mtc0	t0, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+		sync.p
+#endif
 		irq_disable_hazard
 		.endm
 
@@ -459,11 +501,17 @@
  * Set cp0 enable bit as sign that we're running on the kernel stack
  */
 		.macro	STI
+#ifdef CONFIG_CPU_R5900
+		sync.p
+#endif
 		mfc0	t0, CP0_STATUS
 		li	t1, ST0_CU0 | STATMASK
 		or	t0, t1
 		xori	t0, STATMASK & ~1
 		mtc0	t0, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+		sync.p
+#endif
 		irq_enable_hazard
 		.endm
 
@@ -473,6 +521,9 @@
  * Set cp0 enable bit as sign that we're running on the kernel stack
  */
 		.macro	KMODE
+#ifdef CONFIG_CPU_R5900
+		sync.p
+#endif
 		mfc0	t0, CP0_STATUS
 		li	t1, ST0_CU0 | (STATMASK & ~1)
 #if defined(CONFIG_CPU_R3000) || defined(CONFIG_CPU_TX39XX)
@@ -483,6 +534,9 @@
 		or	t0, t1
 		xori	t0, STATMASK & ~1
 		mtc0	t0, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+		sync.p
+#endif
 		irq_disable_hazard
 		.endm
 
