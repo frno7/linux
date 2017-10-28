@@ -34,10 +34,16 @@
 	 */
 	.macro	setup_c0_status set clr
 	.set	push
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	t0, CP0_STATUS
 	or	t0, ST0_CU0|\set|0x1f|\clr
 	xor	t0, 0x1f|\clr
 	mtc0	t0, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	.set	noreorder
 	sll	zero,3				# ehb
 	.set	pop
@@ -132,6 +138,9 @@ dtb_found:
 #endif
 
 	MTC0		zero, CP0_CONTEXT	# clear context register
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	PTR_LA		$28, init_thread_union
 	/* Set the SP after an empty pt_regs.  */
 	PTR_LI		sp, _THREAD_SIZE - 32 - PT_SIZE
