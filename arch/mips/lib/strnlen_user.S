@@ -46,6 +46,12 @@ LEAF(__strnlen_\func\()_asm)
 	EX(lbe, t0, (v0), .Lfault\@)
 .endif
 	.set		noreorder
+#ifdef CONFIG_CPU_R5900
+	/* No short loops. */
+	nop
+	nop
+	nop
+#endif
 	bnez		t0, 1b
 1:
 #ifndef CONFIG_CPU_DADDI_WORKAROUNDS
