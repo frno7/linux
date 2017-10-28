@@ -30,6 +30,18 @@ NESTED(handle_sys, PT_SIZE, sp)
 	.set	noat
 #ifdef CONFIG_CPU_R5900
 	/*
+	 * For the R5900, there are cases in which the first two instructions
+	 * in an exception handler are executed as NOP instructions, when
+	 * certain exceptions occur and then a bus error occurs immediately
+	 * before jumping to the exception handler (FLX05).
+	 *
+	 * The corrective measure is to place NOP in the first two instruction
+	 * locations in all exception handlers.
+	 */
+	nop
+	nop
+
+	/*
 	 * We don't want to stumble over broken sign extensions from
 	 * userland. O32 does never use the upper half, but since the
 	 * R5900 does not implement CP0.Status.UX it cannot enforce it.
