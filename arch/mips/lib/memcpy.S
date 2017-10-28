@@ -343,6 +343,12 @@
 	STORE(t1, UNIT(-1)(dst), .Ls_exc_p1u\@)
 	PREFS(	0, 8*32(src) )
 	PREFD(	1, 8*32(dst) )
+#ifdef CONFIG_CPU_R5900
+	/* No short loops. */
+	nop
+	nop
+	nop
+#endif
 	bne	len, rem, 1b
 	 nop
 
@@ -386,6 +392,12 @@
 	STORE(t0, 0(dst), .Ls_exc_p1u\@)
 	.set	reorder				/* DADDI_WAR */
 	ADD	dst, dst, NBYTES
+#ifdef CONFIG_CPU_R5900
+	/* No short loops. */
+	nop
+	nop
+	nop
+#endif
 	bne	rem, len, 1b
 	.set	noreorder
 
@@ -471,6 +483,12 @@
 	PREFD(	1, 9*32(dst) )		# 1 is PREF_STORE (not streamed)
 	.set	reorder				/* DADDI_WAR */
 	ADD	dst, dst, 4*NBYTES
+#ifdef CONFIG_CPU_R5900
+	/* No short loops. */
+	nop
+	nop
+	nop
+#endif
 	bne	len, rem, 1b
 	.set	noreorder
 
@@ -488,6 +506,12 @@
 	STORE(t0, 0(dst), .Ls_exc_p1u\@)
 	.set	reorder				/* DADDI_WAR */
 	ADD	dst, dst, NBYTES
+#ifdef CONFIG_CPU_R5900
+	/* No short loops. */
+	nop
+	nop
+	nop
+#endif
 	bne	len, rem, 1b
 	.set	noreorder
 
@@ -532,6 +556,12 @@
 	COPY_BYTE(6)
 	COPY_BYTE(7)
 	ADD	src, src, 8
+#ifdef CONFIG_CPU_R5900
+	/* No short loops. */
+	nop
+	nop
+	nop
+#endif
 	b	1b
 	 ADD	dst, dst, 8
 #endif /* !CONFIG_CPU_HAS_LOAD_STORE_LR */
@@ -561,6 +591,12 @@
 	sb	t1, 0(dst)	# can't fault -- we're copy_from_user
 	.set	reorder				/* DADDI_WAR */
 	ADD	dst, dst, 1
+#ifdef CONFIG_CPU_R5900
+	/* No short loops. */
+	nop
+	nop
+	nop
+#endif
 	bne	src, t0, 1b
 	.set	noreorder
 .Ll_exc\@:
@@ -627,6 +663,12 @@ LEAF(__rmemcpy)					/* a0=dst a1=src a2=len */
 	SUB	a1, a1, 0x1
 	.set	reorder				/* DADDI_WAR */
 	SUB	a0, a0, 0x1
+#ifdef CONFIG_CPU_R5900
+	/* No short loops. */
+	nop
+	nop
+	nop
+#endif
 	bnez	a2, .Lr_end_bytes
 	.set	noreorder
 
@@ -642,6 +684,12 @@ LEAF(__rmemcpy)					/* a0=dst a1=src a2=len */
 	ADD	a1, a1, 0x1
 	.set	reorder				/* DADDI_WAR */
 	ADD	a0, a0, 0x1
+#ifdef CONFIG_CPU_R5900
+	/* No short loops. */
+	nop
+	nop
+	nop
+#endif
 	bnez	a2, .Lr_end_bytes_up
 	.set	noreorder
 
