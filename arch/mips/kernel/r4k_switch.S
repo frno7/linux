@@ -26,6 +26,9 @@
  */
 	.align	5
 	LEAF(resume)
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	t1, CP0_STATUS
 	LONG_S	t1, THREAD_STATUS(a0)
 	cpu_save_nonscratch a0
@@ -46,6 +49,9 @@
 
 	PTR_ADDU	t0, $28, _THREAD_SIZE - 32
 	set_saved_sp	t0, t1, t2
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	mfc0	t1, CP0_STATUS		/* Do we really need this? */
 	li	a3, 0xff01
 	and	t1, a3
@@ -54,6 +60,9 @@
 	and	a2, a3
 	or	a2, t1
 	mtc0	a2, CP0_STATUS
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	move	v0, a0
 	jr	ra
 	END(resume)
