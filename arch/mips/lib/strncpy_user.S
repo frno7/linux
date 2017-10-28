@@ -48,6 +48,10 @@ LEAF(__strncpy_from_\func\()_asm)
 	beqz		v0, 2f
 	PTR_ADDIU	t0, 1
 	PTR_ADDIU	a0, 1
+#ifdef CONFIG_CPU_R5900
+	/* No short loops. */
+	nop
+#endif
 	bne		t0, a2, 1b
 2:	PTR_ADDU	v0, a1, t0
 	xor		v0, a1
