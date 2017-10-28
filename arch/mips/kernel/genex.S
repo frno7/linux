@@ -32,6 +32,10 @@
 NESTED(except_vec3_generic, 0, sp)
 	.set	push
 	.set	noat
+#ifdef CONFIG_CPU_R5900
+	nop
+	nop
+#endif
 #if R5432_CP0_INTERRUPT_WAR
 #ifdef CONFIG_CPU_R5900
 	sync.p
@@ -62,6 +66,8 @@ NESTED(except_vec3_r4000, 0, sp)
 	.set	arch=r4000
 	.set	noat
 #ifdef CONFIG_CPU_R5900
+	nop
+	nop
 	sync.p
 #endif
 	mfc0	k1, CP0_CAUSE
@@ -174,6 +180,10 @@ LEAF(__r4k_wait)
 	.align	5
 BUILD_ROLLBACK_PROLOGUE handle_int
 NESTED(handle_int, PT_SIZE, sp)
+#ifdef CONFIG_CPU_R5900
+	nop
+	nop
+#endif
 	.cfi_signal_frame
 #ifdef CONFIG_TRACE_IRQFLAGS
 	/*
@@ -275,6 +285,10 @@ NESTED(handle_int, PT_SIZE, sp)
  * to fit into space reserved for the exception handler.
  */
 NESTED(except_vec4, 0, sp)
+#ifdef CONFIG_CPU_R5900
+	nop
+	nop
+#endif
 1:	j	1b			/* Dummy, will be replaced */
 	END(except_vec4)
 
@@ -285,6 +299,10 @@ NESTED(except_vec4, 0, sp)
  * unconditional jump to this vector.
  */
 NESTED(except_vec_ejtag_debug, 0, sp)
+#ifdef CONFIG_CPU_R5900
+	nop
+	nop
+#endif
 	j	ejtag_debug_handler
 #ifdef CONFIG_CPU_MICROMIPS
 	 nop
@@ -300,6 +318,10 @@ NESTED(except_vec_ejtag_debug, 0, sp)
  */
 BUILD_ROLLBACK_PROLOGUE except_vec_vi
 NESTED(except_vec_vi, 0, sp)
+#ifdef CONFIG_CPU_R5900
+	nop
+	nop
+#endif
 	SAVE_SOME docfi=1
 	SAVE_AT docfi=1
 	.set	push
@@ -319,6 +341,10 @@ EXPORT(except_vec_vi_end)
  * Complete the register saves and invoke the handler which is passed in $v0
  */
 NESTED(except_vec_vi_handler, 0, sp)
+#ifdef CONFIG_CPU_R5900
+	nop
+	nop
+#endif
 	SAVE_TEMP
 	SAVE_STATIC
 	CLI
@@ -378,6 +404,10 @@ NESTED(except_vec_vi_handler, 0, sp)
 NESTED(ejtag_debug_handler, PT_SIZE, sp)
 	.set	push
 	.set	noat
+#ifdef CONFIG_CPU_R5900
+	nop
+	nop
+#endif
 	MTC0	k0, CP0_DESAVE
 #ifdef CONFIG_CPU_R5900
 	sync.p
@@ -424,6 +454,10 @@ EXPORT(ejtag_debug_buffer)
  * unconditional jump to this vector.
  */
 NESTED(except_vec_nmi, 0, sp)
+#ifdef CONFIG_CPU_R5900
+	nop
+	nop
+#endif
 	j	nmi_handler
 #ifdef CONFIG_CPU_MICROMIPS
 	 nop
@@ -436,6 +470,10 @@ NESTED(nmi_handler, PT_SIZE, sp)
 	.cfi_signal_frame
 	.set	push
 	.set	noat
+#ifdef CONFIG_CPU_R5900
+	nop
+	nop
+#endif
 	/*
 	 * Clear ERL - restore segment mapping
 	 * Clear BEV - required for page fault exception handler to work
@@ -521,6 +559,10 @@ NESTED(nmi_handler, PT_SIZE, sp)
 	NESTED(handle_\exception, PT_SIZE, sp)
 	.cfi_signal_frame
 	.set	noat
+#ifdef CONFIG_CPU_R5900
+	nop
+	nop
+#endif
 	SAVE_ALL
 	FEXPORT(handle_\exception\ext)
 	__build_clear_\clear
