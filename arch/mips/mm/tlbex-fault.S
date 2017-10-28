@@ -14,6 +14,9 @@
 	NESTED(tlb_do_page_fault_\write, PT_SIZE, sp)
 	.cfi_signal_frame
 	SAVE_ALL docfi=1
+#ifdef CONFIG_CPU_R5900
+	sync.p
+#endif
 	MFC0	a2, CP0_BADVADDR
 	KMODE
 	move	a0, sp
