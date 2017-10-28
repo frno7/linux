@@ -36,6 +36,12 @@ LEAF(__strlen_\func\()_asm)
 1:	EX(lbue, v1, (v0), .Lfault\@)
 .endif
 	PTR_ADDIU	v0, 1
+#ifdef CONFIG_CPU_R5900
+	/* No short loops. */
+	nop
+	nop
+	nop
+#endif
 	bnez		v1, 1b
 	PTR_SUBU	v0, a0
 	jr		ra
