@@ -33,6 +33,11 @@ NESTED(except_vec3_generic, 0, sp)
 	.set	push
 	.set	noat
 #ifdef CONFIG_CPU_R5900
+	/* Workaround for R5900 exception execution bug (FLX05). */
+	nop
+	nop
+#endif
+#ifdef CONFIG_CPU_R5900
 	sync.p
 #endif
 	mfc0	k1, CP0_CAUSE
