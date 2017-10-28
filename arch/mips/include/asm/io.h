@@ -409,10 +409,32 @@ static inline void pfx##out##bwlq##p(type val, unsigned long port)	\
 									\
 	__val = pfx##ioswab##bwlq(__addr, val);				\
 									\
-	/* Really, we want this to be atomic */				\
-	BUILD_BUG_ON(sizeof(type) > sizeof(unsigned long));		\
+	if (sizeof(type) != sizeof(u64) || sizeof(u64) == sizeof(long))	{ \
+		*__addr = __val;					\
+	} else if (cpu_has_64bits) {					\
+		unsigned long __flags;					\
+		type __tmp;						\
 									\
-	*__addr = __val;						\
+		/* Manipulating 64-bit registers in a 32-bit kernel */	\
+		/* requires disabling interrupts, since only 32-bit */	\
+		/* registers are saved/restored by interrupts. */	\
+		local_irq_save(__flags);				\
+		__asm__ __volatile__(					\
+			".set	push"		"\t\t# __writeq""\n\t"	\
+			".set	mips3"				"\n\t"	\
+			"dsll32	%L0, %L0, 0"			"\n\t"	\
+			"dsrl32	%L0, %L0, 0"			"\n\t"	\
+			"dsll32	%M0, %M0, 0"			"\n\t"	\
+			"or	%L0, %L0, %M0"			"\n\t"	\
+			"sd	%L0, %2"			"\n\t"	\
+			"sll	%L0, %L0, 0"			"\n\t"	\
+			"sll	%M0, %M0, 0"			"\n\t"	\
+			".set	pop"				"\n"	\
+			: "=r" (__tmp)					\
+			: "0" (__val), "m" (*__addr));			\
+		local_irq_restore(__flags);				\
+	} else								\
+		BUG();							\
 }									\
 									\
 static inline type pfx##in##bwlq##p(unsigned long port)			\
@@ -422,12 +444,30 @@ static inline type pfx##in##bwlq##p(unsigned long port)			\
 									\
 	__addr = (void *)__swizzle_addr_##bwlq(mips_io_port_base + port); \
 									\
-	BUILD_BUG_ON(sizeof(type) > sizeof(unsigned long));		\
-									\
 	if (barrier)							\
 		iobarrier_rw();						\
 									\
-	__val = *__addr;						\
+	if (sizeof(type) != sizeof(u64) || sizeof(u64) == sizeof(long))	{ \
+		__val = *__addr;					\
+	} else if (cpu_has_64bits) {					\
+		unsigned long __flags;					\
+									\
+		/* Manipulating 64-bit registers in a 32-bit kernel */	\
+		/* requires disabling interrupts, since only 32-bit */	\
+		/* registers are saved/restored by interrupts. */	\
+		local_irq_save(__flags);				\
+		__asm__ __volatile__(					\
+			".set	push"		"\t\t# __outq"	"\n\t"	\
+			".set	mips3"				"\n\t"	\
+			"ld	%L0, %1"			"\n\t"	\
+			"dsra32	%M0, %L0, 0"			"\n\t"	\
+			"sll	%L0, %L0, 0"			"\n\t"	\
+			".set	pop"				"\n"	\
+			: "=r" (__val)					\
+			: "m" (*__addr));				\
+		local_irq_restore(__flags);				\
+	} else								\
+		BUG();							\
 									\
 	/* prevent prefetching of coherent DMA data prematurely */	\
 	if (!relax)							\
@@ -467,7 +507,7 @@ __BUILD_MEMORY_PFX(__mem_, q, u64, 0)
 BUILDIO_IOPORT(b, u8)
 BUILDIO_IOPORT(w, u16)
 BUILDIO_IOPORT(l, u32)
-#ifdef CONFIG_64BIT
+#if defined(CONFIG_64BIT) || defined(CONFIG_CPU_R5900)
 BUILDIO_IOPORT(q, u64)
 #endif
 
