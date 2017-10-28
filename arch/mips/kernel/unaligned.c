@@ -89,6 +89,7 @@
 #include <asm/fpu.h>
 #include <asm/fpu_emulator.h>
 #include <asm/inst.h>
+#include <asm/traps.h>
 #include <linux/uaccess.h>
 
 #define STR(x)	__STR(x)
@@ -933,7 +934,36 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 		 * interest.
 		 */
 	case spec3_op:
-		if (insn.dsp_format.func == lx_op) {
+		if (IS_ENABLED(CONFIG_CPU_R5900)) {
+			/*
+			 * On the R5900, the RDHWR instruction
+			 *
+			 *     +--------+-------+----+----+-------+--------+
+			 *     | 011111 | 00000 | rt | rd | 00000 | 111011 |
+			 *     +--------+-------+----+----+-------+--------+
+			 *          6       5      5    5     5        6
+			 *
+			 * is interpreted as the R5900 specific SQ instruction
+			 *
+			 *     +--------+-------+----+---------------------+
+			 *     | 011111 |  base | rt |        offset       |
+			 *     +--------+-------+----+---------------------+
+			 *          6       5      5            16
+			 *
+			 * that yields a zero page address exception. Hence
+			 * RDHWR can be trapped and emulated here.
+			 */
+			if (insn.r_format.func == rdhwr_op &&
+			    insn.r_format.rs == 0 &&
+			    insn.r_format.re == 0) {
+				if (compute_return_epc(regs) < 0 ||
+				    simulate_rdhwr(regs, insn.r_format.rd,
+						   insn.r_format.rt) < 0)
+					goto sigill;
+				return;
+			}
+			goto sigbus;
+		} else if (insn.dsp_format.func == lx_op) {
 			switch (insn.dsp_format.op) {
 			case lwx_op:
 				if (!access_ok(addr, 4))
@@ -1341,6 +1371,7 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 		cu2_notifier_call_chain(CU2_SDC2_OP, regs);
 		break;
 #endif
+
 	default:
 		/*
 		 * Pheeee...  We encountered an yet unknown instruction or
