@@ -47,7 +47,7 @@ extern void (*r4k_blast_icache)(void);
 #define R5900_LOOP_WAR() do { } while(0)
 #endif
 
-#define cache_op(op,addr)						\
+#define cache_op_s(op,addr)						\
 	__asm__ __volatile__(						\
 	"	.set	push					\n"	\
 	"	.set	noreorder				\n"	\
@@ -56,56 +56,85 @@ extern void (*r4k_blast_icache)(void);
 	"	.set	pop					\n"	\
 	:								\
 	: "i" (op), "R" (*(unsigned char *)(addr)))
+#ifdef CONFIG_CPU_R5900
+#define cache_op_d(op,addr)						\
+	__asm__ __volatile__(						\
+	"	.set	push					\n"	\
+	"	.set	noreorder				\n"	\
+	"	.set	mips3\n\t				\n"	\
+	"	sync.l						\n"	\
+	"	cache	%0, %1					\n"	\
+	"	sync.l						\n"	\
+	"	.set	pop					\n"	\
+	:								\
+	: "i" (op), "R" (*(unsigned char *)(addr)))
+#define cache_op_i(op,addr)						\
+	__asm__ __volatile__(						\
+	"	.set	push					\n"	\
+	"	.set	noreorder				\n"	\
+	"	.set	mips3\n\t				\n"	\
+	"	sync.p						\n"	\
+	"	cache	%0, %1					\n"	\
+	"	sync.p						\n"	\
+	"	.set	pop					\n"	\
+	:								\
+	: "i" (op), "R" (*(unsigned char *)(addr)))
+#else
+#define cache_op_d cache_op_s
+#define cache_op_i cache_op_s
+#define cache_op cache_op_s
+#endif
+#define cache_op_t cache_op_s
 
 static inline void flush_icache_line_indexed(unsigned long addr)
 {
-	cache_op(Index_Invalidate_I, addr);
+	cache_op_i(Index_Invalidate_I, addr);
 }
 
 static inline void flush_dcache_line_indexed(unsigned long addr)
 {
-	cache_op(Index_Writeback_Inv_D, addr);
+	cache_op_d(Index_Writeback_Inv_D, addr);
 }
 
 static inline void flush_scache_line_indexed(unsigned long addr)
 {
-	cache_op(Index_Writeback_Inv_SD, addr);
+	cache_op_s(Index_Writeback_Inv_SD, addr);
 }
 
 static inline void flush_icache_line(unsigned long addr)
 {
 	switch (boot_cpu_type()) {
 	case CPU_LOONGSON2:
-		cache_op(Hit_Invalidate_I_Loongson2, addr);
+		cache_op_i(Hit_Invalidate_I_Loongson2, addr);
 		break;
 
 	default:
-		cache_op(Hit_Invalidate_I, addr);
+		cache_op_i(Hit_Invalidate_I, addr);
 		break;
 	}
 }
 
 static inline void flush_dcache_line(unsigned long addr)
 {
-	cache_op(Hit_Writeback_Inv_D, addr);
+	cache_op_d(Hit_Writeback_Inv_D, addr);
 }
 
 static inline void invalidate_dcache_line(unsigned long addr)
 {
-	cache_op(Hit_Invalidate_D, addr);
+	cache_op_d(Hit_Invalidate_D, addr);
 }
 
 static inline void invalidate_scache_line(unsigned long addr)
 {
-	cache_op(Hit_Invalidate_SD, addr);
+	cache_op_s(Hit_Invalidate_SD, addr);
 }
 
 static inline void flush_scache_line(unsigned long addr)
 {
-	cache_op(Hit_Writeback_Inv_SD, addr);
+	cache_op_s(Hit_Writeback_Inv_SD, addr);
 }
 
-#define protected_cache_op(op,addr)				\
+#define protected_cache_op_s(op,addr)				\
 ({								\
 	int __err = 0;						\
 	__asm__ __volatile__(					\
@@ -127,6 +156,49 @@ static inline void flush_scache_line(unsigned long addr)
 	__err;							\
 })
 
+#ifdef CONFIG_CPU_R5900
+#define protected_cache_op_d(op,addr)				\
+({								\
+	int __err = 0;						\
+	__asm__ __volatile__(					\
+	"	.set	push			\n"		\
+	"	.set	noreorder		\n"		\
+	"	.set	mips3			\n"		\
+	"	sync.l				\n"		\
+	"1:	cache	%0, (%1)		\n"		\
+	"	sync.l				\n"		\
+	"2:	.set	pop			\n"		\
+	"	.section __ex_table,\"a\"	\n"		\
+	"	"STR(PTR)" 1b, 2b		\n"		\
+	"	.previous"					\
+	:							\
+	: "i" (op), "r" (addr));				\
+	__err;							\
+})
+
+#define protected_cache_op_i(op,addr)				\
+({								\
+	int __err = 0;						\
+	__asm__ __volatile__(					\
+	"	.set	push			\n"		\
+	"	.set	noreorder		\n"		\
+	"	.set	mips3			\n"		\
+	"	sync.p				\n"		\
+	"1:	cache	%0, (%1)		\n"		\
+	"	sync.p				\n"		\
+	"2:	.set	pop			\n"		\
+	"	.section __ex_table,\"a\"	\n"		\
+	"	"STR(PTR)" 1b, 2b		\n"		\
+	"	.previous"					\
+	:							\
+	: "i" (op), "r" (addr));				\
+	__err;							\
+})
+#else
+#define protected_cache_op_i protected_cache_op_s
+#define protected_cache_op_d protected_cache_op_s
+#define protected_cache_op protected_cache_op_s
+#endif
 
 #define protected_cachee_op(op,addr)				\
 ({								\
@@ -158,13 +230,13 @@ static inline int protected_flush_icache_line(unsigned long addr)
 {
 	switch (boot_cpu_type()) {
 	case CPU_LOONGSON2:
-		return protected_cache_op(Hit_Invalidate_I_Loongson2, addr);
+		return protected_cache_op_i(Hit_Invalidate_I_Loongson2, addr);
 
 	default:
 #ifdef CONFIG_EVA
-		return protected_cachee_op(Hit_Invalidate_I, addr);
+		return protected_cachee_op_i(Hit_Invalidate_I, addr);
 #else
-		return protected_cache_op(Hit_Invalidate_I, addr);
+		return protected_cache_op_i(Hit_Invalidate_I, addr);
 #endif
 	}
 }
@@ -178,18 +250,18 @@ static inline int protected_flush_icache_line(unsigned long addr)
 static inline int protected_writeback_dcache_line(unsigned long addr)
 {
 #ifdef CONFIG_EVA
-	return protected_cachee_op(Hit_Writeback_Inv_D, addr);
+	return protected_cachee_op_d(Hit_Writeback_Inv_D, addr);
 #else
-	return protected_cache_op(Hit_Writeback_Inv_D, addr);
+	return protected_cache_op_d(Hit_Writeback_Inv_D, addr);
 #endif
 }
 
 static inline int protected_writeback_scache_line(unsigned long addr)
 {
 #ifdef CONFIG_EVA
-	return protected_cachee_op(Hit_Writeback_Inv_SD, addr);
+	return protected_cachee_op_s(Hit_Writeback_Inv_SD, addr);
 #else
-	return protected_cache_op(Hit_Writeback_Inv_SD, addr);
+	return protected_cache_op_s(Hit_Writeback_Inv_SD, addr);
 #endif
 }
 
@@ -198,7 +270,7 @@ static inline int protected_writeback_scache_line(unsigned long addr)
  */
 static inline void invalidate_tcache_page(unsigned long addr)
 {
-	cache_op(Page_Invalidate_T, addr);
+	cache_op_t(Page_Invalidate_T, addr);
 }
 
 #ifndef CONFIG_CPU_MIPSR6
@@ -279,6 +351,65 @@ static inline void invalidate_tcache_page(unsigned long addr)
 		:							\
 		: "r" (base),						\
 		  "i" (op));
+#ifdef CONFIG_CPU_R5900
+#define cache64_unroll32_d(base,op)					\
+	__asm__ __volatile__(						\
+	"	.set push					\n"	\
+	"	.set noreorder					\n"	\
+	"	.set mips3					\n"	\
+	"	sync.l						\n"	\
+	"	cache %1, 0x000(%0); sync.l; cache %1, 0x040(%0); sync.l	\n"	\
+	"	cache %1, 0x080(%0); sync.l; cache %1, 0x0c0(%0); sync.l	\n"	\
+	"	cache %1, 0x100(%0); sync.l; cache %1, 0x140(%0); sync.l	\n"	\
+	"	cache %1, 0x180(%0); sync.l; cache %1, 0x1c0(%0); sync.l	\n"	\
+	"	cache %1, 0x200(%0); sync.l; cache %1, 0x240(%0); sync.l	\n"	\
+	"	cache %1, 0x280(%0); sync.l; cache %1, 0x2c0(%0); sync.l	\n"	\
+	"	cache %1, 0x300(%0); sync.l; cache %1, 0x340(%0); sync.l	\n"	\
+	"	cache %1, 0x380(%0); sync.l; cache %1, 0x3c0(%0); sync.l	\n"	\
+	"	cache %1, 0x400(%0); sync.l; cache %1, 0x440(%0); sync.l	\n"	\
+	"	cache %1, 0x480(%0); sync.l; cache %1, 0x4c0(%0); sync.l	\n"	\
+	"	cache %1, 0x500(%0); sync.l; cache %1, 0x540(%0); sync.l	\n"	\
+	"	cache %1, 0x580(%0); sync.l; cache %1, 0x5c0(%0); sync.l	\n"	\
+	"	cache %1, 0x600(%0); sync.l; cache %1, 0x640(%0); sync.l	\n"	\
+	"	cache %1, 0x680(%0); sync.l; cache %1, 0x6c0(%0); sync.l	\n"	\
+	"	cache %1, 0x700(%0); sync.l; cache %1, 0x740(%0); sync.l	\n"	\
+	"	cache %1, 0x780(%0); sync.l; cache %1, 0x7c0(%0); sync.l	\n"	\
+	"	.set pop					\n"	\
+		:							\
+		: "r" (base),						\
+		  "i" (op));
+
+#define cache64_unroll32_i(base,op)					\
+	__asm__ __volatile__(						\
+	"	.set push					\n"	\
+	"	.set noreorder					\n"	\
+	"	.set mips3					\n"	\
+	"	sync.p						\n"	\
+	"	cache %1, 0x000(%0); cache %1, 0x040(%0)	\n"	\
+	"	cache %1, 0x080(%0); cache %1, 0x0c0(%0)	\n"	\
+	"	cache %1, 0x100(%0); cache %1, 0x140(%0)	\n"	\
+	"	cache %1, 0x180(%0); cache %1, 0x1c0(%0)	\n"	\
+	"	cache %1, 0x200(%0); cache %1, 0x240(%0)	\n"	\
+	"	cache %1, 0x280(%0); cache %1, 0x2c0(%0)	\n"	\
+	"	cache %1, 0x300(%0); cache %1, 0x340(%0)	\n"	\
+	"	cache %1, 0x380(%0); cache %1, 0x3c0(%0)	\n"	\
+	"	cache %1, 0x400(%0); cache %1, 0x440(%0)	\n"	\
+	"	cache %1, 0x480(%0); cache %1, 0x4c0(%0)	\n"	\
+	"	cache %1, 0x500(%0); cache %1, 0x540(%0)	\n"	\
+	"	cache %1, 0x580(%0); cache %1, 0x5c0(%0)	\n"	\
+	"	cache %1, 0x600(%0); cache %1, 0x640(%0)	\n"	\
+	"	cache %1, 0x680(%0); cache %1, 0x6c0(%0)	\n"	\
+	"	cache %1, 0x700(%0); cache %1, 0x740(%0)	\n"	\
+	"	cache %1, 0x780(%0); cache %1, 0x7c0(%0)	\n"	\
+	"	sync.p						\n"	\
+	"	.set pop					\n"	\
+		:							\
+		: "r" (base),						\
+		  "i" (op));
+#else
+#define cache64_unroll32_i cache64_unroll32
+#define cache64_unroll32_d cache64_unroll32
+#endif
 
 #define cache128_unroll32(base,op)					\
 	__asm__ __volatile__(						\
@@ -535,7 +666,7 @@ static inline void invalidate_tcache_page(unsigned long addr)
 		  "i" (op));
 
 /* build blast_xxx, blast_xxx_page, blast_xxx_page_indexed */
-#define __BUILD_BLAST_CACHE(pfx, desc, indexop, hitop, lsize, extra)	\
+#define __BUILD_BLAST_CACHE(fn_pfx, pfx, desc, indexop, hitop, lsize, extra)	\
 static inline void extra##blast_##pfx##cache##lsize(void)		\
 {									\
 	unsigned long start = INDEX_BASE;				\
@@ -547,7 +678,7 @@ static inline void extra##blast_##pfx##cache##lsize(void)		\
 									\
 	for (ws = 0; ws < ws_end; ws += ws_inc)				\
 		for (addr = start; addr < end; addr += lsize * 32)	\
-			cache##lsize##_unroll32(addr|ws, indexop);	\
+			cache##lsize##_unroll32##fn_pfx(addr|ws, indexop);	\
 }									\
 									\
 static inline void extra##blast_##pfx##cache##lsize##_page(unsigned long page) \
@@ -556,7 +687,7 @@ static inline void extra##blast_##pfx##cache##lsize##_page(unsigned long page) \
 	unsigned long end = page + PAGE_SIZE;				\
 									\
 	do {								\
-		cache##lsize##_unroll32(start, hitop);			\
+		cache##lsize##_unroll32##fn_pfx(start, hitop);			\
 		start += lsize * 32;					\
 	} while (start < end);						\
 }									\
@@ -573,29 +704,29 @@ static inline void extra##blast_##pfx##cache##lsize##_page_indexed(unsigned long
 									\
 	for (ws = 0; ws < ws_end; ws += ws_inc)				\
 		for (addr = start; addr < end; addr += lsize * 32)	\
-			cache##lsize##_unroll32(addr|ws, indexop);	\
+			cache##lsize##_unroll32##fn_pfx(addr|ws, indexop);	\
 }
 
-__BUILD_BLAST_CACHE(d, dcache, Index_Writeback_Inv_D, Hit_Writeback_Inv_D, 16, )
-__BUILD_BLAST_CACHE(i, icache, Index_Invalidate_I, Hit_Invalidate_I, 16, )
-__BUILD_BLAST_CACHE(s, scache, Index_Writeback_Inv_SD, Hit_Writeback_Inv_SD, 16, )
-__BUILD_BLAST_CACHE(d, dcache, Index_Writeback_Inv_D, Hit_Writeback_Inv_D, 32, )
-__BUILD_BLAST_CACHE(i, icache, Index_Invalidate_I, Hit_Invalidate_I, 32, )
-__BUILD_BLAST_CACHE(i, icache, Index_Invalidate_I, Hit_Invalidate_I_Loongson2, 32, loongson2_)
-__BUILD_BLAST_CACHE(s, scache, Index_Writeback_Inv_SD, Hit_Writeback_Inv_SD, 32, )
-__BUILD_BLAST_CACHE(d, dcache, Index_Writeback_Inv_D, Hit_Writeback_Inv_D, 64, )
-__BUILD_BLAST_CACHE(i, icache, Index_Invalidate_I, Hit_Invalidate_I, 64, )
-__BUILD_BLAST_CACHE(s, scache, Index_Writeback_Inv_SD, Hit_Writeback_Inv_SD, 64, )
-__BUILD_BLAST_CACHE(d, dcache, Index_Writeback_Inv_D, Hit_Writeback_Inv_D, 128, )
-__BUILD_BLAST_CACHE(i, icache, Index_Invalidate_I, Hit_Invalidate_I, 128, )
-__BUILD_BLAST_CACHE(s, scache, Index_Writeback_Inv_SD, Hit_Writeback_Inv_SD, 128, )
+__BUILD_BLAST_CACHE(, d, dcache, Index_Writeback_Inv_D, Hit_Writeback_Inv_D, 16, )
+__BUILD_BLAST_CACHE(, i, icache, Index_Invalidate_I, Hit_Invalidate_I, 16, )
+__BUILD_BLAST_CACHE(, s, scache, Index_Writeback_Inv_SD, Hit_Writeback_Inv_SD, 16, )
+__BUILD_BLAST_CACHE(, d, dcache, Index_Writeback_Inv_D, Hit_Writeback_Inv_D, 32, )
+__BUILD_BLAST_CACHE(, i, icache, Index_Invalidate_I, Hit_Invalidate_I, 32, )
+__BUILD_BLAST_CACHE(, i, icache, Index_Invalidate_I, Hit_Invalidate_I_Loongson2, 32, loongson2_)
+__BUILD_BLAST_CACHE(, s, scache, Index_Writeback_Inv_SD, Hit_Writeback_Inv_SD, 32, )
+__BUILD_BLAST_CACHE(_d, d, dcache, Index_Writeback_Inv_D, Hit_Writeback_Inv_D, 64, )
+__BUILD_BLAST_CACHE(_i, i, icache, Index_Invalidate_I, Hit_Invalidate_I, 64, )
+__BUILD_BLAST_CACHE(, s, scache, Index_Writeback_Inv_SD, Hit_Writeback_Inv_SD, 64, )
+__BUILD_BLAST_CACHE(, d, dcache, Index_Writeback_Inv_D, Hit_Writeback_Inv_D, 128, )
+__BUILD_BLAST_CACHE(, i, icache, Index_Invalidate_I, Hit_Invalidate_I, 128, )
+__BUILD_BLAST_CACHE(, s, scache, Index_Writeback_Inv_SD, Hit_Writeback_Inv_SD, 128, )
 
-__BUILD_BLAST_CACHE(inv_d, dcache, Index_Writeback_Inv_D, Hit_Invalidate_D, 16, )
-__BUILD_BLAST_CACHE(inv_d, dcache, Index_Writeback_Inv_D, Hit_Invalidate_D, 32, )
-__BUILD_BLAST_CACHE(inv_s, scache, Index_Writeback_Inv_SD, Hit_Invalidate_SD, 16, )
-__BUILD_BLAST_CACHE(inv_s, scache, Index_Writeback_Inv_SD, Hit_Invalidate_SD, 32, )
-__BUILD_BLAST_CACHE(inv_s, scache, Index_Writeback_Inv_SD, Hit_Invalidate_SD, 64, )
-__BUILD_BLAST_CACHE(inv_s, scache, Index_Writeback_Inv_SD, Hit_Invalidate_SD, 128, )
+__BUILD_BLAST_CACHE(, inv_d, dcache, Index_Writeback_Inv_D, Hit_Invalidate_D, 16, )
+__BUILD_BLAST_CACHE(, inv_d, dcache, Index_Writeback_Inv_D, Hit_Invalidate_D, 32, )
+__BUILD_BLAST_CACHE(, inv_s, scache, Index_Writeback_Inv_SD, Hit_Invalidate_SD, 16, )
+__BUILD_BLAST_CACHE(, inv_s, scache, Index_Writeback_Inv_SD, Hit_Invalidate_SD, 32, )
+__BUILD_BLAST_CACHE(, inv_s, scache, Index_Writeback_Inv_SD, Hit_Invalidate_SD, 64, )
+__BUILD_BLAST_CACHE(, inv_s, scache, Index_Writeback_Inv_SD, Hit_Invalidate_SD, 128, )
 
 #define __BUILD_BLAST_USER_CACHE(pfx, desc, indexop, hitop, lsize) \
 static inline void blast_##pfx##cache##lsize##_user_page(unsigned long page) \
@@ -620,7 +751,7 @@ __BUILD_BLAST_USER_CACHE(d, dcache, Index_Writeback_Inv_D, Hit_Writeback_Inv_D,
 __BUILD_BLAST_USER_CACHE(i, icache, Index_Invalidate_I, Hit_Invalidate_I, 64)
 
 /* build blast_xxx_range, protected_blast_xxx_range */
-#define __BUILD_BLAST_CACHE_RANGE(pfx, desc, hitop, prot, extra)	\
+#define __BUILD_BLAST_CACHE_RANGE(fn_pfx, pfx, desc, hitop, prot, extra)	\
 static inline void prot##extra##blast_##pfx##cache##_range(unsigned long start, \
 						    unsigned long end)	\
 {									\
@@ -629,7 +760,7 @@ static inline void prot##extra##blast_##pfx##cache##_range(unsigned long start, 
 	unsigned long aend = (end - 1) & ~(lsize - 1);			\
 									\
 	while (1) {							\
-		prot##cache_op(hitop, addr);				\
+		prot##cache_op##fn_pfx(hitop, addr);			\
 		R5900_LOOP_WAR();  /* FIXME: Is this needed in C? */	\
 		if (addr == aend)					\
 			break;						\
@@ -639,8 +770,8 @@ static inline void prot##extra##blast_##pfx##cache##_range(unsigned long start, 
 
 #ifndef CONFIG_EVA
 
-__BUILD_BLAST_CACHE_RANGE(d, dcache, Hit_Writeback_Inv_D, protected_, )
-__BUILD_BLAST_CACHE_RANGE(i, icache, Hit_Invalidate_I, protected_, )
+__BUILD_BLAST_CACHE_RANGE(_d, d, dcache, Hit_Writeback_Inv_D, protected_, )
+__BUILD_BLAST_CACHE_RANGE(_i, i, icache, Hit_Invalidate_I, protected_, )
 
 #else
 
@@ -674,15 +805,15 @@ __BUILD_PROT_BLAST_CACHE_RANGE(d, dcache, Hit_Writeback_Inv_D)
 __BUILD_PROT_BLAST_CACHE_RANGE(i, icache, Hit_Invalidate_I)
 
 #endif
-__BUILD_BLAST_CACHE_RANGE(s, scache, Hit_Writeback_Inv_SD, protected_, )
-__BUILD_BLAST_CACHE_RANGE(i, icache, Hit_Invalidate_I_Loongson2, \
+__BUILD_BLAST_CACHE_RANGE(_s, s, scache, Hit_Writeback_Inv_SD, protected_, )
+__BUILD_BLAST_CACHE_RANGE(_i, i, icache, Hit_Invalidate_I_Loongson2, \
 	protected_, loongson2_)
-__BUILD_BLAST_CACHE_RANGE(d, dcache, Hit_Writeback_Inv_D, , )
-__BUILD_BLAST_CACHE_RANGE(i, icache, Hit_Invalidate_I, , )
-__BUILD_BLAST_CACHE_RANGE(s, scache, Hit_Writeback_Inv_SD, , )
+__BUILD_BLAST_CACHE_RANGE(_d, d, dcache, Hit_Writeback_Inv_D, , )
+__BUILD_BLAST_CACHE_RANGE(_i, i, icache, Hit_Invalidate_I, , )
+__BUILD_BLAST_CACHE_RANGE(_s, s, scache, Hit_Writeback_Inv_SD, , )
 /* blast_inv_dcache_range */
-__BUILD_BLAST_CACHE_RANGE(inv_d, dcache, Hit_Invalidate_D, , )
-__BUILD_BLAST_CACHE_RANGE(inv_s, scache, Hit_Invalidate_SD, , )
+__BUILD_BLAST_CACHE_RANGE(_d, inv_d, dcache, Hit_Invalidate_D, , )
+__BUILD_BLAST_CACHE_RANGE(_d, inv_s, scache, Hit_Invalidate_SD, , )
 
 /* Currently, this is very specific to Loongson-3 */
 #define __BUILD_BLAST_CACHE_NODE(pfx, desc, indexop, hitop, lsize)	\
