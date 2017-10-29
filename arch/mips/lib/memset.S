@@ -46,6 +46,11 @@
 #define ___BUILD_EVA_INSN(insn, reg, addr) __EVAFY(insn, reg, addr)
 
 #define EX(insn,reg,addr,handler)			\
+	/* In an error exception handler the user space could be uncached. */ \
+	.set push;					\
+	.set noreorder;					\
+	sync.l;						\
+	.set pop;					\
 	.if \mode == LEGACY_MODE;			\
 9:		insn	reg, addr;			\
 	.else;						\
@@ -171,6 +176,19 @@
 #ifdef CONFIG_CPU_MICROMIPS
 	LONG_SRL	t7, t0, 1
 #endif
+#ifdef CONFIG_CPU_R5900
+	/* Each instruction has a leading sync.l */
+#if LONGSIZE == 4
+	.set		noat
+	/* 2 instructions for 4 Byte. */
+	LONG_SLL	AT, t0, 1
+	PTR_SUBU	t1, AT
+	.set		at
+#else
+	/* Verify memset for R5900 with 64 bit. 2 instructions for 8 Byte. */
+	PTR_SUBU	t1, t0
+#endif
+#else
 #if LONGSIZE == 4
 	PTR_SUBU	t1, FILLPTRG
 #else
@@ -179,6 +197,7 @@
 	PTR_SUBU	t1, AT
 	.set		at
 #endif
+#endif /* CONFIG_CPU_R5900 */
 	jr		t1
 	PTR_ADDU	a0, t0			/* dest ptr */
 
