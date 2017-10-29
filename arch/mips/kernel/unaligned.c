@@ -488,10 +488,15 @@ do {                                                        \
 
 #else /* __BIG_ENDIAN */
 
+	/* FIXME: Use #ifdef CONFIG_CPU_R5900 */
+	/* FIXME: Is ".set push\n" etc. needed? */
+	/* In an error exception handler the user space could be uncached. */
 #define     _LoadHW(addr, value, res, type)  \
 do {                                                        \
 		__asm__ __volatile__ (".set\tnoat\n"        \
+			"sync.l\n\t"                        \
 			"1:\t"type##_lb("%0", "1(%2)")"\n"  \
+			"sync.l\n\t"                        \
 			"2:\t"type##_lbu("$1", "0(%2)")"\n\t"\
 			"sll\t%0, 0x8\n\t"                  \
 			"or\t%0, $1\n\t"                    \
@@ -511,10 +516,14 @@ do {                                                        \
 } while(0)
 
 #ifndef CONFIG_CPU_MIPSR6
+	/* FIXME: Use #ifdef CONFIG_CPU_R5900 */
+	/* In an error exception handler the user space could be uncached. */
 #define     _LoadW(addr, value, res, type)   \
 do {                                                        \
 		__asm__ __volatile__ (                      \
+			"sync.l\n\t"                        \
 			"1:\t"type##_lwl("%0", "3(%2)")"\n" \
+			"sync.l\n\t"                        \
 			"2:\t"type##_lwr("%0", "(%2)")"\n\t"\
 			"li\t%1, 0\n"                       \
 			"3:\n\t"                            \
@@ -569,11 +578,15 @@ do {                                                        \
 #endif /* CONFIG_CPU_MIPSR6 */
 
 
+	/* FIXME: Use #ifdef CONFIG_CPU_R5900 */
+	/* In an error exception handler the user space could be uncached. */
 #define     _LoadHWU(addr, value, res, type) \
 do {                                                        \
 		__asm__ __volatile__ (                      \
 			".set\tnoat\n"                      \
+			"sync.l\n\t"                        \
 			"1:\t"type##_lbu("%0", "1(%2)")"\n" \
+			"sync.l\n\t"                        \
 			"2:\t"type##_lbu("$1", "0(%2)")"\n\t"\
 			"sll\t%0, 0x8\n\t"                  \
 			"or\t%0, $1\n\t"                    \
@@ -594,10 +607,14 @@ do {                                                        \
 } while(0)
 
 #ifndef CONFIG_CPU_MIPSR6
+	/* FIXME: Use #ifdef CONFIG_CPU_R5900 */
+	/* In an error exception handler the user space could be uncached. */
 #define     _LoadWU(addr, value, res, type)  \
 do {                                                        \
 		__asm__ __volatile__ (                      \
+			"sync.l\n\t"                        \
 			"1:\t"type##_lwl("%0", "3(%2)")"\n" \
+			"sync.l\n\t"                        \
 			"2:\t"type##_lwr("%0", "(%2)")"\n\t"\
 			"dsll\t%0, %0, 32\n\t"              \
 			"dsrl\t%0, %0, 32\n\t"              \
@@ -616,10 +633,14 @@ do {                                                        \
 			: "r" (addr), "i" (-EFAULT));       \
 } while(0)
 
+	/* FIXME: Use #ifdef CONFIG_CPU_R5900 */
+	/* In an error exception handler the user space could be uncached. */
 #define     _LoadDW(addr, value, res)  \
 do {                                                        \
 		__asm__ __volatile__ (                      \
+			"sync.l\n\t"                        \
 			"1:\tldl\t%0, 7(%2)\n"              \
+			"sync.l\n\t"                        \
 			"2:\tldr\t%0, (%2)\n\t"             \
 			"li\t%1, 0\n"                       \
 			"3:\n\t"                            \
@@ -721,11 +742,15 @@ do {                                                        \
 } while(0)
 #endif /* CONFIG_CPU_MIPSR6 */
 
+	/* FIXME: Use #ifdef CONFIG_CPU_R5900 */
+	/* In an error exception handler the user space could be uncached. */
 #define     _StoreHW(addr, value, res, type) \
 do {                                                        \
 		__asm__ __volatile__ (                      \
 			".set\tnoat\n"                      \
+			"sync.l\n\t"                        \
 			"1:\t"type##_sb("%1", "0(%2)")"\n"  \
+			"sync.l\n\t"                        \
 			"srl\t$1,%1, 0x8\n"                 \
 			"2:\t"type##_sb("$1", "1(%2)")"\n"  \
 			".set\tat\n\t"                      \
@@ -745,10 +770,13 @@ do {                                                        \
 } while(0)
 
 #ifndef CONFIG_CPU_MIPSR6
+	/* FIXME: Use #ifdef CONFIG_CPU_R5900 */
 #define     _StoreW(addr, value, res, type)  \
 do {                                                        \
 		__asm__ __volatile__ (                      \
+			"sync.l\n\t"                        \
 			"1:\t"type##_swl("%1", "3(%2)")"\n" \
+			"sync.l\n\t"                        \
 			"2:\t"type##_swr("%1", "(%2)")"\n\t"\
 			"li\t%0, 0\n"                       \
 			"3:\n\t"                            \
@@ -765,10 +793,14 @@ do {                                                        \
 		: "r" (value), "r" (addr), "i" (-EFAULT));  \
 } while(0)
 
+	/* FIXME: Use #ifdef CONFIG_CPU_R5900 */
+	/* In an error exception handler the user space could be uncached. */
 #define     _StoreDW(addr, value, res) \
 do {                                                        \
 		__asm__ __volatile__ (                      \
+			"sync.l\n\t"                        \
 			"1:\tsdl\t%1, 7(%2)\n"              \
+			"sync.l\n\t"                        \
 			"2:\tsdr\t%1, (%2)\n\t"             \
 			"li\t%0, 0\n"                       \
 			"3:\n\t"                            \

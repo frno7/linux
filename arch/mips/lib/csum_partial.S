@@ -357,7 +357,10 @@ EXPORT_SYMBOL(csum_partial)
  * addr    : Address
  * handler : Exception handler
  */
+/* FIXME: #ifdef CONFIG_CPU_R5900 */
 #define EXC(insn, type, reg, addr, handler)	\
+	/* In an error exception handler the user space could be uncached. */ \
+	sync.l;						\
 	.if \mode == LEGACY_MODE;		\
 9:		insn reg, addr;			\
 		.section __ex_table,"a";	\
