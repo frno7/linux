@@ -1937,6 +1937,17 @@ void __init *set_except_vector(int n, void *addr)
 			uasm_i_jr(&buf, k0);
 			uasm_i_nop(&buf);
 		}
+#ifdef CONFIG_CPU_R5900
+		/*
+		 * Data that could be interpreted as cache instructions
+		 * is not allowed after the jump.
+		 */
+		uasm_i_nop(&buf);
+		uasm_i_nop(&buf);
+		uasm_i_nop(&buf);
+		uasm_i_nop(&buf);
+		uasm_i_nop(&buf);
+#endif
 		local_flush_icache_range(ebase + 0x200, (unsigned long)buf);
 	}
 	return (void *)old_handler;
