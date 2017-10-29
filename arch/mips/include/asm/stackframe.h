@@ -349,6 +349,58 @@
 		cfi_ld	sp, PT_R29, \docfi
 		.endm
 
+#ifdef CONFIG_CPU_R5900
+		/*
+		 * Reset bits 127..64 of 128-bit multimedia registers.
+		 *
+		 * Bits 127..64 are not used by the kernel but can be modified
+		 * by applications using the R5900 specific multimedia
+		 * instructions. Clearing them prevents leaking information
+		 * between processes. This is a provisional measure until full
+		 * 128-bit registers are saved/restored, possibly using SQ/LQ.
+		 */
+		.macro	RESET_MMR
+		.set	push
+		.set	noreorder
+		.set	noat
+		pcpyld	$1, $0, $1
+		pcpyld	$2, $0, $2
+		pcpyld	$3, $0, $3
+		pcpyld	$4, $0, $4
+		pcpyld	$5, $0, $5
+		pcpyld	$6, $0, $6
+		pcpyld	$7, $0, $7
+		pcpyld	$8, $0, $8
+		pcpyld	$9, $0, $9
+		pcpyld	$10, $0, $10
+		pcpyld	$11, $0, $11
+		pcpyld	$12, $0, $12
+		pcpyld	$13, $0, $13
+		pcpyld	$14, $0, $14
+		pcpyld	$15, $0, $15
+		pcpyld	$16, $0, $16
+		pcpyld	$17, $0, $17
+		pcpyld	$18, $0, $18
+		pcpyld	$19, $0, $19
+		pcpyld	$20, $0, $20
+		pcpyld	$21, $0, $21
+		pcpyld	$22, $0, $22
+		pcpyld	$23, $0, $23
+		pcpyld	$24, $0, $24
+		pcpyld	$25, $0, $25
+		pcpyld	$26, $0, $26
+		pcpyld	$27, $0, $27
+		pcpyld	$28, $0, $28
+		pcpyld	$29, $0, $29
+		pcpyld	$30, $0, $30
+		pcpyld	$31, $0, $31
+		.set	pop
+		.endm
+#else
+		.macro	RESET_MMR
+		.endm
+#endif
+
 #if defined(CONFIG_CPU_R3000) || defined(CONFIG_CPU_TX39XX)
 
 		.macro	RESTORE_SOME docfi=0
@@ -393,6 +445,7 @@
 		.set	push
 		.set	reorder
 		.set	noat
+		RESET_MMR
 		mfc0	a0, CP0_STATUS
 		ori	a0, STATMASK
 		xori	a0, STATMASK
