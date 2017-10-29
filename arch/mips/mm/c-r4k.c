@@ -1668,14 +1668,14 @@ static int probe_scache(void)
 	write_c0_taglo(0);
 	write_c0_taghi(0);
 	__asm__ __volatile__("nop; nop; nop; nop;"); /* avoid the hazard */
-	cache_op(Index_Store_Tag_I, begin);
-	cache_op(Index_Store_Tag_D, begin);
-	cache_op(Index_Store_Tag_SD, begin);
+	cache_op_i(Index_Store_Tag_I, begin);
+	cache_op_d(Index_Store_Tag_D, begin);
+	cache_op_s(Index_Store_Tag_SD, begin);
 
 	/* Now search for the wrap around point. */
 	pow2 = (128 * 1024);
 	for (addr = begin + (128 * 1024); addr < end; addr = begin + pow2) {
-		cache_op(Index_Load_Tag_SD, addr);
+		cache_op_s(Index_Load_Tag_SD, addr);
 		__asm__ __volatile__("nop; nop; nop; nop;"); /* hazard... */
 		if (!read_c0_taglo())
 			break;
