@@ -511,6 +511,14 @@
 #define R5K_CONF_SE		(_ULCAST_(1) << 12)
 #define R5K_CONF_SS		(_ULCAST_(3) << 20)
 
+/* Bits specific to the R5900.	*/
+#define R5900_CONF_BPE		(_ULCAST_(1) << 12)	/* Enable branch prediction. */
+#define R5900_CONF_NBE		(_ULCAST_(1) << 13)	/* Enable non-blocking load. */
+#define R5900_CONF_BE		(_ULCAST_(1) << 15)	/* Enable big-endian (read-only). */
+#define R5900_CONF_DCE		(_ULCAST_(1) << 16)	/* Enable the data cache. */
+#define R5900_CONF_ICE		(_ULCAST_(1) << 17)	/* Enable the instruction cache. */
+#define R5900_CONF_DIE		(_ULCAST_(1) << 18)	/* Enable double issue. */
+
 /* Bits specific to the RM7000.	 */
 #define RM7K_CONF_SE		(_ULCAST_(1) <<	 3)
 #define RM7K_CONF_TE		(_ULCAST_(1) << 12)
