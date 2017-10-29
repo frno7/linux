@@ -1964,12 +1964,36 @@ void __init *set_except_vector(int n, void *addr)
 		u32 *buf = (u32 *)(ebase + 0x200);
 		unsigned int k0 = 26;
 		if ((handler & jump_mask) == ((ebase + 0x200) & jump_mask)) {
+#ifdef CONFIG_CPU_R5900
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+#endif
 			uasm_i_j(&buf, handler & ~jump_mask);
 			uasm_i_nop(&buf);
+#ifdef CONFIG_CPU_R5900
+			/* There are no data allowed which could be interpreted as cache instruction. */
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+#endif
 		} else {
+#ifdef CONFIG_CPU_R5900
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+#endif
 			UASM_i_LA(&buf, k0, handler);
 			uasm_i_jr(&buf, k0);
 			uasm_i_nop(&buf);
+#ifdef CONFIG_CPU_R5900
+			/* There are no data allowed which could be interpreted as cache instruction. */
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+			uasm_i_nop(&buf);
+#endif
 		}
 		local_flush_icache_range(ebase + 0x200, (unsigned long)buf);
 	}

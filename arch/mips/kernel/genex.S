@@ -52,6 +52,14 @@ NESTED(except_vec3_generic, 0, sp)
 #endif
 	PTR_L	k0, exception_handlers(k1)
 	jr	k0
+#ifdef CONFIG_CPU_R5900
+	/* There should be nothing which looks like a cache instruction. */
+	nop
+	nop
+	nop
+	nop
+	nop
+#endif
 	.set	pop
 	END(except_vec3_generic)
 
@@ -706,6 +714,14 @@ isrdhwr:
 	.set	arch=r4000
 	eret
 	.set	mips0
+#ifdef CONFIG_CPU_R5900
+	/* There should be nothing which looks like cache instruction. */
+	nop
+	nop
+	nop
+	nop
+	nop
+#endif
 #endif
 	.set	pop
 	END(handle_ri_rdhwr)
