@@ -394,6 +394,7 @@
 		pcpyld	$29, $0, $29
 		pcpyld	$30, $0, $30
 		pcpyld	$31, $0, $31
+		mtsab	$0, 0 /* Reset the funnel shift (SA) register. */
 		.set	pop
 		.endm
 #else
