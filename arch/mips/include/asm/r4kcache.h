@@ -37,11 +37,13 @@ extern void (*r4k_blast_icache)(void);
  *  - We need a properly sign extended address for 64-bit code.	 To get away
  *    without ifdefs we let the compiler do it by a type cast.
  */
-#define INDEX_BASE	CKSEG0
 #ifdef CONFIG_CPU_R5900
+/* MSB must be 0 for the instruction cache due to an R5900 bug. */
+#define INDEX_BASE	0
 /* Workaround for short loops on R5900. */
 #define R5900_LOOP_WAR() do { __asm__ __volatile__("nop;nop;\n"); } while(0)
 #else
+#define INDEX_BASE	CKSEG0
 #define R5900_LOOP_WAR() do { } while(0)
 #endif
 
