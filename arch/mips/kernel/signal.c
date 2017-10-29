@@ -426,11 +426,13 @@ int setup_sigcontext(struct pt_regs *regs, struct sigcontext __user *sc)
 	if (cpu_has_dsp) {
 		err |= __put_user(mfhi1(), &sc->sc_hi1);
 		err |= __put_user(mflo1(), &sc->sc_lo1);
+#ifndef CONFIG_CPU_R5900
 		err |= __put_user(mfhi2(), &sc->sc_hi2);
 		err |= __put_user(mflo2(), &sc->sc_lo2);
 		err |= __put_user(mfhi3(), &sc->sc_hi3);
 		err |= __put_user(mflo3(), &sc->sc_lo3);
 		err |= __put_user(rddsp(DSP_MASK), &sc->sc_dsp);
+#endif
 	}
 
 
@@ -503,11 +505,13 @@ int restore_sigcontext(struct pt_regs *regs, struct sigcontext __user *sc)
 	if (cpu_has_dsp) {
 		err |= __get_user(treg, &sc->sc_hi1); mthi1(treg);
 		err |= __get_user(treg, &sc->sc_lo1); mtlo1(treg);
+#ifndef CONFIG_CPU_R5900
 		err |= __get_user(treg, &sc->sc_hi2); mthi2(treg);
 		err |= __get_user(treg, &sc->sc_lo2); mtlo2(treg);
 		err |= __get_user(treg, &sc->sc_hi3); mthi3(treg);
 		err |= __get_user(treg, &sc->sc_lo3); mtlo3(treg);
 		err |= __get_user(treg, &sc->sc_dsp); wrdsp(treg, DSP_MASK);
+#endif
 	}
 
 	for (i = 1; i < 32; i++)

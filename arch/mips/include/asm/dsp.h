@@ -27,11 +27,13 @@ static inline void __init_dsp(void)
 {
 	mthi1(0);
 	mtlo1(0);
+#ifndef CONFIG_CPU_R5900
 	mthi2(0);
 	mtlo2(0);
 	mthi3(0);
 	mtlo3(0);
 	wrdsp(DSP_DEFAULT, DSP_MASK);
+#endif
 }
 
 static inline void init_dsp(void)
@@ -40,6 +42,13 @@ static inline void init_dsp(void)
 		__init_dsp();
 }
 
+#ifdef CONFIG_CPU_R5900
+#define __save_dsp(tsk)							\
+do {									\
+	tsk->thread.dsp.dspr[0] = mfhi1();				\
+	tsk->thread.dsp.dspr[1] = mflo1();				\
+} while (0)
+#else
 #define __save_dsp(tsk)							\
 do {									\
 	tsk->thread.dsp.dspr[0] = mfhi1();				\
@@ -50,6 +59,7 @@ do {									\
 	tsk->thread.dsp.dspr[5] = mflo3();				\
 	tsk->thread.dsp.dspcontrol = rddsp(DSP_MASK);			\
 } while (0)
+#endif
 
 #define save_dsp(tsk)							\
 do {									\
@@ -57,6 +67,13 @@ do {									\
 		__save_dsp(tsk);					\
 } while (0)
 
+#ifdef CONFIG_CPU_R5900
+#define __restore_dsp(tsk)						\
+do {									\
+	mthi1(tsk->thread.dsp.dspr[0]);					\
+	mtlo1(tsk->thread.dsp.dspr[1]);					\
+} while (0)
+#else
 #define __restore_dsp(tsk)						\
 do {									\
 	mthi1(tsk->thread.dsp.dspr[0]);					\
@@ -67,6 +84,7 @@ do {									\
 	mtlo3(tsk->thread.dsp.dspr[5]);					\
 	wrdsp(tsk->thread.dsp.dspcontrol, DSP_MASK);			\
 } while (0)
+#endif
 
 #define restore_dsp(tsk)						\
 do {									\

@@ -416,9 +416,12 @@ int __MIPS16e_compute_return_epc(struct pt_regs *regs)
 int __compute_return_epc_for_insn(struct pt_regs *regs,
 				   union mips_instruction insn)
 {
-	unsigned int bit, fcr31, dspcontrol, reg;
+	unsigned int bit, fcr31, reg;
 	long epc = regs->cp0_epc;
 	int ret = 0;
+#ifndef CONFIG_CPU_R5900
+	unsigned int dspcontrol;
+#endif
 
 	switch (insn.i_format.opcode) {
 	/*
@@ -539,9 +542,12 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 			break;
 
 		case bposge32_op:
+#ifndef CONFIG_CPU_R5900
 			if (!cpu_has_dsp)
+#endif
 				goto sigill_dsp;
 
+#ifndef CONFIG_CPU_R5900
 			dspcontrol = rddsp(0x01);
 
 			if (dspcontrol >= 32) {
@@ -549,6 +555,7 @@ int __compute_return_epc_for_insn(struct pt_regs *regs,
 			} else
 				epc += 8;
 			regs->cp0_epc = epc;
+#endif
 			break;
 		}
 		break;
