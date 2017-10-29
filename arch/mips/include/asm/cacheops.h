@@ -34,6 +34,17 @@
 /*
  * Cache Operations available on all MIPS processors with R4000-style caches
  */
+#ifdef CONFIG_CPU_R5900
+#define Index_Invalidate_I		0x07
+#define Index_Writeback_Inv_D		0x14
+#define Index_Load_Tag_I		0x00
+#define Index_Load_Tag_D		0x10
+#define Index_Store_Tag_I		0x04
+#define Index_Store_Tag_D		0x12
+#define Hit_Invalidate_I		0x0b
+#define Hit_Invalidate_D		0x1a
+#define Hit_Writeback_Inv_D		0x18
+#else
 #define Index_Invalidate_I		(Cache_I | Index_Writeback_Inv)
 #define Index_Writeback_Inv_D		(Cache_D | Index_Writeback_Inv)
 #define Index_Load_Tag_I		(Cache_I | Index_Load_Tag)
@@ -43,14 +54,20 @@
 #define Hit_Invalidate_I		(Cache_I | Hit_Invalidate)
 #define Hit_Invalidate_D		(Cache_D | Hit_Invalidate)
 #define Hit_Writeback_Inv_D		(Cache_D | Hit_Writeback_Inv)
+#endif
 
 /*
  * R4000-specific cacheops
  */
 #define Create_Dirty_Excl_D		(Cache_D | 0x0c)
+#ifdef CONFIG_CPU_R5900
+#define Fill				0x0e
+#define Hit_Writeback_D			0x1c
+#else
 #define Fill				(Cache_I | 0x14)
 #define Hit_Writeback_I			(Cache_I | Hit_Writeback)
 #define Hit_Writeback_D			(Cache_D | Hit_Writeback)
+#endif
 
 /*
  * R4000SC and R4400SC-specific cacheops
