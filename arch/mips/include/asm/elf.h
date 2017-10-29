@@ -16,6 +16,8 @@
 
 #include <asm/current.h>
 
+#include <uapi/asm/auxvec.h>
+
 /* ELF header e_flags defines. */
 /* MIPS architecture level. */
 #define EF_MIPS_ARCH_1		0x00000000	/* -mips1 code.	 */
@@ -27,6 +29,10 @@
 #define EF_MIPS_ARCH_64		0x60000000	/* MIPS64 code.	 */
 #define EF_MIPS_ARCH_32R2	0x70000000	/* MIPS32 R2 code.  */
 #define EF_MIPS_ARCH_64R2	0x80000000	/* MIPS64 R2 code.  */
+
+/* MIPS CPU type. */
+#define EF_MIPS_MACH		0x00FF0000
+#define EF_MIPS_MACH_5900	0x00920000	/* MIPS R5900 Sony Playstation 2 */
 
 /* The ABI of a file. */
 #define EF_MIPS_ABI_O32		0x00001000	/* O32 ABI.  */
@@ -344,6 +350,10 @@ extern struct mips_abi mips_abi_n32;
 
 #define SET_PERSONALITY2(ex, state)					\
 do {									\
+	clear_thread_flag(TIF_R5900FPU);				\
+	if (((ex).e_flags & EF_MIPS_MACH) == EF_MIPS_MACH_5900)		\
+		set_thread_flag(TIF_R5900FPU);				\
+									\
 	clear_thread_flag(TIF_HYBRID_FPREGS);				\
 	set_thread_flag(TIF_32BIT_FPREGS);				\
 									\
