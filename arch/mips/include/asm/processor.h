@@ -139,13 +139,19 @@ struct mips_fpu_struct {
 	unsigned int	msacsr;
 };
 
+#ifdef CONFIG_CPU_R5900
+#define NUM_DSP_REGS   2
+#else
 #define NUM_DSP_REGS   6
+#endif
 
 typedef __u32 dspreg_t;
 
 struct mips_dsp_state {
 	dspreg_t	dspr[NUM_DSP_REGS];
+#ifndef CONFIG_CPU_R5900
 	unsigned int	dspcontrol;
+#endif
 };
 
 #define INIT_CPUMASK { \
@@ -304,10 +310,20 @@ struct thread_struct {
 #define FPAFF_INIT
 #endif /* CONFIG_MIPS_MT_FPAFF */
 
-#define INIT_THREAD  {						\
-	/*							\
-	 * Saved main processor registers			\
-	 */							\
+#ifdef CONFIG_CPU_R5900
+#define DSP_INIT \
+	.dsp			= {				\
+		.dspr		= {0, },			\
+	},
+#else
+#define DSP_INIT \
+	.dsp			= {				\
+		.dspr		= {0, },			\
+		.dspcontrol	= 0,				\
+	},
+#endif
+
+#define REGS_INIT \
 	.reg16			= 0,				\
 	.reg17			= 0,				\
 	.reg18			= 0,				\
@@ -318,7 +334,13 @@ struct thread_struct {
 	.reg23			= 0,				\
 	.reg29			= 0,				\
 	.reg30			= 0,				\
-	.reg31			= 0,				\
+	.reg31			= 0,
+
+#define INIT_THREAD  {						\
+        /*							\
+         * Saved main processor registers			\
+         */							\
+	REGS_INIT						\
 	/*							\
 	 * Saved cp0 stuff					\
 	 */							\
@@ -342,10 +364,7 @@ struct thread_struct {
 	/*							\
 	 * Saved DSP stuff					\
 	 */							\
-	.dsp			= {				\
-		.dspr		= {0, },			\
-		.dspcontrol	= 0,				\
-	},							\
+	DSP_INIT						\
 	/*							\
 	 * saved watch register stuff				\
 	 */							\

@@ -1608,8 +1608,10 @@ asmlinkage void do_mt(struct pt_regs *regs)
 
 asmlinkage void do_dsp(struct pt_regs *regs)
 {
+#ifndef CONFIG_CPU_R5900
 	if (cpu_has_dsp)
 		panic("Unexpected DSP exception");
+#endif
 
 	force_sig(SIGILL, current);
 }

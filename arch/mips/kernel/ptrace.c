@@ -710,7 +710,7 @@ long arch_ptrace(struct task_struct *child, long request,
 			/* implementation / version register */
 			tmp = boot_cpu_data.fpu_id;
 			break;
-		case DSP_BASE ... DSP_BASE + 5: {
+		case DSP_BASE ... DSP_BASE + NUM_DSP_REGS - 1: {
 			dspreg_t *dregs;
 
 			if (!cpu_has_dsp) {
@@ -722,6 +722,7 @@ long arch_ptrace(struct task_struct *child, long request,
 			tmp = (unsigned long) (dregs[addr - DSP_BASE]);
 			break;
 		}
+#ifndef CONFIG_CPU_R5900
 		case DSP_CONTROL:
 			if (!cpu_has_dsp) {
 				tmp = 0;
@@ -730,6 +731,7 @@ long arch_ptrace(struct task_struct *child, long request,
 			}
 			tmp = child->thread.dsp.dspcontrol;
 			break;
+#endif
 		default:
 			tmp = 0;
 			ret = -EIO;
@@ -791,7 +793,7 @@ long arch_ptrace(struct task_struct *child, long request,
 			init_fp_ctx(child);
 			ptrace_setfcr31(child, data);
 			break;
-		case DSP_BASE ... DSP_BASE + 5: {
+		case DSP_BASE ... DSP_BASE + NUM_DSP_REGS - 1: {
 			dspreg_t *dregs;
 
 			if (!cpu_has_dsp) {
@@ -803,6 +805,7 @@ long arch_ptrace(struct task_struct *child, long request,
 			dregs[addr - DSP_BASE] = data;
 			break;
 		}
+#ifndef CONFIG_CPU_R5900
 		case DSP_CONTROL:
 			if (!cpu_has_dsp) {
 				ret = -EIO;
@@ -810,6 +813,7 @@ long arch_ptrace(struct task_struct *child, long request,
 			}
 			child->thread.dsp.dspcontrol = data;
 			break;
+#endif
 		default:
 			/* The rest are not allowed. */
 			ret = -EIO;
