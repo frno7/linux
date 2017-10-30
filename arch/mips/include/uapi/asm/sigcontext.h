@@ -40,26 +40,15 @@ struct sigcontext {
 	unsigned int		sc_fpc_csr;
 	unsigned int		sc_fpc_eir;	/* Unused */
 	unsigned int		sc_used_math;
-#ifdef CONFIG_CPU_R5900
-	unsigned int		pad0;
-#else
 	unsigned int		sc_dsp;		/* dsp status, was sc_ssflags */
-#endif
 	unsigned long long	sc_mdhi;
 	unsigned long long	sc_mdlo;
 	unsigned long		sc_hi1;		/* Was sc_cause */
 	unsigned long		sc_lo1;		/* Was sc_badvaddr */
-#ifdef CONFIG_CPU_R5900
-	unsigned long		pad1;
-	unsigned long		pad2;
-	unsigned long		pad3;
-	unsigned long		pad4;
-#else
 	unsigned long		sc_hi2;		/* Was sc_sigset[4] */
 	unsigned long		sc_lo2;
 	unsigned long		sc_hi3;
 	unsigned long		sc_lo3;
-#endif
 };
 
 #endif /* _MIPS_SIM == _MIPS_SIM_ABI32 */
@@ -82,22 +71,16 @@ struct sigcontext {
 	__u64	sc_fpregs[32];
 	__u64	sc_mdhi;
 	__u64	sc_hi1;
-#ifndef CONFIG_CPU_R5900
 	__u64	sc_hi2;
 	__u64	sc_hi3;
-#endif
 	__u64	sc_mdlo;
 	__u64	sc_lo1;
-#ifndef CONFIG_CPU_R5900
 	__u64	sc_lo2;
 	__u64	sc_lo3;
-#endif
 	__u64	sc_pc;
 	__u32	sc_fpc_csr;
 	__u32	sc_used_math;
-#ifndef CONFIG_CPU_R5900
 	__u32	sc_dsp;
-#endif
 	__u32	sc_reserved;
 };
 
