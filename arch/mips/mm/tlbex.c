@@ -488,6 +488,20 @@ static void __maybe_unused build_tlb_probe_entry(u32 **p)
 		uasm_i_tlbp(p);
 		break;
 
+	case CPU_R5900:
+		/*
+		 * On the R5900, the TLBWP instruction must be immediately
+		 * followed by an ERET or a SYNC.P instruction (Toshiba TX79
+		 * manual p. C-37).
+		 */
+		uasm_i_tlbp(p);
+		uasm_i_syncp(p);
+		uasm_i_nop(p);
+		uasm_i_nop(p);
+		uasm_i_nop(p);
+		uasm_i_nop(p);
+		break;
+
 	default:
 		uasm_i_tlbp(p);
 		break;
