@@ -2731,6 +2731,10 @@ static inline void tlb_read(void)
 
 	__asm__ __volatile__(
 		".set noreorder\n\t"
+#ifdef CONFIG_CPU_R5900
+		/* instruction must not be at the end of a page. */
+		".align 8\n\t"
+#endif
 		"tlbr\n\t"
 #ifdef CONFIG_CPU_R5900
 		"sync.p\n\t"
