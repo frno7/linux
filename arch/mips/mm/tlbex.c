@@ -1378,6 +1378,16 @@ static void build_r4000_tlb_refill_handler(void)
 		uasm_l_leave(&l, p);
 		uasm_i_eret(&p); /* return from trap */
 	}
+
+#ifdef CONFIG_CPU_R5900
+	/* There should be nothing which can be interpreted as cache instruction. */
+	uasm_i_nop(&p);
+	uasm_i_nop(&p);
+	uasm_i_nop(&p);
+	uasm_i_nop(&p);
+	uasm_i_nop(&p);
+#endif
+
 #ifdef CONFIG_MIPS_HUGE_TLB_SUPPORT
 	uasm_l_tlb_huge_update(&l, p);
 	if (htlb_info.need_reload_pte)
@@ -2115,6 +2125,14 @@ build_r4000_tlbchange_handler_tail(u32 **p, struct uasm_label **l,
 	uasm_l_leave(l, *p);
 	build_restore_work_registers(p);
 	uasm_i_eret(p); /* return from trap */
+#ifdef CONFIG_CPU_R5900
+	/* There should be nothing which can be interpreted as cache instruction. */
+	uasm_i_nop(p);
+	uasm_i_nop(p);
+	uasm_i_nop(p);
+	uasm_i_nop(p);
+	uasm_i_nop(p);
+#endif
 
 #ifdef CONFIG_64BIT
 	build_get_pgd_vmalloc64(p, l, r, tmp, ptr, not_refill);
