@@ -622,6 +622,15 @@ void build_tlb_write_entry(u32 **p, struct uasm_label **l,
 		uasm_i_nop(p);
 		tlbw(p);
 		break;
+	case CPU_R5900:
+		/*
+		 * On the R5900, the TLBWI and TLBWR instructions must be
+		 * followed by an ERET or a SYNC.P instruction to ensure
+		 * TLB update (Toshiba TX79 manual pp. C-39, C-40).
+		 */
+		tlbw(p);
+		uasm_i_syncp(p);
+		break;
 
 	case CPU_JZRISC:
 		tlbw(p);
