@@ -2175,6 +2175,19 @@ static void build_r4000_tlb_load_handler(void)
 
 		uasm_i_tlbr(&p);
 
+#ifdef CONFIG_CPU_R5900
+		/*
+		 * On the R5900, the TLBR instruction must be immediately
+		 * followed by an ERET or a SYNC.P instruction (Toshiba TX79
+		 * manual p. C-38).
+		 */
+		uasm_i_syncp(&p);
+		uasm_i_nop(&p);
+		uasm_i_nop(&p);
+		uasm_i_nop(&p);
+		uasm_i_nop(&p);
+#endif
+
 		switch (current_cpu_type()) {
 		default:
 			if (cpu_has_mips_r2_exec_hazard) {
@@ -2249,6 +2262,19 @@ static void build_r4000_tlb_load_handler(void)
 		WARN(cpu_has_tlbex_tlbp_race(), "Unhandled race in RiXi path");
 
 		uasm_i_tlbr(&p);
+
+#ifdef CONFIG_CPU_R5900
+		/*
+		 * On the R5900, the TLBR instruction must be immediately
+		 * followed by an ERET or a SYNC.P instruction (Toshiba TX79
+		 * manual p. C-38).
+		 */
+		uasm_i_syncp(&p);
+		uasm_i_nop(&p);
+		uasm_i_nop(&p);
+		uasm_i_nop(&p);
+		uasm_i_nop(&p);
+#endif
 
 		switch (current_cpu_type()) {
 		default:
