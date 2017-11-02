@@ -2004,6 +2004,14 @@ config FB_IBM_GXT4500
 	  doesn't use Geometry Engine GT1000. This driver also supports
 	  AGP Fire GL2/3/4 cards on x86.
 
+# FIXME FB_SYS_*
+config FB_PS2
+	tristate "Frame buffer driver for Sony Playstation 2"
+	depends on FB && SONY_PS2
+	default y
+	help
+	  Support framebuffer of the Sony Playstation 2.
+
 config FB_PS3
 	tristate "PS3 GPU framebuffer driver"
 	depends on FB && PS3_PS3AV
