@@ -73,6 +73,11 @@ static struct platform_device gs_device = {
 	.resource	= gs_resources,
 };
 
+static struct platform_device fb_device = {
+	.name           = "ps2fb",	/* FIXME: Remove from platform? */
+	.id		= -1,
+};
+
 void __init plat_mem_setup(void)
 {
 	ioport_resource.start = 0x10000000;
@@ -90,6 +95,7 @@ void __init plat_mem_setup(void)
 static struct platform_device *ps2_platform_devices[] __initdata = {
 	&ohci_device,
 	&gs_device,
+	&fb_device,
 };
 
 static int __init ps2_board_setup(void)
