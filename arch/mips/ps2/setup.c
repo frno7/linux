@@ -51,6 +51,11 @@ static struct platform_device gs_device = {
 	.resource	= gs_resources,
 };
 
+static struct platform_device fb_device = {
+	.name           = "ps2fb",	/* FIXME: Remove from platform? */
+	.id		= -1,
+};
+
 static struct platform_device rtc_device = {
 	.name		= "rtc-ps2",
 	.id		= -1,
@@ -72,6 +77,7 @@ void __init plat_mem_setup(void)
 
 static struct platform_device *ps2_platform_devices[] __initdata = {
 	&gs_device,
+	&fb_device,
 	&rtc_device,
 };
 
