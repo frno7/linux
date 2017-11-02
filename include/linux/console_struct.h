@@ -13,9 +13,11 @@
 #ifndef _LINUX_CONSOLE_STRUCT_H
 #define _LINUX_CONSOLE_STRUCT_H
 
+#include <linux/tty.h>
 #include <linux/wait.h>
 #include <linux/vt.h>
 #include <linux/workqueue.h>
+#include <uapi/linux/kd.h>
 
 struct uni_pagedir;
 struct uni_screen;
