@@ -556,6 +556,13 @@ config USB_OHCI_EXYNOS
 	help
 	 Enable support for the Samsung Exynos SOC's on-chip OHCI controller.
 
+config USB_OHCI_HCD_PS2
+	tristate "OHCI support for the Sony PlayStation 2"
+	depends on SONY_PS2
+	default y
+	help
+	 Enable support for the Sony PlayStation 2 OHCI controller.
+
 config USB_CNS3XXX_OHCI
 	bool "Cavium CNS3XXX OHCI Module (DEPRECATED)"
 	depends on ARCH_CNS3XXX
