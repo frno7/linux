@@ -37,6 +37,35 @@ const char *get_system_type(void)
 	return "Sony PlayStation 2";
 }
 
+#define IOP_REG_BASE	0x1f801460
+#define IOP_USB_BASE	(IOP_REG_BASE + 0x1a0)
+
+static struct resource ps2_usb_ohci_resources[] = {
+	[0] = {
+		.start	= IOP_USB_BASE,
+		.end	= IOP_USB_BASE + 0xff,
+		.flags	= IORESOURCE_MEM, /* 256 byte HCCA */
+	},
+	[1] = {
+		.start	= 0x1f801570,
+		.end	= 0x1f801573,
+		/* PS2 specific register (DPCR2). */
+		.flags	= IORESOURCE_MEM,
+	},
+	[2] = {
+		.start	= IRQ_SBUS_USB,
+		.end	= IRQ_SBUS_USB,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device ps2_usb_ohci_device = {
+	.name		= "ohci-ps2",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(ps2_usb_ohci_resources),
+	.resource	= ps2_usb_ohci_resources,
+};
+
 void __init plat_mem_setup(void)
 {
 	ps2_reset_init();
@@ -76,6 +105,10 @@ void __init plat_mem_setup(void)
 	set_io_port_base(CKSEG1);
 }
 
+static struct platform_device *ps2_platform_devices[] __initdata = {
+	&ps2_usb_ohci_device,
+};
+
 static int __init ps2_board_setup(void)
 {
 	ps2dma_init();
@@ -88,6 +121,8 @@ arch_initcall(ps2_board_setup);
 static int __init ps2_device_setup(void)
 {
 	ps2rtc_init();
+
+	platform_add_devices(ps2_platform_devices, ARRAY_SIZE(ps2_platform_devices));
 
 	return 0;
 }
