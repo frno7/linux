@@ -7,3 +7,5 @@ obj-y		+= rtc.o
 obj-y		+= setup.o
 obj-y		+= sif.o
 obj-y		+= time.o
+
+obj-$(CONFIG_PS2_GS)	+= gs.o

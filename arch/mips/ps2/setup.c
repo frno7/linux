@@ -24,6 +24,7 @@ const char *get_system_type(void)
 }
 
 #define IOP_OHCI_BASE	0x1f801600
+#define GS_REG_BASE	0x12000000
 
 static struct resource ohci_resources[] = {	/* FIXME: Subresource to IOP */
 	[0] = {
@@ -46,6 +47,32 @@ static struct platform_device ohci_device = {
 	.resource	= ohci_resources,
 };
 
+static struct resource gs_resources[] = {
+	[0] = {
+		.name	= "Graphics Synthesizer",
+		.start	= GS_REG_BASE,
+		.end	= GS_REG_BASE + 0x1ffffff,
+		.flags	= IORESOURCE_MEM,	/* FIXME: IORESOURCE_REG? */
+	},
+	[1] = {
+		.start	= IRQ_DMAC_2,	/* GS interface (GIF) */
+		.end	= IRQ_DMAC_2,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[2] = {
+		.start	= IRQ_GS_SIGNAL,
+		.end	= IRQ_GS_EXVSYNC,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device gs_device = {
+	.name           = "gs",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(gs_resources),
+	.resource	= gs_resources,
+};
+
 void __init plat_mem_setup(void)
 {
 	ioport_resource.start = 0x10000000;
@@ -62,6 +89,7 @@ void __init plat_mem_setup(void)
 
 static struct platform_device *ps2_platform_devices[] __initdata = {
 	&ohci_device,
+	&gs_device,
 };
 
 static int __init ps2_board_setup(void)
