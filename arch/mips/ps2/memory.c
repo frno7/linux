@@ -18,6 +18,7 @@
 
 int valid_phys_addr_range(phys_addr_t addr, size_t size)
 {
+	/* FIXME: What happens when /dev/mem writes to ROM? */
 	return addr + size <= __pa(high_memory) ||
 	       (IOP_RAM_BASE <= addr && addr + size <= IOP_RAM_BASE + IOP_RAM_SIZE) ||
 	       (ROM0_BASE <= addr && addr + size <= ROM0_BASE + ROM0_SIZE) ||
