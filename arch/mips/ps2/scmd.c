@@ -3,6 +3,8 @@
  * PlayStation 2 system command driver
  *
  * Copyright (C) 2019 Fredrik Noring
+ *
+ * FIXME: ps2doc/cdvdman/CMDS.TXT
  */
 
 #include <linux/build_bug.h>
