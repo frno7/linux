@@ -112,6 +112,26 @@ u32 gs_psm_ct32_block_count(const u32 fbw, const u32 fbh)
 }
 EXPORT_SYMBOL_GPL(gs_psm_ct32_block_count);
 
+/* FIXME */
+u32 gs_psm_ct16_blocks_available(const u32 fbw, const u32 fbh)
+{
+	const u32 block_count = gs_psm_ct16_block_count(fbw, fbh);
+
+	return block_count <= GS_BLOCK_COUNT ?
+		GS_BLOCK_COUNT - block_count : 0;
+}
+EXPORT_SYMBOL_GPL(gs_psm_ct16_blocks_available);
+
+/* FIXME */
+u32 gs_psm_ct32_blocks_available(const u32 fbw, const u32 fbh)
+{
+	const u32 block_count = gs_psm_ct32_block_count(fbw, fbh);
+
+	return block_count <= GS_BLOCK_COUNT ?
+		GS_BLOCK_COUNT - block_count : 0;
+}
+EXPORT_SYMBOL_GPL(gs_psm_ct32_blocks_available);
+
 /**
  * gs_psm_ct16_block_address - 16-bit block address given a block index
  * @fbw: buffer width/64
@@ -281,9 +301,14 @@ static int gs_probe(struct platform_device *pdev)
 {
 	gs_dev = &pdev->dev;
 
-	gs_irq_init();
+	gs_irq_init();	/* FIXME Errors? */
 
-	gif_reset();
+	gif_reset();	/* FIXME Errors? */
+
+#if 0
+	gs_reset();
+	setcrtc(1, 1);
+#endif
 
 	return 0;
 }
