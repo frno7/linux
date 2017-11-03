@@ -109,6 +109,7 @@ static int show_cpuinfo(struct seq_file *m, void *v)
 	seq_printf(m, "\n");
 
 	seq_printf(m, "ASEs implemented\t:");
+	/* FIXME: R5900 multimedia instructions */
 	if (cpu_has_mips16)	seq_printf(m, "%s", " mips16");
 	if (cpu_has_mips16e2)	seq_printf(m, "%s", " mips16e2");
 	if (cpu_has_mdmx)	seq_printf(m, "%s", " mdmx");
