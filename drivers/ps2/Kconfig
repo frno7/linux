@@ -1,0 +1,30 @@
+#
+# Sony Playstation 2 configuration
+#
+
+menu "Sony Playstation 2 devices"
+
+config PS2_ETHER_SMAP
+	tristate "Ethernet driver for fat PS2"
+	default y
+	depends on SONY_PS2
+	depends on NET
+	select PHYLIB
+	help
+	   This enables the driver for the network adapter SCPH-10350 in the fat PS2.
+	   The network adapter SCPH-10281 should also work.
+
+	   If you don't know what to do here, say Y.
+
+config PS2_ETHER_SMAPRPC
+	tristate "Ethernet driver for slim PSTwo"
+	default y
+	depends on SONY_PS2
+	depends on NET
+	select PHYLIB
+	help
+	   This enables the driver for the builtin network adapter of the slim PSTwo.
+
+	   If you don't know what to do here, say Y.
+
+endmenu
