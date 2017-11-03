@@ -46,6 +46,10 @@ u32 gs_psm_ct16_block_count(const u32 fbw, const u32 fbh);
 
 u32 gs_psm_ct32_block_count(const u32 fbw, const u32 fbh);
 
+u32 gs_psm_ct16_blocks_available(const u32 fbw, const u32 fbh);
+
+u32 gs_psm_ct32_blocks_available(const u32 fbw, const u32 fbh);
+
 u32 gs_psm_ct32_block_address(const u32 fbw, const u32 block_index);
 
 u32 gs_psm_ct16_block_address(const u32 fbw, const u32 block_index);
