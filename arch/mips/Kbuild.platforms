@@ -23,6 +23,7 @@ platforms += netlogic
 platforms += paravirt
 platforms += pic32
 platforms += pistachio
+platforms += ps2
 platforms += pmcs-msp71xx
 platforms += pnx833x
 platforms += ralink
