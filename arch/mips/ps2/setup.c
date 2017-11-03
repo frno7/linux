@@ -19,6 +19,8 @@
 #include <asm/mach-ps2/ps2.h>
 #include <asm/mach-ps2/sbios.h>
 
+#include "reset.h"
+
 const char *get_system_type(void)
 {
 	return "Sony PlayStation 2";
@@ -90,6 +92,8 @@ static struct platform_device *ps2_platform_devices[] __initdata = {
 static int __init ps2_board_setup(void)
 {
 	sbios_init();
+
+	ps2_reset_init();
 
 	/*
 	 * FIXME: As far as I remember the following enables the clock,
