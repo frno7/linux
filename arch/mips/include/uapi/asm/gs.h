@@ -326,7 +326,7 @@ struct gs_clamp {
  * @fbw: frame buffer width/64
  * @fbp: frame buffer base/2048
  */
-struct gs_frame_12 {
+struct gs_frame_12 {	/* FIXME: frame_12 -> frame? */
 	__BITFIELD_FIELD(__u64 fbmsk : 32,
 	__BITFIELD_FIELD(__u64 : 2,
 	__BITFIELD_FIELD(__u64 psm : 6,
