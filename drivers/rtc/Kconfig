@@ -1922,4 +1922,14 @@ config RTC_DRV_WILCO_EC
 	  This can also be built as a module. If so, the module will
 	  be named "rtc_wilco_ec".
 
+config RTC_DRV_PS2
+	tristate "PlayStation 2 RTC"
+	depends on SONY_PS2
+	default y
+	help
+	  Say yes here to get support for the PlayStation 2 real-time clock.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-ps2.
+
 endif # RTC_CLASS
