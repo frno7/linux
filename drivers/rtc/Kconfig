@@ -1814,4 +1814,14 @@ config RTC_DRV_GOLDFISH
 	  Goldfish is a code name for the virtual platform developed by Google
 	  for Android emulation.
 
+config RTC_DRV_PS2
+	tristate "PS2 RTC"
+	depends on SONY_PS2
+	default y
+	help
+	  If you say yes here you will get support for the RTC on PS2.
+
+	  This driver can also be built as a module. If so, the module
+	  will be called rtc-ps2.
+
 endif # RTC_CLASS
