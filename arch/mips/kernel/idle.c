@@ -161,6 +161,7 @@ void __init check_wait(void)
 	case CPU_R4700:
 	case CPU_R5000:
 	case CPU_R5500:
+	/* FIXME: case CPU_R5900: */
 	case CPU_NEVADA:
 	case CPU_4KC:
 	case CPU_4KEC:
