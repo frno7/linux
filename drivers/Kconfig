@@ -219,4 +219,6 @@ source "drivers/siox/Kconfig"
 
 source "drivers/slimbus/Kconfig"
 
+source "drivers/ps2/Kconfig"
+
 endmenu
