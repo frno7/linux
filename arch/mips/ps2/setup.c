@@ -51,6 +51,13 @@ static struct platform_device ps2_gs_device = {
 	.id		= -1,
 };
 
+#if 0 /* FIXME */
+static struct platform_device ps2_smaprpc_device = {
+	.name           = "smaprpc",
+	.id		= -1,
+};
+#endif
+
 void __init plat_mem_setup(void)
 {
 	/* IO port (out and in functions). */
@@ -75,6 +82,9 @@ void __init plat_mem_setup(void)
 static struct platform_device *ps2_platform_devices[] __initdata = {
 	&ps2_usb_ohci_device,
 	&ps2_gs_device,
+#if 0 /* FIXME */
+	&ps2_smaprpc_device,
+#endif
 };
 
 static int __init ps2_board_setup(void)
