@@ -22,6 +22,11 @@ const char *get_system_type(void)
 	return "Sony PlayStation 2";
 }
 
+static struct platform_device rtc_device = {
+	.name		= "rtc-ps2",
+	.id		= -1,
+};
+
 void __init plat_mem_setup(void)
 {
 	ioport_resource.start = 0x10000000;
@@ -35,6 +40,10 @@ void __init plat_mem_setup(void)
 
 	set_io_port_base(CKSEG1);	/* KSEG1 is uncached */
 }
+
+static struct platform_device *ps2_platform_devices[] __initdata = {
+	&rtc_device,
+};
 
 static int __init set_machine_name(void)
 {
@@ -68,6 +77,7 @@ arch_initcall(ps2_board_setup);
 
 static int __init ps2_device_setup(void)
 {
-	return 0;
+	return platform_add_devices(ps2_platform_devices,
+		ARRAY_SIZE(ps2_platform_devices));
 }
 device_initcall(ps2_device_setup);
