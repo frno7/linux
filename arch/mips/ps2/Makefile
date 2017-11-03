@@ -1,6 +1,7 @@
 obj-y		+= iop-memory.o
 obj-y		+= iop-registers.o
 obj-y		+= irq.o
+obj-y		+= rtc.o
 obj-y		+= setup.o
 obj-y		+= sif.o
 obj-y		+= time.o
