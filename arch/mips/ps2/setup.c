@@ -49,6 +49,8 @@ arch_initcall(ps2_board_setup);
 
 static int __init ps2_device_setup(void)
 {
+	ps2rtc_init();
+
 	return 0;
 }
 device_initcall(ps2_device_setup);
