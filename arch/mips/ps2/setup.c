@@ -28,7 +28,6 @@
 #include <linux/types.h>
 #include <linux/platform_device.h>
 #include <linux/ata_platform.h>
-#include <linux/dma-mapping.h>
 
 #include <asm/bootinfo.h>
 
@@ -46,12 +45,14 @@ const char *get_system_type(void)
 	return "Sony PlayStation 2";
 }
 
+#define IOP_REG_BASE	0xbf801460
+#define IOP_USB_BASE	(IOP_REG_BASE + 0x1a0)
+
 static struct resource ps2_usb_ohci_resources[] = {
 	[0] = {
-		.start	= 0xbf801600,
-		.end	= 0xbf801700,
-		/* OHCI needs IO memory. */
-		.flags	= IORESOURCE_MEM,
+		.start	= IOP_USB_BASE,
+		.end	= IOP_USB_BASE + 0xff,
+		.flags	= IORESOURCE_MEM, /* 256 byte HCCA */
 	},
 	[1] = {
 		.start	= IRQ_SBUS_USB,
@@ -63,20 +64,10 @@ static struct resource ps2_usb_ohci_resources[] = {
 static struct platform_device ps2_usb_ohci_device = {
 	.name		= "ps2_ohci",
 	.id		= -1,
-	.dev = {
-		/* DMA memory is allocated from IOP heap. */
-		.dma_mask		= &ps2_usb_ohci_device.dev.coherent_dma_mask,
-		.coherent_dma_mask	= DMA_BIT_MASK(32),
-	},
 	.num_resources	= ARRAY_SIZE(ps2_usb_ohci_resources),
 	.resource	= ps2_usb_ohci_resources,
 };
-/*
-static struct platform_device ps2_smap_device = {
-	.name           = "ps2smap",
-	.id		= -1,
-};
-*/
+
 static struct platform_device ps2_smaprpc_device = {
 	.name           = "ps2smaprpc",
 	.id		= -1,
