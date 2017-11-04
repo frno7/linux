@@ -35,8 +35,14 @@ static int ohci_ps2_start(struct usb_hcd *hcd)
 
 	ohci_hcd_init(ohci);
 	ohci_init(ohci);
+
+#if 0
+	hcd->self.sg_tablesize = 0; /* FIXME: Why does this crash? */
+#endif
+
 	ohci_run(ohci);
 	hcd->state = HC_STATE_RUNNING;
+
 	return 0;
 }
 
@@ -49,7 +55,7 @@ static const struct hc_driver ohci_ps2_hc_driver = {
 	 * generic hardware linkage
 	 */
 	.irq =			ohci_irq,
-	.flags =		HCD_USB11 | HCD_MEMORY | HCD_LOCAL_MEM | HCD_LOCAL_DMA,
+	.flags =		HCD_USB11 | HCD_MEMORY | HCD_LOCAL_MEM,
 
 	/*
 	 * basic lifecycle operations
