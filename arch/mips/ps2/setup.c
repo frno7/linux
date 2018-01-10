@@ -29,6 +29,7 @@
 #include <asm/mach-ps2/sbios.h>
 #include <asm/mach-ps2/iopmodules.h>
 
+#include "loadfile.h"
 #include "reset.h"
 
 const char *get_system_type(void)
@@ -136,18 +137,43 @@ arch_initcall(ps2_board_setup);
 
 static int __init ps2_device_setup(void)
 {
+#ifdef CONFIG_SYSFS_IOP_MODULES
+	ps2_loadfile_init();
+#endif
+
 	ps2rtc_init();
+
+	if (load_module_firmware("ps2/poweroff.irx", 0) < 0)
+		pr_err("loading ps2/poweroff.irx failed\n");
+
+	if (load_module_firmware("ps2/ps2dev9.irx", 0) < 0)
+		pr_err("loading ps2/ps2dev9.irx failed\n");
+
+	if (load_module_firmware("ps2/dev9_dma.irx", 0) < 0)
+		pr_err("loading ps2/dev9_dma.irx failed\n");
 
 	if (ps2_pccard_present == 0x0200) {
 		pr_info("Playstation 2 SLIM\n");
+
+		if (load_module_firmware("ps2/intrelay-dev9-rpc.irx", 0) < 0)
+			pr_err("loading ps2/intrelay-dev9-rpc.irx failed\n");
+
+		if (load_module_firmware("ps2/smaprpc.irx", 0) < 0)
+			pr_err("ps2smaprpc: loading ps2/smaprpc.irx failed\n");
 
 		platform_device_register(&ps2_smaprpc_device);
 	}
 	else {
 		pr_info("Playstation 2 FAT\n");
 
+		if (load_module_firmware("ps2/intrelay-dev9.irx", 0) < 0)
+			pr_err("loading ps2/intrelay-dev9.irx failed\n");
+
 		if (ps2_pccard_present == 0x0100) {
 			pr_info(" - With network adapter\n");
+
+			if (load_module_firmware("ps2/smaprpc.irx", 0) < 0)
+				pr_err("ps2smaprpc: loading ps2/smaprpc.irx failed\n");
 
 			platform_device_register(&ps2_smaprpc_device);
 		}
