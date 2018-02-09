@@ -734,7 +734,7 @@ static void rt2800usb_queue_init(struct data_queue *queue)
 
 	switch (queue->qid) {
 	case QID_RX:
-		queue->limit = 128;
+		queue->limit = 8;
 		queue->data_size = AGGREGATION_SIZE;
 		queue->desc_size = RXINFO_DESC_SIZE;
 		queue->winfo_size = rxwi_size;
@@ -745,7 +745,7 @@ static void rt2800usb_queue_init(struct data_queue *queue)
 	case QID_AC_VI:
 	case QID_AC_BE:
 	case QID_AC_BK:
-		queue->limit = 16;
+		queue->limit = 8;
 		queue->data_size = AGGREGATION_SIZE;
 		queue->desc_size = TXINFO_DESC_SIZE;
 		queue->winfo_size = txwi_size;
