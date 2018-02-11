@@ -1,23 +1,33 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
- * MIPS-specific debug support for pre-boot environment
+ * PlayStation 2 SBIOS and PROM handling
  *
- * NOTE: putc() is board specific, if your board have a 16550 compatible uart,
- * please select SYS_SUPPORTS_ZBOOT_UART16550 for your machine. othewise, you
- * need to implement your own putc().
+ * Copyright (C) 2010-2013 Jürgen Urban
+ * Copyright (C) 2017-2018 Fredrik Noring
+ *
+ * SPDX-License-Identifier: GPL-2.0
  */
 
-#include <linux/compiler.h>
-#include <linux/types.h>
+#include <linux/init.h>
+#include <linux/mm.h>
+#include <linux/sched.h>
+#include <linux/memblock.h>
+#include <linux/string.h>
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/highmem.h>
 
-#include <linux/io.h>
-#include <linux/irq.h>
-
-#include <asm/cpu.h>
+#include <asm/addrspace.h>
+#include <asm/bootinfo.h>
+#include <asm/sections.h>
 
 #include <asm/mach-ps2/gs.h>
-#include <asm/mach-ps2/gs-registers.h>
+
 #include <uapi/asm/gif.h>
+
+#define SBIOS_BASE		0x80001000
+#define SBIOS_SIGNATURE_OFFSET	4
+#define PS2_BOOTINFO_MAGIC	0x50324c42	/* "P2LB" */
+#define PS2_BOOTINFO_ADDR	0x01fff000
 
 #define D2_CHCR		0x1000a000	/* Channel 2 control */
 #define D2_MADR		0x1000a010	/* Channel 2 memory address */
@@ -284,15 +294,15 @@ static const unsigned char acorndata_8x8[] = {
 /* FF */  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
+void invalidateICacheAll(void);
+void flushDCacheAll(void);
+
+#if 1
+
+#if 1
 static inline u32 rdl(unsigned long addr)
 {
 	return __raw_readl((void __iomem *)KSEG1ADDR(addr));
-}
-
-void wrlX(u32 value, unsigned long addr)
-{
-	__raw_writel(value, (void __iomem *)KSEG1ADDR(addr));
-	wmb();
 }
 
 static inline void wrl(u32 value, unsigned long addr)
@@ -300,12 +310,35 @@ static inline void wrl(u32 value, unsigned long addr)
 	__raw_writel(value, (void __iomem *)KSEG1ADDR(addr));
 	wmb();
 }
-
-void flushDCacheAll(void);
+#else
+#define rdl(a) inl(a)
+#define wrl(v, a) outl(v, a)
+#endif
 
 static void gif_write_FIXME(const union gif_data *packages, size_t count)
 {
-	static u8 buffer[4096] __attribute__((aligned(64)));
+#if 1
+	const size_t size = sizeof(*packages) * count;
+	size_t i;
+
+	for (i = 0; i < size; i += 4)
+		wrl(((u32 *)packages)[i / 4], 0x10000 + i);
+
+	flushDCacheAll();
+	dma_wmb();
+	wmb();
+
+	while ((rdl(D2_CHCR) & 0x100) != 0)
+		;
+
+	wrl(0x10000, D2_MADR);
+	wrl(count, D2_QWC);
+	wrl(CHCR_SENDN, D2_CHCR);
+
+	while ((rdl(D2_CHCR) & 0x100) != 0)
+		;
+#else
+	static u8 buffer[4096];
 
 	const size_t size = sizeof(*packages) * count;
 	void * const uncached = (void *)KSEG1ADDR((unsigned long)buffer);
@@ -313,8 +346,6 @@ static void gif_write_FIXME(const union gif_data *packages, size_t count)
 	memcpy(uncached, packages, size);
 	dma_wmb();
 	wmb();
-
-	flushDCacheAll();
 
 	while ((rdl(D2_CHCR) & 0x100) != 0)
 		;
@@ -325,13 +356,37 @@ static void gif_write_FIXME(const union gif_data *packages, size_t count)
 
 	while ((rdl(D2_CHCR) & 0x100) != 0)
 		;
+#endif
 }
+
+#else
+
+#define rdl(a) inl(a)
+#define wrl(v, a) outl(v, a)
+
+static void gif_write_FIXME(const union gif_data *packages, size_t count)
+{
+	const dma_addr_t madr = virt_to_phys(packages);
+
+	flush_kernel_vmap_range((void*)packages, sizeof(*packages) * count);
+
+	while ((rdl(D2_CHCR) & 0x100) != 0)
+		;
+
+	wrl(madr, D2_MADR);
+	wrl(count, D2_QWC);
+	wrl(CHCR_SENDN, D2_CHCR);
+
+	while ((rdl(D2_CHCR) & 0x100) != 0)
+		;
+}
+#endif
 
 static void plot(int x, int y, bool v)
 {
 	const struct gs_rgbaq bg = { .r = 0x00, .g = 0x00, .b = 0x00, .a = 0x80 };
 	const struct gs_rgbaq fg = { .r = 0xff, .g = 0xff, .b = 0xff, .a = 0x80 };
-	const union gif_data packages[] __attribute__((aligned(64))) = {
+	const union gif_data packages[]__attribute__((aligned(64))) = {
 		{
 			.tag = {
 				.flg = gif_reglist_mode,
@@ -369,333 +424,11 @@ static void plot(int x, int y, bool v)
 	gif_write_FIXME(packages, ARRAY_SIZE(packages));
 }
 
-static void clear(int xres, int yres)
+void prom_putchar(char c)
 {
-	const struct gs_rgbaq bg = { .r = 0x00, .g = 0x00, .b = 0x00, .a = 0x80 };
-	const union gif_data packages[] __attribute__((aligned(64))) = {
-		{
-			.tag = {
-				.flg = gif_reglist_mode,
-				.reg0 = gif_reg_prim,
-				.reg1 = gif_reg_rgbaq,
-				.reg2 = gif_reg_xyz2,
-				.reg3 = gif_reg_xyz2,
-				.nreg = 4,
-				.nloop = 1,
-				.eop = 1
-			}
-		},
-		{
-			.reg = {
-				.lo.prim = { .prim = gs_sprite },
-				.hi.rgbaq = bg
-			}
-		},
-		{
-			.reg = {
-				.lo.xyz2 = {
-					.x = gs_fbcs_to_pcs(0),
-					.y = gs_fbcs_to_pcs(0)
-				},
-				.hi.xyz2 = {
-					.x = gs_fbcs_to_pcs(xres),
-					.y = gs_fbcs_to_pcs(yres)
-				}
-			}
-		}
-	};
-
-	gif_write_FIXME(packages, ARRAY_SIZE(packages));
-}
-
-static void set_env(void)
-{
-	const u32 xres = 1920;
-	const u32 yres = 1080;
-
-	const u32 fbw = xres / 64;
-	const u32 fbp = 0;
-	const u32 psm = gs_psm_ct16;
-
-	const union gif_data packages[] __attribute__((aligned(64))) = {
-		{
-			.tag = {
-				.flg = gif_packed_mode,
-				.reg0 = gif_reg_ad,
-				.nreg = 1,
-				.nloop = 11
-			}
-		},
-		{
-			.packed = {
-				.ad = {
-					.addr = gs_addr_frame_1,
-					.data.frame_1 = {
-						.fbw = fbw,
-						.fbp = fbp,
-						.psm = psm
-					}
-				}
-			}
-		},
-		{
-			.packed = {
-				.ad = {
-					.addr = gs_addr_xyoffset_1,
-					.data.xyoffset_1 = {
-						.ofx = 0,
-						.ofy = 0,
-					}
-				}
-			}
-		},
-		{
-			.packed = {
-				.ad = {
-					.addr = gs_addr_scissor_1,
-					.data.scissor_1 = {
-						.scax0 = 0, .scax1 = xres,
-						.scay0 = 0, .scay1 = yres
-					}
-				}
-			}
-		},
-		{
-			.packed = {
-				.ad = {
-					.addr = gs_addr_scanmsk,
-					.data.scanmsk = {
-						.msk = gs_scanmsk_normal
-					}
-				}
-			}
-		},
-		{
-			.packed = {
-				.ad = {
-					.addr = gs_addr_prmode,
-					.data.prmode = { }	/* Reset PRMODE to a known value */
-				}
-			}
-		},
-		{
-			.packed = {
-				.ad = {
-					.addr = gs_addr_prmodecont,
-					.data.prmodecont = {
-						.ac = 1
-					}
-				}
-			}
-		},
-		{
-			.packed = {
-				.ad = {
-					.addr = gs_addr_test_1,
-					.data.test_1 = {
-						.zte  = gs_depth_test_on,	/* Must always be ON */
-						.ztst = gs_depth_pass		/* Emulate OFF */
-					}
-				}
-			}
-		},
-		{
-			.packed = {
-				.ad = {
-					.addr = gs_addr_texa,
-					.data.texa = {
-						.ta0 = GS_ALPHA_ONE,
-						.aem = gs_aem_normal,
-						.ta1 = GS_ALPHA_ONE
-					}
-				}
-			}
-		},
-		{
-			.packed = {
-				.ad = {
-					.addr = gs_addr_tex1_1,
-					.data.tex1 = {
-						.lcm = gs_lcm_fixed,
-						.mmag = gs_lod_nearest,
-						.mmin = gs_lod_nearest,
-						.k = 0
-					}
-				}
-			}
-		},
-		{
-			.packed = {
-				.ad = {
-					.addr = gs_addr_zbuf_1,
-					.data.zbuf = {
-						.zmsk = gs_zbuf_off
-					}
-				}
-			}
-		},
-		{
-			.packed = {
-				.ad = {
-					.addr = gs_addr_dthe,
-					.data.dthe = {
-						.dthe = gs_dthe_off
-					}
-				}
-			}
-		}
-	};
-
-	gif_write_FIXME(packages, ARRAY_SIZE(packages));
-
-	clear(xres, yres);
-}
-
-static inline void __raw_writeq__(u64 val, volatile u64 *addr)		\
-{									\
-	u64 tmp;							\
-									\
-	__asm__ __volatile__(						\
-		".set	push"		"\t\t# __writeq""\n\t"		\
-		".set	mips3"				"\n\t"		\
-		"dsll32	%L0, %L0, 0"			"\n\t"		\
-		"dsrl32	%L0, %L0, 0"			"\n\t"		\
-		"dsll32	%M0, %M0, 0"			"\n\t"		\
-		"or	%L0, %L0, %M0"			"\n\t"		\
-		"sd	%L0, %2"			"\n\t"		\
-		"sll	%L0, %L0, 0"			"\n\t"		\
-		"sll	%M0, %M0, 0"			"\n\t"		\
-		".set	pop"				"\n"		\
-		: "=r" (tmp)						\
-		: "0" (val), "m" (*addr));				\
-}
-
-#define DEFINE_WRITEQ_WO_REG(reg, addr) \
-	void gs_writeq_##reg(u64 value) \
-	{ \
-		__raw_writeq__(value, (void __iomem *)KSEG1ADDR(addr)); \
-		wmb(); \
-	}
-
-#define DEFINE_WO_REG(reg, addr) \
-	DEFINE_WRITEQ_WO_REG(reg, addr)
-
-#define DEFINE_WRITE_REG(reg, str) \
-	void gs_write_##reg(struct gs_##str value) \
-	{ \
-		u64 v; \
-		memcpy(&v, &value, sizeof(v)); \
-		gs_writeq_##reg(v); \
-	}
-
-DEFINE_WO_REG(pmode,	0x12000000);	/* PCRTC mode setting */
-DEFINE_WO_REG(smode1,	0x12000010);
-DEFINE_WO_REG(smode2,	0x12000020);	/* Video synchronization mode */
-DEFINE_WO_REG(srfsh,	0x12000030);
-DEFINE_WO_REG(synch1,	0x12000040);
-DEFINE_WO_REG(synch2,	0x12000050);
-DEFINE_WO_REG(syncv,	0x12000060);
-DEFINE_WO_REG(dispfb1,	0x12000070);	/* Rectangle read output circuit 1 */
-DEFINE_WO_REG(display1,	0x12000080);	/* Rectangle read output circuit 1 */
-DEFINE_WO_REG(dispfb2,	0x12000090);	/* Rectangle read output circuit 2 */
-DEFINE_WO_REG(display2,	0x120000a0);	/* Rectangle read output circuit 2 */
-
-DEFINE_WRITE_REG(pmode, pmode);
-DEFINE_WRITE_REG(smode1, smode1);
-DEFINE_WRITE_REG(smode2, smode2);
-DEFINE_WRITE_REG(srfsh, srfsh);
-DEFINE_WRITE_REG(synch1, synch1);
-DEFINE_WRITE_REG(synch2, synch2);
-DEFINE_WRITE_REG(syncv, syncv);
-DEFINE_WRITE_REG(display1, display);
-DEFINE_WRITE_REG(display2, display);
-DEFINE_WRITE_REG(dispfb1, dispfb);
-DEFINE_WRITE_REG(dispfb2, dispfb);
-
-volatile int dummy = 123456789;
-static void udelay(int t)
-{
-	int i;
-
-	for (i = 0; i < 10000000; i++)
-		dummy = (dummy*dummy) % 987654321;
-}
-
-static void set_res(void)
-{
-	/*
-	 * csr 0x551c6004
-	 * dispfb1 0x13c00
-	 * dispfb2 0x13c00
-	 * display1 0x43777f000280f8
-	 * display2 0x7ff77f004600f8
-	 * extbuf 0x0
-	 * extdata 0x0
-	 * extwrite 0x0
-	 * id 0x55
-	 * imr 0x0
-	 * pmode 0x5
-	 * revision 0x1c
-	 * siglblid 0x0
-	 * smode1 0x13422004b1
-	 * smode2 0x0
-	 * srfsh 0x2
-	 * synch1 0x2c4d0160509d7
-	 * synch2 0x240300
-	 * syncv 0xb0e00002400004
-	 * syscnt 0x0
-	 */
-
-	const u64 smode1_ = 0x13422004b1;
-	struct gs_smode1 smode1;
-
-	memcpy(&smode1, &smode1_, sizeof(smode1));
-	smode1.gcont = 1;	/* For YCrCb output */
-	smode1.sint = 1;
-	smode1.prst = 0;
-
-	gs_write_smode1(smode1);
-	gs_writeq_smode2(0x0);
-	gs_writeq_srfsh(0x2);
-	gs_writeq_synch1(0x2c4d0160509d7);
-	gs_writeq_synch2(0x240300);
-	gs_writeq_syncv(0xb0e00002400004);
-	gs_writeq_display1(0x43777f000280f8);
-
-	gs_write_dispfb1((struct gs_dispfb) {
-		.fbw = 1920 / 64,
-		.psm = gs_psm_ct16,
-		.dbx = 0,
-		.dby = 0,
-	});
-
-	gs_write_pmode((struct gs_pmode) {
-		.en1 = 1,
-		.crtmd = 1
-	});
-
-	smode1.prst = 1;
-	gs_write_smode1(smode1);
-	udelay(2500);			/* 2.5 ms FIXME: spinlock */
-
-	smode1.sint = 0;
-	smode1.prst = 0;
-	gs_write_smode1(smode1);
-}
-
-void putc(char c)
-{
-	static bool initialized;
-	static int row, col;
+	static int row = 4, col = 0;
 
 	int x, y;
-
-	if (!initialized) {
-		set_res();
-		set_env();
-
-		initialized = true;
-	}
 
 	if (c == '\r') {
 		col = 0;
@@ -715,25 +448,10 @@ void putc(char c)
 	col++;
 }
 
-void puts(const char *s)
+void __init prom_init(void)
 {
-	char c;
-	while ((c = *s++) != '\0') {
-		putc(c);
-		if (c == '\n')
-			putc('\r');
-	}
 }
 
-void puthex(unsigned long long val)
+void __init prom_free_prom_memory(void)
 {
-
-	unsigned char buf[10];
-	int i;
-	for (i = 7; i >= 0; i--) {
-		buf[i] = "0123456789ABCDEF"[val & 0x0F];
-		val >>= 4;
-	}
-	buf[8] = '\0';
-	puts(buf);
 }
