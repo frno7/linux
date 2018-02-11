@@ -10,3 +10,5 @@ obj-y		+= rom.o
 obj-m		+= rom-sysfs.o
 obj-y		+= scmd.o
 obj-y		+= time.o
+
+obj-y		+= cache.o
