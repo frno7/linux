@@ -16,6 +16,7 @@
 #include <asm/bootinfo.h>
 
 #include <asm/mach-ps2/iop-registers.h>
+#include <asm/mach-ps2/ps2.h>
 
 const char *get_system_type(void)
 {
