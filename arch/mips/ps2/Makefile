@@ -1,3 +1,4 @@
+obj-y		+= cdvd.o
 obj-y		+= iop-memory.o
 obj-y		+= iop-registers.o
 obj-y		+= irq.o
