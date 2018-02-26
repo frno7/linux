@@ -15,6 +15,8 @@
 
 #include <asm/bootinfo.h>
 
+#include <asm/mach-ps2/sbios.h>
+
 const char *get_system_type(void)
 {
 	return "Sony PlayStation 2";
@@ -43,6 +45,8 @@ void __init plat_mem_setup(void)
 
 static int __init ps2_board_setup(void)
 {
+	sbios_init();
+
 	return 0;
 }
 arch_initcall(ps2_board_setup);
