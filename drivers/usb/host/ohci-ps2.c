@@ -182,7 +182,7 @@ static int ohci_hcd_ps2_probe(struct platform_device *pdev)
 	if (ret != 0)
 		goto err_alloc_coherent;
 
-	ret = usb_add_hcd(hcd, irq, 0);
+	ret = usb_add_hcd(hcd, irq, IRQF_SHARED);
 	if (ret != 0)
 		goto err_add_hcd;
 

@@ -34,6 +34,12 @@ enum iop_module_rpc_ops {
 	rpo_search_mod_by_address = 10
 };
 
+enum iop_value_type {
+	iop_value_u8  = 0,
+	iop_value_u16 = 1,
+	iop_value_u32 = 2
+};
+
 static struct device *iopmodules_device;		// FIXME: Naming
 static struct t_SifRpcClientData cd_loadfile_rpc;	// FIXME: Naming
 
@@ -100,6 +106,99 @@ int iop_module_load_rom(const char *filepath)
 	return iop_module_load_rom_arg(filepath, NULL);
 }
 EXPORT_SYMBOL(iop_module_load_rom);
+
+static int iop_rpc_read(u32 * const data,
+	const iop_addr_t addr, const enum iop_value_type type)
+{
+	const struct {
+		u32 addr;
+		u32 type;
+	} arg = {
+		.addr = addr,
+		.type = type
+	};
+	int err;
+
+	err = sif_rpc(&cd_loadfile_rpc, rpo_get_addr,
+		&arg, sizeof(arg), data, sizeof(*data));
+
+	return err;
+}
+
+static int iop_rpc_write(const u32 data,
+	const iop_addr_t addr, const enum iop_value_type type)
+{
+	const struct {
+		u32 addr;
+		u32 type;
+		u32 data;
+	} arg = {
+		.addr = addr,
+		.type = type,
+		.data = data
+	};
+	s32 status;
+	int err;
+
+	err = sif_rpc(&cd_loadfile_rpc, rpo_get_addr,
+		&arg, sizeof(arg), &status, sizeof(status));
+
+	return err < 0 ? err : status;
+}
+
+int iop_readb(u8 * const data, const iop_addr_t addr)
+{
+	u32 raw;
+	const int err = iop_rpc_read(&raw, addr, iop_value_u8);
+
+	if (err >= 0)
+		*data = raw & 0xff;
+
+	return err;
+}
+EXPORT_SYMBOL(iop_readb);
+
+int iop_readw(u16 * const data, const iop_addr_t addr)
+{
+	u32 raw;
+	const int err = iop_rpc_read(&raw, addr, iop_value_u16);
+
+	if (err >= 0)
+		*data = raw & 0xffff;
+
+	return err;
+}
+EXPORT_SYMBOL(iop_readw);
+
+int iop_readl(u32 * const data, const iop_addr_t addr)
+{
+	u32 raw;
+	const int err = iop_rpc_read(&raw, addr, iop_value_u32);
+
+	if (err >= 0)
+		*data = raw;
+
+	return err;
+}
+EXPORT_SYMBOL(iop_readl);
+
+int iop_writeb(const u8 data, const iop_addr_t addr)
+{
+	return iop_rpc_write(data, addr, iop_value_u8);
+}
+EXPORT_SYMBOL(iop_writeb);
+
+int iop_writew(const u16 data, const iop_addr_t addr)
+{
+	return iop_rpc_write(data, addr, iop_value_u16);
+}
+EXPORT_SYMBOL(iop_writew);
+
+int iop_writel(const u32 data, const iop_addr_t addr)
+{
+	return iop_rpc_write(data, addr, iop_value_u32);
+}
+EXPORT_SYMBOL(iop_writel);
 
 int iop_module_load_buffer(const void *buf, size_t nbyte, const char *arg_)
 {
@@ -203,15 +302,29 @@ static int __init iop_module_init(void)
 		return err;
 	}
 
-	id = iop_module_load_rom("rom0:ADDDRV");
+#if 0
+	id = iop_module_load_firmware("ps2/poweroff.irx");
 	if (id < 0) {
-		printk(KERN_ERR "iop-module: Loading rom0:ADDDRV failed with err = %d\n", id);
+		printk(KERN_ERR "iop-module: Loading ps2/poweroff.irx failed with err = %d\n", id);
+		return id;
+	}
+#endif
+
+	id = iop_module_load_firmware("ps2/ps2dev9.irx");
+	if (id < 0) {
+		printk(KERN_ERR "iop-module: Loading ps2/ps2dev9.irx failed with err = %d\n", id);
 		return id;
 	}
 
 	id = iop_module_load_firmware("ps2/intrelay-direct.irx");
 	if (id < 0) {
 		printk(KERN_ERR "iop-module: Loading ps2/intrelay-direct.irx failed with err = %d\n", id);
+		return id;
+	}
+
+	id = iop_module_load_rom("rom0:ADDDRV");
+	if (id < 0) {
+		printk(KERN_ERR "iop-module: Loading rom0:ADDDRV failed with err = %d\n", id);
 		return id;
 	}
 
@@ -237,13 +350,6 @@ static int __init iop_module_init(void)
 	}
 	printk("iop-module: id %d\n", id);
 
-	id = iop_module_load_firmware("ps2/poweroff.irx");
-	if (id < 0) {
-		printk(KERN_ERR "iop-module: Loading ps2/poweroff.irx failed with err = %d\n", id);
-		return id;
-	}
-	printk("iop-module: id %d\n", id);
-
 	id = iop_module_load_firmware("ps2/fileXio.irx");
 	if (id < 0) {
 		printk(KERN_ERR "iop-module: Loading ps2/fileXio.irx failed with err = %d\n", id);
@@ -253,12 +359,6 @@ static int __init iop_module_init(void)
 #endif
 
 #if 0
-	id = iop_module_load_firmware("ps2/ps2dev9.irx");
-	if (id < 0) {
-		printk(KERN_ERR "iop-module: Loading ps2/ps2dev9.irx failed with err = %d\n", id);
-		return id;
-	}
-
 	id = iop_module_load_firmware("ps2/pata_ps2.irx");
 	if (id < 0) {
 		printk(KERN_ERR "iop-module: Loading ps2/pata_ps2.irx failed with err = %d\n", id);
