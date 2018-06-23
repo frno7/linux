@@ -159,15 +159,12 @@ static int pata_ps2_probe(struct platform_device *pdev)
 	if (io_res == NULL || ctl_res == NULL)
 		return -EINVAL;
 
-	if (irq_res)
-		irq_res->flags = IRQF_SHARED;
-
 	/*
 	 * And the IRQ
 	 */
 	if (irq_res && irq_res->start > 0) {
 		irq = irq_res->start;
-		irq_flags = irq_res->flags;
+		irq_flags = IRQF_SHARED;
 	}
 
 	pp = devm_kzalloc(&pdev->dev, sizeof(*pp), GFP_KERNEL);
