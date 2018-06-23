@@ -268,7 +268,7 @@ static int __init ps2_board_setup(void)
 	 * FIXME: As far as I remember the following enables the clock,
 	 * so that ohci->regs->fminterval can count.
 	 */
-	iop_set_dma_dpcr2(IOP_DMA_DPCR2_DEV9);
+	// iop_set_dma_dpcr2(IOP_DMA_DPCR2_DEV9);
 
 	/* FIXME: D_CTRL: DMA control register: Enable all DMAs. EE User's p. 64 */
 
