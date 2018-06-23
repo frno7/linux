@@ -35,6 +35,7 @@ struct ps2_hcd {
 };
 
 static struct hc_driver __read_mostly ohci_ps2_hc_driver;
+static irqreturn_t (*ohci_irq)(struct usb_hcd *hcd);
 
 static void ohci_ps2_enable(struct usb_hcd *hcd)
 {
@@ -77,6 +78,21 @@ static int ohci_ps2_reset(struct usb_hcd *hcd)
 	ohci_ps2_enable(hcd);
 
 	return 0;
+}
+
+static irqreturn_t ohci_ps2_irq(struct usb_hcd *hcd)
+{
+	struct ohci_hcd	*ohci = hcd_to_ohci(hcd);
+	struct ohci_regs __iomem *regs = ohci->regs;
+
+	/*
+	 * OHCI_INTR_MIE needs to be disabled, most likely due to a
+	 * hardware bug. Without it, reading a large amount of data
+	 * (> 1 GB) from a mass storage device results in a freeze.
+	 */
+	ohci_writel(ohci, OHCI_INTR_MIE, &regs->intrdisable);
+
+	return ohci_irq(hcd);	/* Call normal IRQ handler. */
 }
 
 static int iopheap_alloc_dma_buffer(struct platform_device *pdev, size_t size)
@@ -227,6 +243,9 @@ static int __init ohci_ps2_init(void)
 	}
 
 	ohci_init_driver(&ohci_ps2_hc_driver, &ps2_overrides);
+
+	ohci_irq = ohci_ps2_hc_driver.irq;	/* Save normal IRQ handler. */
+	ohci_ps2_hc_driver.irq = ohci_ps2_irq;	/* Install IRQ workaround. */
 
 	return platform_driver_register(&ohci_hcd_ps2_driver);
 }
