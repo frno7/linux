@@ -367,6 +367,45 @@ static void plot(int x, int y, bool v)
 	gif_write_FIXME(packages, ARRAY_SIZE(packages));
 }
 
+static void clear(int xres, int yres)
+{
+	const struct gs_rgbaq bg = { .r = 0x00, .g = 0x00, .b = 0x00, .a = 0x80 };
+	const union gif_data packages[] __attribute__((aligned(64))) = {
+		{
+			.tag = {
+				.flg = gif_reglist_mode,
+				.reg0 = gif_reg_prim,
+				.reg1 = gif_reg_rgbaq,
+				.reg2 = gif_reg_xyz2,
+				.reg3 = gif_reg_xyz2,
+				.nreg = 4,
+				.nloop = 1,
+				.eop = 1
+			}
+		},
+		{
+			.reg = {
+				.lo.prim = { .prim = gs_sprite },
+				.hi.rgbaq = bg
+			}
+		},
+		{
+			.reg = {
+				.lo.xyz2 = {
+					.x = gs_fbcs_to_pcs(0),
+					.y = gs_fbcs_to_pcs(0)
+				},
+				.hi.xyz2 = {
+					.x = gs_fbcs_to_pcs(xres),
+					.y = gs_fbcs_to_pcs(yres)
+				}
+			}
+		}
+	};
+
+	gif_write_FIXME(packages, ARRAY_SIZE(packages));
+}
+
 static void set_env(void)
 {
 	const u32 xres = 1920;
@@ -506,6 +545,8 @@ static void set_env(void)
 	};
 
 	gif_write_FIXME(packages, ARRAY_SIZE(packages));
+
+	clear(xres, yres);
 }
 
 static inline void __raw_writeq__(u64 val, volatile u64 *addr)		\
@@ -650,10 +691,6 @@ void putc(char c)
 	if (!initialized) {
 		set_res();
 		set_env();
-
-		for (y = 0; y < 1000; y++)
-		for (x = 0; x < 1000; x++)
-			plot(x, y, 0);
 
 		initialized = true;
 	}
