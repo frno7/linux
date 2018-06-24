@@ -37,10 +37,7 @@ void cobalt_machine_halt(void)
 	led_trigger_event(power_off_led_trigger, LED_FULL);
 
 	local_irq_disable();
-	while (1) {
-		if (cpu_wait)
-			cpu_wait();
-	}
+	cpu_relax_forever();
 }
 
 void cobalt_machine_restart(char *command)

@@ -20,6 +20,7 @@
 #include <linux/pm.h>
 #include <linux/time.h>
 
+#include <asm/processor.h>
 #include <asm/reboot.h>
 #include <asm/mach-ar7/ar7.h>
 #include <asm/mach-ar7/prom.h>
@@ -33,8 +34,7 @@ static void ar7_machine_restart(char *command)
 
 static void ar7_machine_halt(void)
 {
-	while (1)
-		;
+	cpu_relax_forever();
 }
 
 static void ar7_machine_power_off(void)
