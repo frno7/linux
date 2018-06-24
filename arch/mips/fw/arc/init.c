@@ -11,6 +11,7 @@
 #include <linux/kernel.h>
 
 #include <asm/bootinfo.h>
+#include <asm/processor.h>
 #include <asm/sgialib.h>
 #include <asm/smp-ops.h>
 
@@ -34,8 +35,7 @@ void __init prom_init(void)
 	if (pb->magic != 0x53435241) {
 		printk(KERN_CRIT "Aieee, bad prom vector magic %08lx\n",
 		       (unsigned long) pb->magic);
-		while(1)
-			;
+		cpu_relax_forever();
 	}
 
 	prom_init_cmdline();
