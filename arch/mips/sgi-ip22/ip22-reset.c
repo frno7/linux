@@ -17,6 +17,7 @@
 
 #include <asm/io.h>
 #include <asm/irq.h>
+#include <asm/processor.h>
 #include <asm/reboot.h>
 #include <asm/sgialib.h>
 #include <asm/sgi/ioc.h>
@@ -72,7 +73,7 @@ static void __noreturn sgi_machine_restart(char *command)
 	if (machine_state & MACHINE_SHUTTING_DOWN)
 		sgi_machine_power_off();
 	sgimc->cpuctrl0 |= SGIMC_CCTRL0_SYSINIT;
-	while (1);
+	cpu_relax_forever();
 }
 
 static void __noreturn sgi_machine_halt(void)

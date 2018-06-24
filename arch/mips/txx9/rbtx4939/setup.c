@@ -21,6 +21,7 @@
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/partitions.h>
 #include <linux/mtd/map.h>
+#include <asm/processor.h>
 #include <asm/reboot.h>
 #include <asm/txx9/generic.h>
 #include <asm/txx9/pci.h>
@@ -31,8 +32,7 @@ static void rbtx4939_machine_restart(char *command)
 	local_irq_disable();
 	writeb(1, rbtx4939_reseten_addr);
 	writeb(1, rbtx4939_softreset_addr);
-	while (1)
-		;
+	cpu_relax_forever();
 }
 
 static void __init rbtx4939_time_init(void)
