@@ -427,7 +427,7 @@ static void plot(int x, int y, bool v)
 
 void prom_putchar(char c)
 {
-	static int row = 10, col = 0;
+	static int row = 4, col = 0;
 
 	int x, y;
 
