@@ -58,7 +58,7 @@ static inline void iop_cdvd_write_sdin(const u8 sdin)	/* FIXME */
 	outb(sdin, 0x1F402017);
 }
 
-static void power_off(void)
+static void __noreturn power_off(void)
 {
 	// int err;
 
@@ -86,8 +86,7 @@ static void power_off(void)
 
 	printk("power_off end\n");
 
-	for (;;)
-		cpu_relax();	/* FIXME: cpu_relax_forever? */
+	cpu_relax_forever();
 }
 
 static int __init iop_power_off_init(void)
