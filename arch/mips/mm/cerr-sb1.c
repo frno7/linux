@@ -4,6 +4,7 @@
  */
 #include <linux/sched.h>
 #include <asm/mipsregs.h>
+#include <asm/processor.h>
 #include <asm/sibyte/sb1250.h>
 #include <asm/sibyte/sb1250_regs.h>
 
@@ -244,8 +245,7 @@ asmlinkage void sb1_cache_error(void)
 	 * undesirable.
 	 */
 #ifdef CONFIG_SB1_CERR_STALL
-	while (1)
-		;
+	cpu_relax_forever();
 #else
 	panic("unhandled cache error");
 #endif
