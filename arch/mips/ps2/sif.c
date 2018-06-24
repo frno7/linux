@@ -433,10 +433,12 @@ int sif_rpc_async(struct t_SifRpcClientData *cd, int rpc_number,
 	const void *sendbuf, int ssize, void *recvbuf, int rsize,
 	SifRpcEndFunc_t endfunc, void *efarg)
 {
+	const size_t dmac_rsize = (rsize != 0 ? rsize : 16);	/* FIXME: Not zero? */
 	SifRpcCallPkt_t call = {
 		.rpc_number  = rpc_number,
 		.send_size   = ssize,
-		.receive     = dma_map_single(NULL, dmac_receive, rsize, DMA_FROM_DEVICE), /* FIXME: dma_mapping_error */
+		.receive     = dma_map_single(NULL, dmac_receive, dmac_rsize,
+			DMA_FROM_DEVICE), /* FIXME: dma_mapping_error */
 		.recv_size   = rsize,
 		.rmode       = 1,
 		.pkt_addr    = &call,
@@ -478,7 +480,7 @@ int sif_rpc_async(struct t_SifRpcClientData *cd, int rpc_number,
 
 	wait_for_completion(&cd->hdr.cmp);
 
-	dma_unmap_single(NULL, call.receive, rsize, DMA_FROM_DEVICE);
+	dma_unmap_single(NULL, call.receive, dmac_rsize, DMA_FROM_DEVICE);
 
 	memcpy(recvbuf, dmac_receive, rsize);
 
