@@ -14,6 +14,8 @@
 #include <linux/platform_device.h>
 
 #include <asm/bootinfo.h>
+#include <asm/cacheflush.h>
+#include <asm/reboot.h>
 
 #include <asm/mach-ps2/iop-registers.h>
 #include <asm/mach-ps2/ps2.h>
@@ -232,6 +234,36 @@ static struct platform_device smaprpc_device = {
 };
 #endif
 
+static void cpu_relax_forever(void)
+{
+	for (;;)
+		cpu_relax();
+}
+
+static void ps2_machine_halt(void)
+{
+	local_irq_disable();
+	cpu_relax_forever();
+}
+
+static void ps2_machine_restart(char *command)
+{
+	void (* const mips_reset_vec)(void) = (void (*)(void))0xbfc00000;
+
+	local_irq_disable();
+
+	/* TODO: Does a GPIO reset method exist? */
+
+	set_c0_status(ST0_BEV | ST0_ERL);
+	change_c0_config(CONF_CM_CMASK, CONF_CM_UNCACHED);
+	__flush_cache_all();
+	write_c0_wired(0);
+
+	mips_reset_vec();
+
+	cpu_relax_forever();
+}
+
 void __init plat_mem_setup(void)
 {
 	ioport_resource.start = 0x10000000;
@@ -244,6 +276,9 @@ void __init plat_mem_setup(void)
 	add_memory_region(0x1fc00000, 0x02000000, BOOT_MEM_ROM_DATA);
 
 	set_io_port_base(CKSEG1);	/* KSEG1 is uncached */
+
+	_machine_restart = ps2_machine_restart;
+	_machine_halt = ps2_machine_halt;
 }
 
 static struct platform_device *ps2_platform_devices[] __initdata = {
