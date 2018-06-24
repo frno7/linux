@@ -60,9 +60,11 @@
 #if 0
 static char *mode_option = "640x512i@50";
 static char *mode_adjust = "";
+static bool mode_skip = false;
 #else
 static char *mode_option = "1920x1080p@50";
 static char *mode_adjust = "+13+0";
+static bool mode_skip = true;		/* FIXME: Remove gs_read_* */
 #endif	/* FIXME */
 static unsigned int vfb_ram = 0;
 
@@ -1856,12 +1858,15 @@ static int ps2fb_set_par(struct fb_info *info)
 	info->fix.ywrapstep = 1;
 	info->fix.line_length = var->xres_virtual * var->bits_per_pixel / 8;
 
-	gs_write_smode1(smode1);
-	gs_write_smode2(sp.smode2);
-	gs_write_srfsh(sp.srfsh);
-	gs_write_synch1(sp.synch1);
-	gs_write_synch2(sp.synch2);
-	gs_write_syncv(sp.syncv);
+	if (!mode_skip) {
+		gs_write_smode1(smode1);
+		gs_write_smode2(sp.smode2);
+		gs_write_srfsh(sp.srfsh);
+		gs_write_synch1(sp.synch1);
+		gs_write_synch2(sp.synch2);
+		gs_write_syncv(sp.syncv);
+	}
+
 	gs_write_display1(sp.display);
 
 	gs_write_dispfb1((struct gs_dispfb12) {
@@ -1871,19 +1876,22 @@ static int ps2fb_set_par(struct fb_info *info)
 		.dby = var->yoffset,
 	});
 
-	gs_write_pmode((struct gs_pmode) {
-		.en1 = 1,
-		.crtmd = 1
-	});
+	if (!mode_skip) {
+		gs_write_pmode((struct gs_pmode) {
+			.en1 = 1,
+			.crtmd = 1
+		});
 
-	smode1.prst = 1;
-	gs_write_smode1(smode1);
-	udelay(2500);			/* 2.5 ms FIXME: spinlock */
+		smode1.prst = 1;
+		gs_write_smode1(smode1);
+		udelay(2500);			/* 2.5 ms FIXME: spinlock */
 
-	smode1.sint = 0;
-	smode1.prst = 0;
-	gs_write_smode1(smode1);
+		smode1.sint = 0;
+		smode1.prst = 0;
+		gs_write_smode1(smode1);
+	}
 
+out:
 	return 0;
 }
 
@@ -2295,6 +2303,7 @@ static int ps2fb_probe(struct platform_device *pdev)
 
 	/* Clear the mode adjustment after setting the initial mode */
 	mode_adjust = "";
+	mode_skip = false;
 
 	return 0;
 
@@ -2412,5 +2421,9 @@ MODULE_PARM_DESC(mode_adjust,	/* FIXME: mode_margin? */
 module_param(vfb_ram, uint, 0);
 MODULE_PARM_DESC(vfb_ram,
 	"Enable the virtual framebuffer with this amount of memory [KiB]");
+
+module_param(mode_skip, bool, 0);
+MODULE_PARM_DESC(mode_skip,
+	"Assume initial video mode is already correct to avoid flickering");
 
 MODULE_LICENSE("GPL");
