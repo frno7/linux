@@ -72,7 +72,7 @@ static void vr41xx_restart(char *command)
 {
 	local_irq_disable();
 	software_reset();
-	while (1) ;
+	cpu_relax_forever();
 }
 
 static void vr41xx_halt(void)

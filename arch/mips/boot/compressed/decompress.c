@@ -13,6 +13,7 @@
 #include <linux/libfdt.h>
 
 #include <asm/addrspace.h>
+#include <asm/processor.h>
 
 /*
  * These two variables specify the free mem region
@@ -41,8 +42,7 @@ void error(char *x)
 	puts(x);
 	puts("\n\n -- System halted");
 
-	while (1)
-		;	/* Halt */
+	cpu_relax_forever();	/* Halt */
 }
 
 /* activate the code for pre-boot environment */

@@ -3,19 +3,14 @@
  *  Copyright (C) 2010, Lars-Peter Clausen <lars@metafoo.de>
  */
 
+#include <asm/processor.h>
 #include <asm/reboot.h>
 
 #include "reset.h"
 
 static void jz4740_halt(void)
 {
-	while (1) {
-		__asm__(".set push;\n"
-			".set mips3;\n"
-			"wait;\n"
-			".set pop;\n"
-		);
-	}
+	cpu_relax_forever();
 }
 
 void jz4740_reset_init(void)
