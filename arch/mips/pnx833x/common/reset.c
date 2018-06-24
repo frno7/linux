@@ -10,6 +10,7 @@
  *	Nikita Youshchenko <yoush@debian.org>, based on PNX8550 code.
  */
 #include <linux/reboot.h>
+#include <asm/processor.h>
 #include <pnx833x.h>
 
 void pnx833x_machine_restart(char *command)
@@ -20,9 +21,7 @@ void pnx833x_machine_restart(char *command)
 
 void pnx833x_machine_halt(void)
 {
-	while (1)
-		__asm__ __volatile__ ("wait");
-
+	cpu_relax_forever();
 }
 
 void pnx833x_machine_power_off(void)

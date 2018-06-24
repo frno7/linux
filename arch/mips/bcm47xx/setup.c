@@ -39,6 +39,7 @@
 #include <linux/bcma/bcma_soc.h>
 #include <asm/bootinfo.h>
 #include <asm/idle.h>
+#include <asm/processor.h>
 #include <asm/prom.h>
 #include <asm/reboot.h>
 #include <asm/time.h>
@@ -77,8 +78,8 @@ static void bcm47xx_machine_restart(char *command)
 		break;
 #endif
 	}
-	while (1)
-		cpu_relax();
+
+	cpu_relax_forever();
 }
 
 static void bcm47xx_machine_halt(void)
@@ -97,8 +98,8 @@ static void bcm47xx_machine_halt(void)
 		break;
 #endif
 	}
-	while (1)
-		cpu_relax();
+
+	cpu_relax_forever();
 }
 
 #ifdef CONFIG_BCM47XX_SSB

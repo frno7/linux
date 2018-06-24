@@ -15,6 +15,7 @@
 #include <asm/traps.h>
 #include <linux/uaccess.h>
 #include <asm/addrspace.h>
+#include <asm/processor.h>
 #include <asm/ptrace.h>
 #include <asm/tlbdebug.h>
 
@@ -28,8 +29,7 @@ static int ip32_be_handler(struct pt_regs *regs, int is_fixup)
 	printk("Got %cbe at 0x%lx\n", data ? 'd' : 'i', regs->cp0_epc);
 	show_regs(regs);
 	dump_tlb_all();
-	while(1);
-	force_sig(SIGBUS);
+	cpu_relax_forever();
 }
 
 void __init ip32_be_init(void)

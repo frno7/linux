@@ -13,6 +13,7 @@
 #include <linux/smp.h>
 
 #include <asm/bootinfo.h>
+#include <asm/processor.h>
 #include <asm/reboot.h>
 #include <asm/setup.h>
 #include <asm/sibyte/board.h>
@@ -65,7 +66,7 @@ static void __noreturn cfe_linux_exit(void *arg)
 		cfe_exit(warm, 0);
 		printk("cfe_exit returned??\n");
 	}
-	while (1);
+	cpu_relax_forever();
 }
 
 static void __noreturn cfe_linux_restart(char *command)
