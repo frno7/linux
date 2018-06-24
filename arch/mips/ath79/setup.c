@@ -24,6 +24,7 @@
 #include <asm/time.h>		/* for mips_hpt_frequency */
 #include <asm/reboot.h>		/* for _machine_{restart,halt} */
 #include <asm/mips_machine.h>
+#include <asm/processor.h>
 #include <asm/prom.h>
 #include <asm/fw/fw.h>
 
@@ -39,15 +40,12 @@ static void ath79_restart(char *command)
 {
 	local_irq_disable();
 	ath79_device_reset_set(AR71XX_RESET_FULL_CHIP);
-	for (;;)
-		if (cpu_wait)
-			cpu_wait();
+	cpu_relax_forever();
 }
 
 static void ath79_halt(void)
 {
-	while (1)
-		cpu_wait();
+	cpu_relax_forever();
 }
 
 static void __init ath79_detect_sys_type(void)
