@@ -10,6 +10,7 @@
 #include <linux/pm.h>
 
 #include <asm/idle.h>
+#include <asm/processor.h>
 #include <asm/reboot.h>
 
 #include <loongson.h>
@@ -45,10 +46,7 @@ static void loongson_restart(char *command)
 	void (*fw_restart)(void) = (void *)loongson_sysconf.restart_addr;
 
 	fw_restart();
-	while (1) {
-		if (cpu_wait)
-			cpu_wait();
-	}
+	cpu_relax_forever();
 #endif
 }
 
@@ -66,20 +64,14 @@ static void loongson_poweroff(void)
 	void (*fw_poweroff)(void) = (void *)loongson_sysconf.poweroff_addr;
 
 	fw_poweroff();
-	while (1) {
-		if (cpu_wait)
-			cpu_wait();
-	}
+	cpu_relax_forever();
 #endif
 }
 
 static void loongson_halt(void)
 {
 	pr_notice("\n\n** You can safely turn off the power now **\n\n");
-	while (1) {
-		if (cpu_wait)
-			cpu_wait();
-	}
+	cpu_relax_forever();
 }
 
 static int __init mips_reboot_setup(void)

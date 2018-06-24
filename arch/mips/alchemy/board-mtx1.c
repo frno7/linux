@@ -18,6 +18,7 @@
 #include <linux/mtd/physmap.h>
 #include <mtd/mtd-abi.h>
 #include <asm/bootinfo.h>
+#include <asm/processor.h>
 #include <asm/reboot.h>
 #include <asm/setup.h>
 #include <asm/mach-au1x00/au1000.h>
@@ -60,11 +61,7 @@ static void mtx1_reset(char *c)
 
 static void mtx1_power_off(void)
 {
-	while (1)
-		asm volatile (
-		"	.set	mips32					\n"
-		"	wait						\n"
-		"	.set	mips0					\n");
+	cpu_relax_forever();
 }
 
 void __init board_setup(void)
