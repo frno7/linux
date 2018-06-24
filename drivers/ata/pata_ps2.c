@@ -110,8 +110,7 @@ static int pata_ps2_set_mode(struct ata_link *link, struct ata_device **unused)
 	printk("pata_ps2_set_mode\n");
 
 	ata_for_each_dev(dev, link, ENABLED) {
-		/* We don't really care */
-		dev->pio_mode = dev->xfer_mode = XFER_PIO_0; // FIXME: _4
+		dev->pio_mode = dev->xfer_mode = XFER_PIO_4;
 		dev->xfer_shift = ATA_SHIFT_PIO;
 		dev->flags |= ATA_DFLAG_PIO;
 		ata_dev_info(dev, "configured for PIO\n");
