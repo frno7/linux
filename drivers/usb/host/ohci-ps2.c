@@ -33,7 +33,6 @@ struct ps2_hcd {
 };
 
 static struct hc_driver __read_mostly ohci_ps2_hc_driver;
-static irqreturn_t (*ohci_irq)(struct usb_hcd *hcd);
 
 static void ohci_ps2_enable(struct usb_hcd *hcd)
 {
@@ -75,21 +74,6 @@ static int ohci_ps2_reset(struct usb_hcd *hcd)
 	ohci_ps2_enable(hcd);
 
 	return ret;
-}
-
-static irqreturn_t ohci_ps2_irq(struct usb_hcd *hcd)
-{
-	struct ohci_hcd	*ohci = hcd_to_ohci(hcd);
-	struct ohci_regs __iomem *regs = ohci->regs;
-
-	/*
-	 * FIXME: For some reason OHCI_INTR_MIE is required in the
-	 * IRQ handler. Without it, reading a large amount of data
-	 * (> 1 GB) from a mass storage device results in a freeze.
-	 */
-	ohci_writel(ohci, OHCI_INTR_MIE, &regs->intrdisable);
-
-	return ohci_irq(hcd); /* Call normal IRQ handler. */
 }
 
 static int iopheap_alloc_coherent(struct platform_device *pdev,
@@ -147,7 +131,11 @@ static int ohci_hcd_ps2_probe(struct platform_device *pdev)
 	int irq;
 	int ret;
 
+#if 1
+	irq = IRQ_INTC_TIMER0;
+#else
 	irq = platform_get_irq(pdev, 0);
+#endif
 	if (irq < 0) {
 		dev_err(dev, "platform_get_irq failed\n");
 		return irq;
@@ -182,7 +170,11 @@ static int ohci_hcd_ps2_probe(struct platform_device *pdev)
 	if (ret != 0)
 		goto err_alloc_coherent;
 
+#if 1
+	ret = usb_add_hcd(hcd, irq, IRQF_PERCPU | IRQF_TIMER | IRQF_SHARED);
+#else
 	ret = usb_add_hcd(hcd, irq, IRQF_SHARED);
+#endif
 	if (ret != 0)
 		goto err_add_hcd;
 
@@ -286,18 +278,6 @@ static int __init ohci_ps2_init(void)
 
 	ohci_init_driver(&ohci_ps2_hc_driver, &ps2_overrides);
 	ohci_ps2_hc_driver.flags |= HCD_LOCAL_MEM;
-
-	/*
-	 * FIXME: For some reason
-	 *
-	 *   ohci_writel(ohci, OHCI_INTR_MIE, &regs->intrdisable);
-	 *
-	 * is required in the IRQ handler. Without it, reading a large
-	 * amount of data (> 1 GB) from a mass storage device results in
-	 * a freeze.
-	 */
-	ohci_irq = ohci_ps2_hc_driver.irq; /* Save normal IRQ handler. */
-	ohci_ps2_hc_driver.irq = ohci_ps2_irq; /* Install IRQ workaround. */
 
 	return platform_driver_register(&ohci_hcd_ps2_driver);
 }
