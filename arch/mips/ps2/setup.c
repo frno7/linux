@@ -14,6 +14,7 @@
 
 #include <asm/bootinfo.h>
 #include <asm/prom.h>
+#include <asm/reboot.h>
 
 #include <asm/mach-ps2/irq.h>
 #include <asm/mach-ps2/scmd.h>
@@ -100,6 +101,20 @@ static struct platform_device rtc_device = {
 	.id		= -1,
 };
 
+static void __noreturn power_off(void)
+{
+	local_irq_disable();
+
+	/* FIXME */
+	outw(inw(0x1f80146c) & 0xFFFE, 0x1f80146c);
+	outw(0, 0x1f801460);
+	outw(0, 0x1f80146c);
+
+	scmd_power_off();
+
+	cpu_relax_forever();
+}
+
 void __init plat_mem_setup(void)
 {
 	ioport_resource.start = 0x10000000;
@@ -112,6 +127,8 @@ void __init plat_mem_setup(void)
 	add_memory_region(0x1fc00000, 0x02000000, BOOT_MEM_ROM_DATA);
 
 	set_io_port_base(CKSEG1);	/* KSEG1 is uncached */
+
+	pm_power_off = power_off;
 }
 
 static struct platform_device *ps2_platform_devices[] __initdata = {
