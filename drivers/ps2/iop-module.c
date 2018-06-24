@@ -302,11 +302,13 @@ static int __init iop_module_init(void)
 		return err;
 	}
 
+#if 0
 	id = iop_module_load_firmware("ps2/poweroff.irx");
 	if (id < 0) {
 		printk(KERN_ERR "iop-module: Loading ps2/poweroff.irx failed with err = %d\n", id);
 		return id;
 	}
+#endif
 
 	id = iop_module_load_firmware("ps2/ps2dev9.irx");
 	if (id < 0) {
