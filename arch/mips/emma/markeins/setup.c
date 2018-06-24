@@ -10,6 +10,7 @@
 #include <linux/kernel.h>
 #include <linux/types.h>
 
+#include <asm/processor.h>
 #include <asm/time.h>
 #include <asm/reboot.h>
 
@@ -34,13 +35,13 @@ static void markeins_machine_halt(void)
 {
 	printk("EMMA2RH Mark-eins halted.\n");
 	markeins_led("halted.");
-	while (1) ;
+	cpu_relax_forever();
 }
 
 static void markeins_machine_power_off(void)
 {
 	markeins_led("poweroff.");
-	while (1) ;
+	cpu_relax_forever();
 }
 
 static unsigned long __initdata emma2rh_clock[4] = {
