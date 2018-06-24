@@ -124,7 +124,7 @@ static int timer0_shutdown(struct clock_event_device *evt)
 
 static struct irqaction timer0_irqaction = {
 	.handler	= ps2_timer_interrupt,
-	.flags		= IRQF_PERCPU | IRQF_TIMER,
+	.flags		= IRQF_PERCPU | IRQF_TIMER | IRQF_SHARED,
 	.name		= "intc-timer0",
 };
 
