@@ -259,6 +259,30 @@ static void __noreturn ps2_machine_restart(char *command)
 	cpu_relax_forever();
 }
 
+static inline void iop_cdvd_write_scmd(const u8 scmd)	/* FIXME */
+{
+	outb(scmd, 0x1F402016);
+}
+
+static inline void iop_cdvd_write_sdin(const u8 sdin)	/* FIXME */
+{
+	outb(sdin, 0x1F402017);
+}
+
+static void __noreturn power_off(void)
+{
+	local_irq_disable();
+
+	outw(inw(0x1f80146c) & 0xFFFE, 0x1f80146c);
+	outw(0, 0x1f801460);
+	outw(0, 0x1f80146c);
+
+	iop_cdvd_write_sdin(0);
+	iop_cdvd_write_scmd(0xF); /* Power off */
+
+	cpu_relax_forever();
+}
+
 void __init plat_mem_setup(void)
 {
 	ioport_resource.start = 0x10000000;
@@ -274,6 +298,7 @@ void __init plat_mem_setup(void)
 
 	_machine_restart = ps2_machine_restart;
 	_machine_halt = ps2_machine_halt;
+	pm_power_off = power_off;
 }
 
 static struct platform_device *ps2_platform_devices[] __initdata = {
