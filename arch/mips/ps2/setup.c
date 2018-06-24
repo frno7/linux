@@ -234,25 +234,20 @@ static struct platform_device smaprpc_device = {
 };
 #endif
 
-static void cpu_relax_forever(void)
-{
-	for (;;)
-		cpu_relax();
-}
-
-static void ps2_machine_halt(void)
+static void __noreturn ps2_machine_halt(void)
 {
 	local_irq_disable();
+
 	cpu_relax_forever();
 }
 
-static void ps2_machine_restart(char *command)
+static void __noreturn ps2_machine_restart(char *command)
 {
 	void (* const mips_reset_vec)(void) = (void (*)(void))0xbfc00000;
 
 	local_irq_disable();
 
-	/* TODO: Does a GPIO reset method exist? */
+	/* FIXME: Does not work? Does a GPIO reset method exist? */
 
 	set_c0_status(ST0_BEV | ST0_ERL);
 	change_c0_config(CONF_CM_CMASK, CONF_CM_UNCACHED);
