@@ -405,6 +405,12 @@ unsigned long get_wchan(struct task_struct *p);
 #define cpu_relax()	barrier()
 #endif
 
+static inline void __noreturn cpu_relax_forever(void)
+{
+	for (;;)
+		cpu_relax();
+}
+
 /*
  * Return_address is a replacement for __builtin_return_address(count)
  * which on certain architectures cannot reasonably be implemented in GCC
