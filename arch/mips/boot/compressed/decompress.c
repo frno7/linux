@@ -117,8 +117,6 @@ void decompress_kernel(unsigned long boot_heap_start)
 		.config = read_c0_config(),
 	};
 	unsigned long zimage_start, zimage_size;
-	const u32 * const entry_words = (u32 *)KERNEL_ENTRY;
-	int i;
 
 	zimage_start = (unsigned long)(&__image_begin);
 	zimage_size = (unsigned long)(&__image_end) -
@@ -161,13 +159,6 @@ void decompress_kernel(unsigned long boot_heap_start)
 		/* copy dtb to where the booted kernel will expect it */
 		memcpy((void *)VMLINUX_LOAD_ADDRESS_ULL + image_size,
 		       __appended_dtb, dtb_size);
-	}
-
-	for (i = 0; i < 16; i++) {
-		puthex((u32)&entry_words[i]);
-		puts(" ");
-		puthex(entry_words[i]);
-		puts("\n");
 	}
 
 	flushDCacheAll();

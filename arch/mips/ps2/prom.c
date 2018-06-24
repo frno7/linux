@@ -427,22 +427,9 @@ static void plot(int x, int y, bool v)
 
 void prom_putchar(char c)
 {
-	static bool initialized;
-	static int row, col;
+	static int row = 10, col = 0;
 
 	int x, y;
-
-	if (!initialized) {
-		// wrl(0xc, 0x12000020);
-
-		for (y = 0; y < 1000; y++)
-		for (x = 0; x < 1000; x++)
-			plot(x, y, 0);
-
-		// wrl(0x0, 0x12000020);
-
-		initialized = true;
-	}
 
 	if (c == '\r') {
 		col = 0;
