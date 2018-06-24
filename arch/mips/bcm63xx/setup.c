@@ -25,8 +25,8 @@
 void bcm63xx_machine_halt(void)
 {
 	pr_info("System halted\n");
-	while (1)
-		;
+
+	cpu_relax_forever();
 }
 
 static void bcm6348_a1_reboot(void)
@@ -58,8 +58,8 @@ static void bcm6348_a1_reboot(void)
 		"jr\t%0"
 		:
 		: "r" (0xbfc00000));
-	while (1)
-		;
+
+	cpu_relax_forever();
 }
 
 void bcm63xx_machine_reboot(void)
