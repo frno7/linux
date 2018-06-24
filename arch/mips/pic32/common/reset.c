@@ -5,6 +5,7 @@
  */
 #include <linux/init.h>
 #include <linux/pm.h>
+#include <asm/processor.h>
 #include <asm/reboot.h>
 #include <asm/mach-pic32/pic32.h>
 
@@ -12,13 +13,7 @@
 
 static void pic32_halt(void)
 {
-	while (1) {
-		__asm__(".set push;\n"
-			".set arch=r4000;\n"
-			"wait;\n"
-			".set pop;\n"
-		);
-	}
+	cpu_relax_forever();
 }
 
 static void pic32_machine_restart(char *command)
