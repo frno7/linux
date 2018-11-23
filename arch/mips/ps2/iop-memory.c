@@ -42,16 +42,9 @@ EXPORT_SYMBOL(iop_bus_to_virt);
 int iop_read_memory(void *dst, const iop_addr_t src, size_t nbyte)
 {
 	void *ptr = iop_bus_to_virt(src);
-	iop_addr_t addr;
 
-	/* FIXME: Use some kind of memory barrier instead? */
-	addr = dma_map_single(NULL, ptr, nbyte, DMA_FROM_DEVICE);
-	if (dma_mapping_error(NULL, addr))
-		return -EIO;
-
+	dma_cache_inv((unsigned long)ptr, nbyte);
 	memcpy(dst, ptr, nbyte);
-
-	dma_unmap_single(NULL, addr, nbyte, DMA_FROM_DEVICE);
 
 	return 0;
 }
@@ -60,16 +53,9 @@ EXPORT_SYMBOL(iop_read_memory);
 int iop_write_memory(iop_addr_t dst, const void *src, size_t nbyte)
 {
 	void *ptr = iop_bus_to_virt(dst);
-	iop_addr_t addr;
 
 	memcpy(ptr, src, nbyte);
-
-	/* FIXME: Use some kind of memory barrier instead? */
-	addr = dma_map_single(NULL, ptr, nbyte, DMA_TO_DEVICE);
-	if (dma_mapping_error(NULL, addr))
-		return -EIO;
-
-	dma_unmap_single(NULL, addr, nbyte, DMA_TO_DEVICE);
+	dma_cache_wback((unsigned long)ptr, nbyte);
 
 	return 0;
 }

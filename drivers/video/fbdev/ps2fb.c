@@ -550,14 +550,13 @@ int dma_write(struct dma_tag *tags, size_t count)
 
 	if (count > 0) {
 		const size_t size = count * sizeof(*tags);
-		const dma_addr_t tadr =
-			dma_map_single(NULL, tags, size, DMA_TO_DEVICE);
+		const dma_addr_t tadr = virt_to_phys(tags);
+
+		dma_cache_wback((unsigned long)tags, size);
 
 		outl(tadr, D2_TADR);
 		outl(0, D2_QWC);
 		outl(CHCR_SENDC, D2_CHCR);
-
-		dma_unmap_single(NULL, tadr, size, DMA_TO_DEVICE); /* FIXME: At end? */
 	}
 
 	return 0;

@@ -370,8 +370,9 @@ void gif_write(union gif_data *base_package, size_t package_count)
 {
 	if (package_count > 0) {
 		const size_t size = package_count * sizeof(*base_package);
-		const dma_addr_t madr =
-			dma_map_single(NULL, base_package, size, DMA_TO_DEVICE);
+		const dma_addr_t madr = virt_to_phys(base_package);
+
+		dma_cache_wback((unsigned long)base_package, size);
 
 		/* Wait for previous transmissions to finish. */
 		while ((inl(D2_CHCR) & 0x100) != 0)
@@ -380,8 +381,6 @@ void gif_write(union gif_data *base_package, size_t package_count)
 		outl(madr, D2_MADR);
 		outl(package_count, D2_QWC);
 		outl(CHCR_SENDN, D2_CHCR);
-
-		dma_unmap_single(NULL, madr, size, DMA_TO_DEVICE); /* FIXME: At end? */
 	}
 }
 EXPORT_SYMBOL(gif_write);

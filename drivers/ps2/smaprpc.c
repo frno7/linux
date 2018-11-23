@@ -150,7 +150,8 @@ static int smaprpc_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 	memcpy(_data_buffer_wr_pointer, skb->data, skb->len);
 
 	/* Flush caches */
-	ee_addr = dma_map_single(NULL, _data_buffer_wr_pointer, skb->len, DMA_TO_DEVICE);
+	ee_addr = virt_to_phys(_data_buffer_wr_pointer);
+	dma_sync_single_for_cpu(NULL, _data_buffer_wr_pointer, skb->len, DMA_TO_DEVICE);
 
 	//printk("%s: (%d) TX strt @ %pad, size = %d\n", smap->net_dev->name, smap->tx_queued+1, (void *)(smap->iop_data_buffer_addr + offset), skb->len);
 
