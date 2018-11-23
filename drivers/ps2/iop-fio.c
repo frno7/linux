@@ -103,7 +103,7 @@ ssize_t iop_fio_read(int fd, void *buf, size_t nbyte_)
 		&arg, sizeof(arg),
 		&rd, sizeof(rd));
 
-	dma_sync_single_for_cpu(NULL, dma_addr, PAGE_SIZE, DMA_FROM_DEVICE);
+	dma_cache_inv((unsigned long)dma_buffer, PAGE_SIZE);
 
 	if (err < 0)
 		return err;
@@ -220,7 +220,7 @@ static int __init iop_fio_init(void)
 
 	/* FIXME: Check errors */
 	dma_buffer = (void *)__get_free_page(GFP_DMA);
-	dma_addr = dma_map_single(NULL, dma_buffer, PAGE_SIZE, DMA_FROM_DEVICE);
+	dma_addr = virt_to_phys(dma_buffer);
 
 	romver = read_romver();
 	printk("iop: version: %s\n", iop_romver());
@@ -230,7 +230,6 @@ static int __init iop_fio_init(void)
 
 static void __exit iop_fio_exit(void)
 {
-	dma_unmap_single(NULL, dma_addr, PAGE_SIZE, DMA_FROM_DEVICE);
 	free_page((unsigned long)dma_buffer);
 }
 

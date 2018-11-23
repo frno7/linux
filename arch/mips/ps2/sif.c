@@ -229,14 +229,12 @@ static int sif1_write_ert_int_0(const struct sif_cmd_header *header,
 	memcpy(&dma_buffer[sizeof(iop_dma_tag)], header, header_size);
 	memcpy(&dma_buffer[sizeof(iop_dma_tag) + header_size], src, nbytes);
 
-	madr = dma_map_single(NULL, dma_buffer, dma_nbytes, DMA_TO_DEVICE);
-	/* FIXME: dma_mapping_error */
+	madr = virt_to_phys(dma_buffer);
+	dma_cache_wback((unsigned long)dma_buffer, dma_nbytes);
 
 	outl(madr, D6_MADR);
 	outl(nbytes_to_qwc(dma_nbytes), D6_QWC);
 	outl(CHCR_SENDN_TIE, D6_CHCR);
-
-	dma_unmap_single(NULL, madr, dma_nbytes, DMA_TO_DEVICE);
 
 	return 0;	/* FIXME: Check errors for all sif1_writes */
 }
@@ -349,8 +347,8 @@ static irqreturn_t sif0_dma_handler(int irq, void *dev_id)
 	if (inl(EE_DMAC_SIF0_CHCR) & 0x100)
 		return IRQ_NONE;
 
-	dma_sync_single_for_cpu(NULL, sif0_dma_addr,
-		sizeof(header) + sizeof(data), DMA_FROM_DEVICE);
+	dma_cache_inv((unsigned long)cmd_data->pktbuf,
+		sizeof(header) + sizeof(data));
 
 	memcpy(&header, &pktbuf[0], sizeof(header));
 	memcpy(&data[0], &pktbuf[sizeof(header)], sizeof(data));
@@ -437,8 +435,7 @@ int sif_rpc_async(struct t_SifRpcClientData *cd, int rpc_number,
 	SifRpcCallPkt_t call = {
 		.rpc_number  = rpc_number,
 		.send_size   = ssize,
-		.receive     = dma_map_single(NULL, dmac_receive, dmac_rsize,
-			DMA_FROM_DEVICE), /* FIXME: dma_mapping_error */
+		.receive     = virt_to_phys(dmac_receive),
 		.recv_size   = rsize,
 		.rmode       = 1,
 		.pkt_addr    = &call,
@@ -480,8 +477,7 @@ int sif_rpc_async(struct t_SifRpcClientData *cd, int rpc_number,
 
 	wait_for_completion(&cd->hdr.cmp);
 
-	dma_unmap_single(NULL, call.receive, dmac_rsize, DMA_FROM_DEVICE);
-
+	dma_cache_inv((unsigned long)dmac_receive, dmac_rsize);
 	memcpy(recvbuf, dmac_receive, rsize);
 
 	return 0;
@@ -841,7 +837,7 @@ static int __init sif_init(void)
 	dmac_buffer1 = (void *)__get_free_page(GFP_DMA);
 	dmac_receive = (void *)__get_free_page(GFP_DMA);
 
-	sif0_dma_addr = dma_map_single(NULL, dmac_buffer0, PAGE_SIZE, DMA_FROM_DEVICE);
+	sif0_dma_addr = virt_to_phys(dmac_buffer0);
 
 #if 1
 	_sif_cmd_data.iopbuf = sif_read_subaddr();
@@ -909,8 +905,6 @@ err_irq_sif0:
 
 static void __exit sif_exit(void)
 {
-	dma_unmap_single(NULL, sif0_dma_addr, PAGE_SIZE, DMA_FROM_DEVICE);
-
 #if 0
 	sbios(SBIOS_SIF_EXITRPC, 0);
 	sbios(SBIOS_SIF_EXITCMD, 0);
