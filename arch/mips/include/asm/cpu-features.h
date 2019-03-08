@@ -394,6 +394,10 @@
 #define cpu_has_dsp3		__ase(MIPS_ASE_DSP3)
 #endif
 
+#ifndef cpu_has_toshiba_mmi
+#define cpu_has_toshiba_mmi	0	/* 128-bit multimedia instructions */
+#endif
+
 #ifndef cpu_has_loongson_mmi
 #define cpu_has_loongson_mmi		__ase(MIPS_ASE_LOONGSON_MMI)
 #endif
