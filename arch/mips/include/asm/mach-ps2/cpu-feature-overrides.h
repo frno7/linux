@@ -32,5 +32,6 @@
 #define cpu_has_ic_fills_f_dc		0
 #define cpu_has_inclusive_pcaches	0
 #define cpu_has_fpu 			0
+#define cpu_has_toshiba_mmi		1
 
 #endif /* __ASM_MACH_PS2_CPU_FEATURE_OVERRIDES_H */

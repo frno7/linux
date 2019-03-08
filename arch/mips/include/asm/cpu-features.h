@@ -246,6 +246,9 @@
 #ifndef cpu_has_local_ebase
 #define cpu_has_local_ebase	1
 #endif
+#ifndef cpu_has_toshiba_mmi
+#define cpu_has_toshiba_mmi	0	/* 128-bit multimedia instructions */
+#endif
 
 /*
  * I-Cache snoops remote store.	 This only matters on SMP.  Some multiprocessors
