@@ -1399,6 +1399,10 @@ static void build_r4000_tlb_refill_handler(void)
 	 * unused.
 	 */
 	switch (boot_cpu_type()) {
+	case CPU_R5900:
+		if ((p - tlb_handler) > 32)
+			panic("TLB refill handler space exceeded");
+		/* Fallthrough */
 	default:
 		if (sizeof(long) == 4) {
 	case CPU_LOONGSON2:
