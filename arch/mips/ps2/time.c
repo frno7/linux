@@ -1,10 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * PlayStation 2 timer functions
  *
  * Copyright (C) 2010-2013 Jürgen Urban
  * Copyright (C) 2017-2018 Fredrik Noring
  *
- * SPDX-License-Identifier: GPL-2.0
+ * FIXME: Look at drivers/rtc/rtc-stk17ta8.c
  */
 
 #include <linux/errno.h>
@@ -152,4 +153,9 @@ void __init plat_time_init(void)
 
 	/* Setup frequency for IP7 timer interrupt. */
 	mips_hpt_frequency = CPU_FREQ;
+}
+
+void __exit plat_time_exit(void)	/* FIXME: Is this needed? */
+{
+	remove_irq(IRQ_INTC_TIMER0, &timer0_irqaction);
 }

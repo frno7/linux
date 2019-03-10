@@ -50,16 +50,16 @@
  * is not performed.
  */
 #define IRQ_DMAC	16
-#define IRQ_DMAC_0	16
-#define IRQ_DMAC_1	17
-#define IRQ_DMAC_2	18
-#define IRQ_DMAC_3	19
-#define IRQ_DMAC_4	20
-#define IRQ_DMAC_5	21
-#define IRQ_DMAC_6	22
-#define IRQ_DMAC_7	23
-#define IRQ_DMAC_8	24
-#define IRQ_DMAC_9	25
+#define IRQ_DMAC_0	16	/* VPU0 interface (VIF0) */
+#define IRQ_DMAC_1	17	/* VPU1 interface (VIF1) */
+#define IRQ_DMAC_2	18	/* Graphics Synthesizer interface (GIF) */
+#define IRQ_DMAC_3	19	/* From image processor unit (IPU) */
+#define IRQ_DMAC_4	20	/* To image processor unit (IPU) */
+#define IRQ_DMAC_5	21	/* Sub-system interface 0 (SIF0, IOP SBUS) */
+#define IRQ_DMAC_6	22	/* Sub-system interface 0 (SIF1, IOP SBUS) */
+#define IRQ_DMAC_7	23	/* Sub-system interface 0 (SIF2, IOP SBUS) */
+#define IRQ_DMAC_8	24	/* From scratch-pad RAM (SPR) */
+#define IRQ_DMAC_9	25	/* To scratch-pad RAM (SPR) */
 #define IRQ_DMAC_S	29	/* DMA stall */
 #define IRQ_DMAC_ME	30	/* MFIFO empty */
 #define IRQ_DMAC_BE	31	/* Buss error */
@@ -73,15 +73,6 @@
 #define IRQ_GS_EDW	36
 #define IRQ_GS_EXHSYNC	37
 #define IRQ_GS_EXVSYNC	38
-
-/*
- * Bus connecting the Emotion Engine to the I/O processor (IOP)
- * via the sub-system interface (SIF)
- */
-#define IRQ_SBUS	40
-#define IRQ_SBUS_AIF	40
-#define IRQ_SBUS_PCIC	41
-#define IRQ_SBUS_USB	42
 
 /* MIPS IRQs */
 #define MIPS_CPU_IRQ_BASE 48

@@ -2008,9 +2008,16 @@ config FB_IBM_GXT4500
 config FB_PS2
 	tristate "Frame buffer driver for Sony Playstation 2"
 	depends on FB && SONY_PS2
+	select PS2_GS
+	select FB_SYS_FILLRECT
+	select FB_SYS_COPYAREA
+	select FB_SYS_IMAGEBLIT
+	select FB_TILEBLITTING
 	default y
 	help
-	  Support framebuffer of the Sony Playstation 2.
+	  Framebuffer driver for the Sony Playstation 2 Graphics Synthesizer.
+	  Memory mapping is not supported since the framebuffer is local to
+	  the GS.
 
 config FB_PS3
 	tristate "PS3 GPU framebuffer driver"

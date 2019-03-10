@@ -16,6 +16,33 @@
 #include <asm/types.h>
 #include <asm/io.h>
 
+#define DMA_TAG_SIZE 16	/* 128 bits */
+#define DMA_TAG_ALIGN(x) (((x) + DMA_TAG_SIZE-1) & ~(size_t)(DMA_TAG_SIZE-1))
+
+enum dma_tag_reg {		/* Data start address:	Next tag address: */
+	dma_tag_id_refe = 0,	/* ADDR			(none) */
+	dma_tag_id_cnts = 0,	/* ADDR			(none) */
+	dma_tag_id_cnt,		/* next to tag		text to transfer data */
+	dma_tag_id_next,	/* next to tag		ADDR */
+	dma_tag_id_ref,		/* ADDR			next to tag */
+	dma_tag_id_refs,	/* ADDR			next to tag */
+	dma_tag_id_call,	/* next to tag		ADDR */
+	dma_tag_id_ret,		/* next to tag		Dn_ASR */
+	dma_tag_id_end		/* next to tag		(none) */
+};
+
+struct dma_tag {
+	__BITFIELD_FIELD(__u64 spr : 1,		/* 0 = memory, 1 = SPR */
+	__BITFIELD_FIELD(__u64 addr : 31,	/* Address, lower 4 bits zero */
+	__BITFIELD_FIELD(__u64 irq : 1,		/* Interrupt request */
+	__BITFIELD_FIELD(__u64 id : 3,		/* Tag ID */
+	__BITFIELD_FIELD(__u64 pce : 2,		/* Priority control enable */
+	__BITFIELD_FIELD(__u64 : 10,
+	__BITFIELD_FIELD(__u64 qwc : 16,	/* Quadword count */
+	;)))))))
+	__u64 : 64;				/* Unused */
+} __attribute__((aligned(DMA_TAG_SIZE)));
+
 //#define DEBUG
 #ifdef DEBUG
 #define DPRINT(fmt, args...) \
@@ -61,6 +88,7 @@
 
 #define CHCR_STOP	0x0000
 #define CHCR_SENDN	0x0101
+#define CHCR_SENDN_TIE	0x0181
 #define CHCR_SENDC	0x0105
 #define CHCR_SENDC_TTE	0x0145
 #define CHCR_RECVN	0x0100
@@ -76,7 +104,7 @@
 	 outl(inl(PS2_D_ENABLER) & ~(1 << 16), PS2_D_ENABLEW); } while (0)
 #define IS_DMA_RUNNING(ch)	((READDMAREG((ch), PS2_Dn_CHCR) & 0x0100) != 0)
 
-struct dma_tag {
+struct dma_tag_DEPRECATED {
     u16 qwc;
     u16 id;
     u32 addr;
@@ -107,7 +135,7 @@ struct dma_channel {
     spinlock_t lock;
 
     struct dma_request *head, *tail;	/* DMA request queue */
-    struct dma_tag *tagp;		/* tag pointer (for destination DMA) */
+    struct dma_tag_DEPRECATED *tagp;		/* tag pointer (for destination DMA) */
 };
 
 struct dma_ops {
