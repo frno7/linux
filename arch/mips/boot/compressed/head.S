@@ -25,6 +25,13 @@ start:
 	move	s2, a2
 	move	s3, a3
 
+	# The PlayStation 2 uLaunchELF starts in user mode with
+	# CP0 access enabled (CP0 Status 0x70030c11), which is
+	# weird. This anomaly is corrected here:
+	li	k0, 0x30010000
+	mtc0	k0, $12
+	sync.p
+
 	/* Clear BSS */
 	PTR_LA	a0, _edata
 	PTR_LA	a2, _end
