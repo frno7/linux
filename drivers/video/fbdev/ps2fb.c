@@ -9,6 +9,16 @@
  * memory that is not directly accessible from the main bus.
  *
  * All frame buffer transmissions are done by DMA via GIF PATH3.
+ *
+ * FIXME: Vsync CB too
+ * FIXME: Buffer requests
+ * FIXME: Special buffer for interrupts
+ * FIXME: Avoid generating DMAC interrupts?
+ * FIXME: Config option to disable virtual buffer
+ * FIXME: Optimize common 1 bpp 8 width cases etc.
+ * FIXME: Ensure at most one module instance is loaded
+ * FIXME: Allow modeline pixel adjustments (kernel parameter)
+ * FIXME: int (*fb_setcmap)(struct fb_cmap *cmap, struct fb_info *info);
  */
 
 #include <linux/delay.h>
@@ -54,6 +64,7 @@ static char *mode_adjust = "";
 static char *mode_option = "1920x1080p@50";
 static char *mode_adjust = "+13+0";
 #endif	/* FIXME */
+static unsigned int vfb_ram = 0;
 
 union package {
 	union gif_data gif;
@@ -550,6 +561,114 @@ int dma_write(struct dma_tag *tags, size_t count)
 	return 0;
 }
 EXPORT_SYMBOL(dma_write);	/* FIXME */
+
+static size_t package_bitbltbuf(union package *package,
+	struct fb_info *info, const int dy, const int sy, const int h)
+{
+	const union package * const base_package = package;
+	const size_t image_qwc = gif_quadword_count(info->fix.line_length * h);
+	const int psm = bpp_to_psm(info->var.bits_per_pixel);
+	const int fbw = var_to_fbw(&info->var);
+	const int fbp = 0;
+
+	DMA_PACKAGE_TAG(package) {
+		.id = dma_tag_id_cnt,
+		.qwc = 6	/* 6 GIF quadwords follow */
+	};
+
+	/*
+	 * Use BITBLTBUF to copy image data. BITBLTBUF requires TRXPOS,
+	 * TRXREG and TRXDIR (which starts the transmission) followed by
+	 * the image data.
+	 */
+	GIF_PACKAGE_TAG(package) {
+		.flg = gif_packed_mode,
+		.reg0 = gif_reg_ad,
+		.nreg = 1,
+		.nloop = 4
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_bitbltbuf,
+		.data.bitbltbuf = { .dpsm = psm, .dbw = fbw, .dbp = fbp }
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_trxpos,
+		.data.trxpos = { .dsax = 0, .dsay = dy }
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_trxreg,
+		.data.trxreg = { .rrw = info->var.xres, .rrh = h }
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_trxdir,
+		.data.trxdir = { .xdir = gs_trxdir_host_to_local }
+	};
+
+	GIF_PACKAGE_TAG(package) {
+		.flg = gif_image_mode,
+		.nloop = image_qwc,
+		.eop = 1
+	};
+
+	DMA_PACKAGE_TAG(package) {
+		.addr = info->fix.smem_start + sy * info->fix.line_length,
+		.id = dma_tag_id_ref,
+		.qwc = image_qwc
+	};
+
+	return package - base_package;
+}
+
+static size_t synch_screen_section(union package *package,
+	struct fb_info *info, const int ydst, const int ysrc, const int h)
+{
+	const union package * const base_package = package;
+
+	/*
+	 * The size of the image for BITBLTBUF is limited by the GIF TAG
+	 * NLOOP (15 bits) and the DMA TAG QWC (16 bits) quadword (16 bytes)
+	 * counters. Compute the maximum number of lines to transfer in one
+	 * GIF DMA package. Use NLOOP as the limit since it's the smallest.
+	 */
+	const int dmax = (16 * GIF_TAG_NLOOP_MAX) / info->fix.line_length;
+	const int d = min(h, dmax);
+	int y;
+
+	for (y = 0; y < h; y += d)
+		package += package_bitbltbuf(package, info,
+			ydst + y, ysrc + y, min(d, h - y));
+
+	return package - base_package;
+}
+
+static void synch_screen(struct fb_info *info)
+{
+        if (gif_ready()) {
+		struct ps2fb_par *par = info->par;
+		union package * const base_package = par->package_buffer;
+		union package *package = base_package;
+		const int yo = info->var.yoffset % info->var.yres_virtual;
+		const int h0 = min_t(int,
+			info->var.yres_virtual - yo, info->var.yres);
+		const int h1 = info->var.yres - h0;
+
+		package += synch_screen_section(package, info, 0, yo, h0);
+		package += synch_screen_section(package, info, h0, 0, h1);
+
+		/* FIXME: Restriction p. 57? */
+		DMA_PACKAGE_TAG(package) {
+			.id = dma_tag_id_cnt,
+			.qwc = 0
+		};
+
+		DMA_PACKAGE_TAG(package) {
+			.id = dma_tag_id_end,
+			.qwc = 0
+		};
+
+		dma_write(&base_package->dma, package - base_package);
+	}
+}
 
 void ps2fb_cb_fillrect(struct fb_info *info, const struct fb_fillrect *region)
 {
@@ -1250,6 +1369,26 @@ static bool changed_cb_pan_display(const struct fb_var_screeninfo *var)
 	return dspfb12.dbx != var->xoffset || dspfb12.dby != yo;
 }
 
+static int ps2fb_vb_pan_display(struct fb_var_screeninfo *var,
+	struct fb_info *info)
+{
+	struct ps2fb_par *par = info->par;
+	unsigned long flags;
+	int err = 0;
+
+	spin_lock_irqsave(&par->lock, flags);
+
+	if (var->xoffset) {
+		err = -EINVAL;
+		goto out;
+	}
+
+out:
+	spin_unlock_irqrestore(&par->lock, flags);
+
+	return err;
+}
+
 static int ps2fb_cb_pan_display(struct fb_var_screeninfo *var,
 	struct fb_info *info)
 {
@@ -1339,6 +1478,33 @@ static int ps2fb_check_var(struct fb_var_screeninfo *var, struct fb_info *info)
 	/* FIXME: vm->flag? */
 
         return 0;
+}
+
+static int ps2fb_vb_check_var(
+	struct fb_var_screeninfo *var, struct fb_info *info)
+{
+	struct ps2fb_par *par = info->par;
+	unsigned long flags;
+	int err;
+
+	spin_lock_irqsave(&par->lock, flags);
+
+	err = ps2fb_check_var(var, info);
+	if (err < 0)
+		goto out;
+
+	/*
+	 * The virtual frame buffer is transferred to GS local memory using
+	 * DMA, which only supports interleave mode for the scratchpad memory.
+	 * Hence the virtual frame buffer cannot be wider than the screen.
+	 */
+        if (var->xres_virtual != var->xres)
+		err = -EINVAL;
+
+out:
+	spin_unlock_irqrestore(&par->lock, flags);
+
+	return err;
 }
 
 static int ps2fb_cb_check_var(
@@ -1772,6 +1938,21 @@ static int ps2fb_set_par(struct fb_info *info)
 	return 0;
 }
 
+static int ps2fb_vb_set_par(struct fb_info *info)
+{
+	struct ps2fb_par *par = info->par;
+	unsigned long flags;
+	int err;
+
+	spin_lock_irqsave(&par->lock, flags);
+
+	err = ps2fb_set_par(info);
+
+	spin_unlock_irqrestore(&par->lock, flags);
+
+	return err;
+}
+
 static int ps2fb_cb_set_par(struct fb_info *info)
 {
 	struct ps2fb_par *par = info->par;
@@ -1819,6 +2000,72 @@ static int ps2fb_blank(int blank, struct fb_info *info)
 	return 0;
 }
 
+static u32 ps2fb_vblank_count(struct ps2fb_par *par)
+{
+	unsigned long flags;
+	u32 count;
+
+	spin_lock_irqsave(&par->lock, flags);
+	count = par->vblank.count;
+	spin_unlock_irqrestore(&par->lock, flags);
+
+	return count;
+}
+
+static int ps2fb_wait_for_vsync(struct ps2fb_par *par, const u32 crt)
+{
+	const u32 count = ps2fb_vblank_count(par);
+
+	if (!wait_event_timeout(par->vblank_queue,
+		count != ps2fb_vblank_count(par), msecs_to_jiffies(100)))
+		return -EIO;
+
+	return 0;
+}
+
+static int ps2fb_vb_ioctl(struct fb_info *info, unsigned int cmd,
+	unsigned long arg)
+{
+	struct ps2fb_par *par = info->par;
+	void __user *argp = (void __user *)arg;
+	int ret = -EFAULT;
+
+	switch (cmd) {
+	case FBIOGET_VBLANK:
+	{
+		struct fb_vblank vblank;
+		unsigned long flags;
+
+		spin_lock_irqsave(&par->lock, flags);
+		vblank = par->vblank;
+		spin_unlock_irqrestore(&par->lock, flags);
+
+		if (copy_to_user(argp, &vblank, sizeof(vblank)))
+			break;
+
+		ret = 0;
+		break;
+	}
+
+	case FBIO_WAITFORVSYNC:
+	{
+		u32 crt;	/* FIXME: Use for what? */
+
+		if (get_user(crt, (u32 __user *) arg))
+			break;
+
+		ret = ps2fb_wait_for_vsync(par, crt);
+		break;
+	}
+
+	default:
+		ret = -ENOIOCTLCMD;
+		break;
+	}
+
+	return ret;
+}
+
 static void fill_modes(struct device *dev, struct list_head *head)
 {
 	int i;
@@ -1828,6 +2075,31 @@ static void fill_modes(struct device *dev, struct list_head *head)
 	for (i = 0; i < ARRAY_SIZE(standard_modes); i++)
 		if (fb_add_videomode(&standard_modes[i], head) < 0)
 			dev_err(dev, "fb_add_videomode failed\n");
+}
+
+static irqreturn_t ps2fb_vb_vsync_interrupt(int irq, void *dev_id)
+{
+	struct platform_device *pdev = dev_id;
+	struct fb_info *info = platform_get_drvdata(pdev);
+
+	if (info != NULL) {	/* FIXME: Enable vblank later? */
+		struct ps2fb_par *par = info->par;
+		unsigned long flags;
+
+		if (irq == IRQ_GS_VSYNC) {
+			spin_lock_irqsave(&par->lock, flags);
+
+			par->vblank.count++;
+
+			synch_screen(info);
+
+			wake_up(&par->vblank_queue);
+
+			spin_unlock_irqrestore(&par->lock, flags);
+		}
+	}
+
+	return IRQ_HANDLED;	/* FIXME: Indicate possibly not handled? */
 }
 
 static irqreturn_t ps2fb_cb_vsync_interrupt(int irq, void *dev_id)
@@ -1854,6 +2126,75 @@ static irqreturn_t ps2fb_cb_vsync_interrupt(int irq, void *dev_id)
 	}
 
 	return IRQ_HANDLED;	/* FIXME: Indicate possibly not handled? */
+}
+
+static int init_virtual_buffer(struct platform_device *pdev,
+	struct fb_info *info)
+{
+	static struct fb_ops fbops = {
+		.owner		= THIS_MODULE,
+		.fb_blank	= ps2fb_blank,
+		.fb_setcolreg	= ps2fb_setcolreg,
+		.fb_set_par	= ps2fb_vb_set_par,
+		.fb_check_var	= ps2fb_vb_check_var,
+		.fb_pan_display	= ps2fb_vb_pan_display,
+		.fb_ioctl	= ps2fb_vb_ioctl,
+		.fb_fillrect	= sys_fillrect,
+		.fb_copyarea	= sys_copyarea,
+		.fb_imageblit	= sys_imageblit,
+	};
+
+	/*
+	 * Frame buffer memory does not necessarily need to be physically
+	 * continous, as long as (a) it's not swapped out and (b) scatter-
+	 * gather DMA is used to assemble the pages.
+	 */
+	const int order = get_order(1024 * vfb_ram);
+	const size_t screen_size = (1 << order) * PAGE_SIZE; /* FIXME: Helper function? */
+	const unsigned long screen_buffer =
+		__get_free_pages(GFP_KERNEL | GFP_DMA | __GFP_ZERO, order);
+	struct ps2fb_par *par = info->par;
+	int err;
+
+	fb_info(info, "Graphics Synthesizer virtual frame buffer device\n");
+
+	if (!screen_buffer) {
+		dev_err(&pdev->dev, "__get_free_pages %d (%zu bytes) failed\n",
+			order, screen_size);
+		err = -ENOMEM;
+		goto err_page_alloc;
+	}
+
+	info->screen_size = screen_size;
+	info->screen_base = (char __iomem *)screen_buffer;
+
+	info->fix.smem_len = info->screen_size;
+	info->fix.smem_start = __pa(screen_buffer);
+
+	info->fbops = &fbops;
+	info->flags = FBINFO_DEFAULT |
+		      FBINFO_VIRTFB |
+		      FBINFO_HWACCEL_YPAN |
+		      FBINFO_HWACCEL_YWRAP |
+		      FBINFO_PARTIAL_PAN_OK |
+		      FBINFO_READS_FAST;
+
+	info->pseudo_palette = par->pseudo_palette;
+
+	par->vblank.flags = FB_VBLANK_HAVE_VCOUNT | FB_VBLANK_HAVE_VSYNC;
+	err = devm_request_irq(&pdev->dev, IRQ_GS_VSYNC, ps2fb_vb_vsync_interrupt,
+		IRQF_SHARED, pdev->name, pdev);
+	if (err < 0) {
+		dev_err(&pdev->dev, "devm_request_irq failed %d\n", err);
+		goto err_vsync_irq;
+	}
+
+	return 0;
+
+err_vsync_irq:
+	free_pages(screen_buffer, order);
+err_page_alloc:
+	return err;
 }
 
 static int init_console_buffer(struct platform_device *pdev,
@@ -1954,7 +2295,10 @@ static int ps2fb_probe(struct platform_device *pdev)
 	strlcpy(info->fix.id, "PS2 GS", ARRAY_SIZE(info->fix.id));
 	info->fix.accel = FB_ACCEL_PLAYSTATION_2;
 
-	err = init_console_buffer(pdev, info);
+	if (vfb_ram > 0)
+		err = init_virtual_buffer(pdev, info);
+	else
+		err = init_console_buffer(pdev, info);
 	if (err < 0)
 		goto err_init_buffer;
 
@@ -2077,7 +2421,9 @@ static int __init ps2fb_init(void)
 		if (!*this_opt)
 			continue;
 
-		if (!strncmp(this_opt, "mode_option:", 12))
+		if (!strncmp(this_opt, "vfb_ram:", 8))
+			vfb_ram = simple_strtoul(this_opt + 8, NULL, 0);
+		else if (!strncmp(this_opt, "mode_option:", 12))
 			mode_option = &this_opt[12];
 		else if ('0' <= this_opt[0] && this_opt[0] <= '9')
 			mode_option = this_opt;
@@ -2113,5 +2459,9 @@ MODULE_PARM_DESC(mode_option,
 module_param(mode_adjust, charp, 0);
 MODULE_PARM_DESC(mode_adjust,	/* FIXME: mode_margin? */
 	"Adjust initial video mode as \"<-|+><dx><-|+><dy>\"");
+
+module_param(vfb_ram, uint, 0);
+MODULE_PARM_DESC(vfb_ram,
+	"Enable the virtual framebuffer with this amount of memory [KiB]");
 
 MODULE_LICENSE("GPL");
