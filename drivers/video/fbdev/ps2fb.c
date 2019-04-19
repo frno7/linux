@@ -1085,6 +1085,63 @@ static void ps2fb_cb_tileblit(struct fb_info *info, struct fb_tileblit *blit)
 	}
 }
 
+static u32 ps2fb_cb_cursor_lines(u32 shape, u32 height)
+{
+	/* FIXME: From bit_cursor in drivers/video/fbdev/core/bitblit.c */
+	/* The resulting lines must never exceed the given height. */
+	return shape == FB_TILE_CURSOR_NONE || !height ? 0 :
+	       shape == FB_TILE_CURSOR_UNDERLINE       ? (height < 10 ? 1 : 2) :
+	       shape == FB_TILE_CURSOR_LOWER_THIRD     ? height / 3 :
+	       shape == FB_TILE_CURSOR_LOWER_HALF      ? height / 2 :
+	       shape == FB_TILE_CURSOR_TWO_THIRDS      ? (height * 2) / 3 :
+	       shape == FB_TILE_CURSOR_BLOCK           ? height :
+	                                                 height;
+}
+
+static void ps2fb_cb_tilecursor(struct fb_info *info, struct fb_tilecursor *cursor)
+{
+	struct ps2fb_par *par = info->par;
+	const u32 lines =
+		ps2fb_cb_cursor_lines(cursor->shape, par->cb.tile.width);
+	const struct fb_fillrect bg_region = {
+		.dx = cursor->sx * par->cb.tile.width,
+		.dy = cursor->sy * par->cb.tile.height,
+		.width = par->cb.tile.width,
+		.height = par->cb.tile.height - lines,
+		.color = cursor->bg,
+		.rop = ROP_COPY
+	};
+	const struct fb_fillrect fg_region = {
+		.dx = cursor->sx * par->cb.tile.width,
+		.dy = (cursor->sy + 1) * par->cb.tile.height - lines,
+		.width = par->cb.tile.width,
+		.height = lines,
+		.color = cursor->mode ? cursor->fg : cursor->bg,
+		.rop = ROP_COPY
+	};
+	unsigned long flags;
+
+	if (info->state != FBINFO_STATE_RUNNING)
+		return;
+
+	spin_lock_irqsave(&par->lock, flags);
+
+        if (gif_ready()) {
+		union package * const base_package = par->package_buffer;
+		union package *package = base_package;
+
+		if (bg_region.height > 0)
+			package += package_sprite(package, &bg_region, par);
+		if (fg_region.height > 0)
+			package += package_sprite(package, &fg_region, par);
+
+		if (package - base_package > 0)
+			gif_write(&base_package->gif, package - base_package);
+	}
+
+	spin_unlock_irqrestore(&par->lock, flags);
+}
+
 static int ps2fb_cb_get_tilemax(struct fb_info *info)
 {
 	const struct ps2fb_par *par = info->par;
@@ -1102,6 +1159,7 @@ static struct fb_tile_ops ps2_tile_ops = {
 	.fb_tilecopy	= ps2fb_cb_tilecopy,
 	.fb_tilefill    = ps2fb_cb_tilefill,
 	.fb_tileblit    = ps2fb_cb_tileblit,
+	.fb_tilecursor  = ps2fb_cb_tilecursor,
 	.fb_get_tilemax = ps2fb_cb_get_tilemax
 };
 
