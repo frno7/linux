@@ -26,6 +26,8 @@ const char *get_system_type(void)
 	return "Sony PlayStation 2";
 }
 
+#define VU0_BASE	0x11000000
+#define VU1_BASE	0x11008000
 #define IOP_RAM_BASE	0x1c000000
 #define IOP_OHCI_BASE	0x1f801600
 #define GS_REG_BASE	0x12000000
@@ -86,6 +88,36 @@ static struct resource gs_resources[] = {
 	},
 };
 
+static struct resource vu0_resources[] = {
+	[0] = {
+		.name	= "Vector unit 0 code",
+		.start	= VU0_BASE,
+		.end	= VU0_BASE + 0xfff,
+		.flags	= IORESOURCE_MEM,
+	},
+	[1] = {
+		.name	= "Vector unit 0 data",
+		.start	= VU0_BASE + 0x4000,
+		.end	= VU0_BASE + 0x4fff,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
+static struct resource vu1_resources[] = {
+	[2] = {
+		.name	= "Vector unit 1 code",
+		.start	= VU1_BASE,
+		.end	= VU1_BASE + 0x3fff,
+		.flags	= IORESOURCE_MEM,
+	},
+	[3] = {
+		.name	= "Vector unit 1 data",
+		.start	= VU1_BASE + 0x4000,
+		.end	= VU1_BASE + 0x7fff,
+		.flags	= IORESOURCE_MEM,
+	},
+};
+
 static struct platform_device gs_device = {
 	.name           = "gs",
 	.id		= -1,
@@ -96,6 +128,20 @@ static struct platform_device gs_device = {
 static struct platform_device fb_device = {
 	.name           = "ps2fb",	/* FIXME: Remove from platform? */
 	.id		= -1,
+};
+
+static struct platform_device vu0_device = {
+	.name           = "vu0",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(vu0_resources),
+	.resource	= vu0_resources,
+};
+
+static struct platform_device vu1_device = {
+	.name           = "vu1",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(vu1_resources),
+	.resource	= vu1_resources,
 };
 
 void __init plat_mem_setup(void)
@@ -117,6 +163,8 @@ static struct platform_device *ps2_platform_devices[] __initdata = {
 	&ohci_device,
 	&gs_device,
 	&fb_device,
+	&vu0_device,
+	&vu1_device,
 };
 
 static int __init ps2_board_setup(void)
