@@ -26,8 +26,25 @@ const char *get_system_type(void)
 	return "Sony PlayStation 2";
 }
 
+#define IOP_RAM_BASE	0x1c000000
 #define IOP_OHCI_BASE	0x1f801600
 #define GS_REG_BASE	0x12000000
+
+static struct resource iop_resources[] = {
+	[0] = {
+		.name	= "IOP RAM",
+		.start	= IOP_RAM_BASE,
+		.end	= IOP_RAM_BASE + 0x1fffff,
+		.flags	= IORESOURCE_MEM,	/* 2 MiB IOP RAM */
+	},
+};
+
+static struct platform_device iop_device = {
+	.name		= "iop",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(iop_resources),
+	.resource	= iop_resources,
+};
 
 static struct resource ohci_resources[] = {	/* FIXME: Subresource to IOP */
 	[0] = {
@@ -96,6 +113,7 @@ void __init plat_mem_setup(void)
 }
 
 static struct platform_device *ps2_platform_devices[] __initdata = {
+	&iop_device,
 	&ohci_device,
 	&gs_device,
 	&fb_device,
