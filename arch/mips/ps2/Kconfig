@@ -14,3 +14,13 @@ config PS2_GS
 
 	  This driver can also be built as a module. If so, the module
 	  will be called gs.
+
+config PS2_IOP
+	tristate "PlayStation 2 I/O processor (IOP)"
+	depends on SONY_PS2
+	default y
+	help
+	  Say yes to enable the PlayStation 2 I/O processor (IOP).
+
+	  This driver can also be built as a module. If so, the module
+	  will be called iop.
