@@ -144,6 +144,18 @@ static struct platform_device vu1_device = {
 	.resource	= vu1_resources,
 };
 
+#if 0 /* FIXME */
+static struct platform_device smap_device = {
+	.name           = "smap",
+	.id		= -1,
+};
+
+static struct platform_device smaprpc_device = {
+	.name           = "smaprpc",
+	.id		= -1,
+};
+#endif
+
 void __init plat_mem_setup(void)
 {
 	ioport_resource.start = 0x10000000;
@@ -165,6 +177,10 @@ static struct platform_device *ps2_platform_devices[] __initdata = {
 	&fb_device,
 	&vu0_device,
 	&vu1_device,
+#if 0 /* FIXME */
+	&smap_device,
+	&smaprpc_device,
+#endif
 };
 
 static int __init ps2_board_setup(void)
