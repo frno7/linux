@@ -12,7 +12,24 @@
 #include <linux/platform_device.h>
 
 #include <asm/mach-ps2/gs.h>
+#include <asm/mach-ps2/iop.h>
 #include <asm/mach-ps2/irq.h>
+
+static struct resource iop_resources[] = {
+	[0] = {
+		.name	= "IOP RAM",
+		.start	= IOP_RAM_BASE,
+		.end	= IOP_RAM_BASE + IOP_RAM_SIZE - 1,
+		.flags	= IORESOURCE_MEM,	/* 2 MiB IOP RAM */
+	},
+};
+
+static struct platform_device iop_device = {
+	.name		= "iop",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(iop_resources),
+	.resource	= iop_resources,
+};
 
 static struct resource ohci_resources[] = {	/* FIXME: Subresource to IOP */
 	[0] = {
@@ -67,6 +84,7 @@ static struct platform_device rtc_device = {
 };
 
 static struct platform_device *ps2_platform_devices[] __initdata = {
+	&iop_device,
 	&ohci_device,
 	&gs_device,
 	&rtc_device,
