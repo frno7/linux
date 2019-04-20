@@ -18,6 +18,7 @@
 #include <asm/mach-ps2/iop-registers.h>
 #include <asm/mach-ps2/irq.h>
 #include <asm/mach-ps2/ps2.h>
+#include <asm/mach-ps2/dma.h>
 
 #include <asm/irq.h> /* FIXME */
 
@@ -144,6 +145,84 @@ static struct platform_device vu1_device = {
 	.resource	= vu1_resources,
 };
 
+#if 0
+/*
+ * PATA disk driver
+ *
+ * Compatible with:
+ *  - driver/ide (old)
+ *  - drivers/ata (new)
+ */
+static struct resource pata_resources[] = {
+	/* IO base, 8 16bit registers */
+	[0] = {
+		.start	= CPHYSADDR(0xb4000040),
+		.end	= CPHYSADDR(0xb4000040 + (8 * 2) - 1),
+		.flags	= IORESOURCE_MEM,
+	},
+	/* CTRL base, 1 16bit register */
+	[1] = {
+		.start	= CPHYSADDR(0xb400005c),
+		.end	= CPHYSADDR(0xb400005c + (1 * 2) - 1),
+		.flags	= IORESOURCE_MEM,
+	},
+	/* IRQ */
+	[2] = {
+		.start	= IRQ_SBUS_PCIC,
+		.end	= IRQ_SBUS_PCIC,
+		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_SHAREABLE,
+	},
+};
+
+static struct pata_platform_info pata_platform_data = {
+	.ioport_shift	= 1,
+	.irq_flags	= IRQF_SHARED,
+};
+
+static struct platform_device pata_device = {
+	.name		= "pata_platform",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(pata_resources),
+	.resource	= pata_resources,
+	.dev  = {
+		.platform_data	= &pata_platform_data,
+	},
+};
+#else
+/*
+ * PATA disk driver
+ *
+ * For new Playstation 2 PATA driver
+ */
+static struct resource pata_resources[] = {
+	/* IO base, 8 16bit registers */
+	[0] = {
+		.start	= CPHYSADDR(0xb4000040),
+		.end	= CPHYSADDR(0xb4000040 + (8 * 2) - 1),
+		.flags	= IORESOURCE_MEM,
+	},
+	/* CTRL base, 1 16bit register */
+	[1] = {
+		.start	= CPHYSADDR(0xb400005c),
+		.end	= CPHYSADDR(0xb400005c + (1 * 2) - 1),
+		.flags	= IORESOURCE_MEM,
+	},
+	/* IRQ */
+	[2] = {
+		.start	= IRQ_INTC_SBUS,
+		.end	= IRQ_INTC_SBUS,
+		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_SHAREABLE,
+	},
+};
+
+static struct platform_device pata_device = {
+	.name		= "pata_ps2",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(pata_resources),
+	.resource	= pata_resources,
+};
+#endif
+
 #if 0 /* FIXME */
 static struct platform_device smap_device = {
 	.name           = "smap",
@@ -177,6 +256,7 @@ static struct platform_device *ps2_platform_devices[] __initdata = {
 	&fb_device,
 	&vu0_device,
 	&vu1_device,
+	&pata_device,
 #if 0 /* FIXME */
 	&smap_device,
 	&smaprpc_device,
@@ -192,6 +272,8 @@ static int __init ps2_board_setup(void)
 	 * so that ohci->regs->fminterval can count.
 	 */
 	iop_set_dma_dpcr2(IOP_DMA_DPCR2_DEV9);
+
+	/* FIXME: D_CTRL: DMA control register: Enable all DMAs. EE User's p. 64 */
 
 	return 0;
 }
