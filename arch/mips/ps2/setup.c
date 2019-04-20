@@ -16,7 +16,10 @@
 #include <asm/bootinfo.h>
 
 #include <asm/mach-ps2/iop-registers.h>
+#include <asm/mach-ps2/irq.h>
 #include <asm/mach-ps2/ps2.h>
+
+#include <asm/irq.h> /* FIXME */
 
 const char *get_system_type(void)
 {
@@ -120,3 +123,5 @@ static int __init ps2_device_setup(void)
 		ARRAY_SIZE(ps2_platform_devices));
 }
 device_initcall(ps2_device_setup);
+
+EXPORT_SYMBOL(do_IRQ);	/* FIXME */
