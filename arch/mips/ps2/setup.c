@@ -15,12 +15,41 @@
 #include <asm/bootinfo.h>
 #include <asm/prom.h>
 
+#include <asm/mach-ps2/irq.h>
 #include <asm/mach-ps2/scmd.h>
 
 const char *get_system_type(void)
 {
 	return "Sony PlayStation 2";
 }
+
+#define GS_REG_BASE	0x12000000
+
+static struct resource gs_resources[] = {
+	[0] = {
+		.name	= "Graphics Synthesizer",
+		.start	= GS_REG_BASE,
+		.end	= GS_REG_BASE + 0x1ffffff,
+		.flags	= IORESOURCE_MEM,	/* FIXME: IORESOURCE_REG? */
+	},
+	[1] = {
+		.start	= IRQ_DMAC_GIF,
+		.end	= IRQ_DMAC_GIF,
+		.flags	= IORESOURCE_IRQ,
+	},
+	[2] = {
+		.start	= IRQ_GS_SIGNAL,
+		.end	= IRQ_GS_EXVSYNC,
+		.flags	= IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device gs_device = {
+	.name           = "gs",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(gs_resources),
+	.resource	= gs_resources,
+};
 
 static struct platform_device rtc_device = {
 	.name		= "rtc-ps2",
@@ -42,6 +71,7 @@ void __init plat_mem_setup(void)
 }
 
 static struct platform_device *ps2_platform_devices[] __initdata = {
+	&gs_device,
 	&rtc_device,
 };
 
