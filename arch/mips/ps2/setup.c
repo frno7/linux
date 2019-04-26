@@ -23,7 +23,29 @@ const char *get_system_type(void)
 	return "Sony PlayStation 2";
 }
 
+#define IOP_OHCI_BASE	0x1f801600
 #define GS_REG_BASE	0x12000000
+
+static struct resource ohci_resources[] = {	/* FIXME: Subresource to IOP */
+	[0] = {
+		.name	= "USB OHCI",
+		.start	= IOP_OHCI_BASE,
+		.end	= IOP_OHCI_BASE + 0xff,
+		.flags	= IORESOURCE_MEM, 	/* 256 byte HCCA. */
+	},
+	[1] = {
+		.start	= IRQ_INTC_SBUS,
+		.end	= IRQ_INTC_SBUS,
+		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_SHAREABLE,
+	},
+};
+
+static struct platform_device ohci_device = {
+	.name		= "ohci-ps2",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(ohci_resources),
+	.resource	= ohci_resources,
+};
 
 static struct resource gs_resources[] = {
 	[0] = {
@@ -76,6 +98,7 @@ void __init plat_mem_setup(void)
 }
 
 static struct platform_device *ps2_platform_devices[] __initdata = {
+	&ohci_device,
 	&gs_device,
 	&fb_device,
 	&rtc_device,
