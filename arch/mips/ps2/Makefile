@@ -4,4 +4,5 @@ obj-y		+= dmac-irq.o
 obj-y		+= intc-irq.o
 obj-y		+= scmd.o
 obj-y		+= setup.o
+obj-m		+= sif.o
 obj-y		+= time.o
