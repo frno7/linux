@@ -1,3 +1,4 @@
+obj-m		+= iop-memory.o
 obj-y		+= iop-registers.o
 obj-y		+= irq.o
 obj-y		+= dmac-irq.o
