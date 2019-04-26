@@ -1,4 +1,5 @@
 obj-$(CONFIG_PS2_GS)		+= gif.o
+obj-$(CONFIG_PS2_GS)		+= gs.o
 obj-$(CONFIG_PS2_GS)		+= gs-irq.o
 obj-$(CONFIG_PS2_GS)		+= gs-registers.o
 
