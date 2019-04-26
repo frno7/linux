@@ -14,6 +14,27 @@
 #include <asm/mach-ps2/gs.h>
 #include <asm/mach-ps2/irq.h>
 
+static struct resource ohci_resources[] = {	/* FIXME: Subresource to IOP */
+	[0] = {
+		.name	= "USB OHCI",
+		.start	= IOP_OHCI_BASE,
+		.end	= IOP_OHCI_BASE + 0xff,
+		.flags	= IORESOURCE_MEM, 	/* 256 byte HCCA. */
+	},
+	[1] = {
+		.start	= IRQ_INTC_SBUS,
+		.end	= IRQ_INTC_SBUS,
+		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_SHAREABLE,
+	},
+};
+
+static struct platform_device ohci_device = {
+	.name		= "ohci-ps2",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(ohci_resources),
+	.resource	= ohci_resources,
+};
+
 static struct resource gs_resources[] = {
 	[0] = {
 		.name	= "Graphics Synthesizer",
@@ -46,6 +67,7 @@ static struct platform_device rtc_device = {
 };
 
 static struct platform_device *ps2_platform_devices[] __initdata = {
+	&ohci_device,
 	&gs_device,
 	&rtc_device,
 };
