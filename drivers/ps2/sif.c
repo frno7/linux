@@ -51,9 +51,28 @@
 #define SIF0_BUFFER_SIZE	PAGE_SIZE
 #define SIF1_BUFFER_SIZE	PAGE_SIZE
 
+static DEFINE_SPINLOCK(sregs_lock);
+static s32 sregs[32];
+
 static iop_addr_t iop_buffer; /* Address of IOP SIF DMA receive address */
 static void *sif0_buffer;
 static void *sif1_buffer;
+
+static void cmd_write_sreg(const struct sif_cmd_header *header,
+	const void *data, void *arg)
+{
+	unsigned long flags;
+	const struct {
+		u32 reg;
+		s32 val;
+	} *packet = data;
+
+	BUG_ON(packet->reg >= ARRAY_SIZE(sregs));
+
+	spin_lock_irqsave(&sregs_lock, flags);
+	sregs[packet->reg] = packet->val;
+	spin_unlock_irqrestore(&sregs_lock, flags);
+}
 
 /**
  * sif_write_msflag - write to set main-to-sub flag register bits
@@ -236,6 +255,34 @@ static int sif_cmd(u32 cmd_id, const void *pkt, size_t pktsize)
 	return sif_cmd_copy(cmd_id, pkt, pktsize, 0, NULL, 0);
 }
 
+static struct sif_cmd_handler *handler_from_cid(u32 cmd_id)
+{
+	enum { CMD_HANDLER_MAX = 64 };
+
+	static struct sif_cmd_handler sys_cmds[CMD_HANDLER_MAX];
+	static struct sif_cmd_handler usr_cmds[CMD_HANDLER_MAX];
+
+	const u32 id = cmd_id & ~SIF_CMD_ID_SYS;
+	struct sif_cmd_handler *cmd_handlers =
+		(cmd_id & SIF_CMD_ID_SYS) != 0 ?  sys_cmds : usr_cmds;
+
+	return id < CMD_HANDLER_MAX ? &cmd_handlers[id] : NULL;
+}
+
+int sif_request_cmd(u32 cmd_id, sif_cmd_cb cb, void *arg)
+{
+	struct sif_cmd_handler *handler = handler_from_cid(cmd_id);
+
+	if (handler == NULL)
+		return -EINVAL;
+
+	handler->cb = cb;
+	handler->arg = arg;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(sif_request_cmd);
+
 static int iop_reset_arg(const char *arg)
 {
 	const size_t arglen = strlen(arg) + 1;
@@ -304,6 +351,25 @@ static int get_dma_buffers(void)
 	}
 
 	return 0;
+}
+
+static int sif_request_cmds(void)
+{
+	const struct {
+		u32 cmd_id;
+		sif_cmd_cb cb;
+		struct cmd_data *arg;
+	} cmds[] = {
+		{ SIF_CMD_WRITE_SREG, cmd_write_sreg, NULL },
+	};
+	int err = 0;
+	size_t i;
+
+	for (i = 0; i < ARRAY_SIZE(cmds) && err == 0; i++)
+		err = sif_request_cmd(cmds[i].cmd_id,
+			cmds[i].cb, cmds[i].arg);
+
+	return err;
 }
 
 static void sif_disable_dma(void)
@@ -384,6 +450,8 @@ EXPORT_SYMBOL_GPL(iop_error_message);
  *  8. The kernel reads the final SUBADDR register to obtain the command
  *     buffer for the IOP.
  *
+ *  9. Register SIF commands to enable remote procedure calls (RPCs).
+ *
  * Return: 0 on success, otherwise a negative error number
  */
 static int __init sif_init(void)
@@ -427,8 +495,15 @@ static int __init sif_init(void)
 		goto err_final_subaddr;
 	}
 
+	err = sif_request_cmds();
+	if (err) {
+		pr_err("sif: Failed to request commands with %d\n", err);
+		goto err_request_commands;
+	}
+
 	return 0;
 
+err_request_commands:
 err_final_subaddr:
 err_iop_reset:
 err_provisional_subaddr:
