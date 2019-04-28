@@ -162,6 +162,11 @@ static bool sif_smflag_bootend(void)
 	return (sif_read_smflag() & SIF_STATUS_BOOTEND) != 0;
 }
 
+static bool sif0_busy(void)
+{
+	return (inl(DMAC_SIF0_CHCR) & DMAC_CHCR_BUSY) != 0;
+}
+
 static bool sif1_busy(void)
 {
 	return (inl(DMAC_SIF1_CHCR) & DMAC_CHCR_BUSY) != 0;
@@ -457,6 +462,13 @@ static int iop_reset(void)
 	return iop_reset_arg(IOP_RESET_ARGS);
 }
 
+static int sif_cmd_init(dma_addr_t cmd_buffer)
+{
+	const struct sif_cmd_change_addr_packet cmd = { .addr = cmd_buffer };
+
+	return sif_cmd_opt(SIF_CMD_INIT_CMD, 0, &cmd, sizeof(cmd));
+}
+
 static int sif_read_subaddr(dma_addr_t *subaddr)
 {
 	if (!completed(sif_smflag_cmdinit))
@@ -624,7 +636,16 @@ static int __init sif_init(void)
 		goto err_irq_sif0;
 	}
 
+	err = sif_cmd_init(virt_to_phys(sif0_buffer));
+	if (err) {
+		pr_err("sif: Failed to initialise commands with %d\n", err);
+		goto err_cmd_init;
+	}
+
 	return 0;
+
+err_cmd_init:
+	free_irq(IRQ_DMAC_SIF0, NULL);
 
 err_irq_sif0:
 	sif_disable_dma();
