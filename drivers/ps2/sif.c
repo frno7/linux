@@ -395,6 +395,8 @@ err:
  * A %PAGE_SIZE buffer is allocated to store RPC data. A future improvement is
  * to make its size adjustable.
  *
+ * The connection can be released with sif_rpc_unbind().
+ *
  * Return: 0 on success, otherwise a negative error number
  */
 int sif_rpc_bind(struct sif_rpc_client *client, u32 server_id)
@@ -424,6 +426,20 @@ int sif_rpc_bind(struct sif_rpc_client *client, u32 server_id)
 	return client->server ? 0 : -ENXIO;
 }
 EXPORT_SYMBOL_GPL(sif_rpc_bind);
+
+/**
+ * sif_rpc_unbind - release a connection to an IOP RPC server
+ * @client: RPC client object to release
+ *
+ * The connection must have been established with sif_rpc_bind().
+ */
+void sif_rpc_unbind(struct sif_rpc_client *client)
+{
+	free_page((unsigned long)client->client_buffer);
+
+	/* FIXME: Release the IOP RPC server part */
+}
+EXPORT_SYMBOL_GPL(sif_rpc_unbind);
 
 static void cmd_rpc_end(const struct sif_cmd_header *header,
 	const void *data, void *arg)
