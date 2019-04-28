@@ -385,6 +385,34 @@ err:
 	return IRQ_HANDLED;
 }
 
+int sif_rpc_bind(struct sif_rpc_client *client, u32 server_id)
+{
+	const struct sif_rpc_bind_packet bind = {
+		.client    = client,
+		.server_id = server_id,
+	};
+	int err;
+
+	memset(client, 0, sizeof(*client));
+	init_completion(&client->done);
+
+	client->client_size_max = SIF0_BUFFER_SIZE;
+	client->client_buffer = (void *)__get_free_page(GFP_DMA);
+	if (client->client_buffer == NULL)
+		return -ENOMEM;
+
+	err = sif_cmd(SIF_CMD_RPC_BIND, &bind, sizeof(bind));
+	if (err) {
+		free_page((unsigned long)client->client_buffer);
+		return err;
+	}
+
+	wait_for_completion(&client->done);
+
+	return client->server ? 0 : -ENXIO;
+}
+EXPORT_SYMBOL_GPL(sif_rpc_bind);
+
 static void cmd_rpc_end(const struct sif_cmd_header *header,
 	const void *data, void *arg)
 {
