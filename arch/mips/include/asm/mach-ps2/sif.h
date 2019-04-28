@@ -45,4 +45,15 @@
 #define SIF_SID_HEAP		(SIF_CMD_ID_SYS | 0x03)
 #define SIF_SID_LOAD_MODULE	(SIF_CMD_ID_SYS | 0x06)
 
+struct sif_rpc_client
+{
+	iop_addr_t server;
+	iop_addr_t server_buffer;
+
+	size_t client_size_max;
+	void *client_buffer;
+
+	struct completion done;
+};
+
 #endif /* __ASM_PS2_SIF_H */
