@@ -72,5 +72,6 @@
 #define IRQ_C0_IRQ7	55
 
 int __init intc_irq_init(void);
+int __init dmac_irq_init(void);
 
 #endif /* __ASM_PS2_IRQ_H */
