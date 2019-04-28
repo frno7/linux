@@ -379,6 +379,12 @@ int sif_rpc_bind(struct sif_rpc_client *client, u32 server_id)
 }
 EXPORT_SYMBOL_GPL(sif_rpc_bind);
 
+void sif_rpc_unbind(struct sif_rpc_client *client)
+{
+	free_page((unsigned long)client->client_buffer);
+}
+EXPORT_SYMBOL_GPL(sif_rpc_unbind);
+
 static void cmd_rpc_end(void *data, void *arg)
 {
 	const struct sif_rpc_request_end_packet *packet = data;
