@@ -131,6 +131,7 @@
 
 int __init intc_irq_init(void);
 int __init dmac_irq_init(void);
+int gs_irq_init(void);
 
 /*
  * IRQs asserted by the I/O processor (IOP) via the sub-system interface (SIF).
