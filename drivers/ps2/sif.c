@@ -251,6 +251,13 @@ static int sif1_write_irq(const struct sif_cmd_header *header,
 	return sif1_write_ert_int_0(header, true, true, dst, src, nbytes);
 }
 
+static void sif0_reset_dma(void)
+{
+	outl(0, DMAC_SIF0_QWC);
+	outl(0, DMAC_SIF0_MADR);
+	outl(DMAC_CHCR_RECVC_TIE, DMAC_SIF0_CHCR);
+}
+
 static int sif_cmd_opt_copy(u32 cmd_id, u32 opt, const void *pkt,
 	size_t pktsize, iop_addr_t dst, const void *src, size_t nbytes)
 {
@@ -521,6 +528,8 @@ EXPORT_SYMBOL_GPL(iop_error_message);
  *
  *  9. Register SIF commands to enable remote procedure calls (RPCs).
  *
+ * 10. Reset the SIF0 (sub-to-main) DMA controller.
+ *
  * Return: 0 on success, otherwise a negative error number
  */
 static int __init sif_init(void)
@@ -572,6 +581,8 @@ static int __init sif_init(void)
 		pr_err("sif: Failed to request commands with %d\n", err);
 		goto err_request_commands;
 	}
+
+	sif0_reset_dma();
 
 	return 0;
 
