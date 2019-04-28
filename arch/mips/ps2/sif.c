@@ -137,6 +137,11 @@ static bool sif1_busy(void)
 	return (inl(DMAC_SIF1_CHCR) & DMAC_CHCR_BUSY) != 0;
 }
 
+/*
+ * sif1_ready may be called via cmd_rpc_bind that is a response from
+ * SIF_CMD_RPC_BIND via sif0_dma_handler from IRQ_DMAC_SIF0. Thus we
+ * currently have to busy-wait here if SIF1 is busy.
+ */
 static bool sif1_ready(void)
 {
 	size_t countout = 50000;	/* About 5 s */
@@ -271,6 +276,44 @@ static struct sif_cmd_handler *handler_from_cid(u32 cmd_id)
 		(cmd_id & SIF_CMD_ID_SYS) != 0 ?  sys_cmds : usr_cmds;
 
 	return id < CMD_HANDLER_MAX ? &cmd_handlers[id] : NULL;
+}
+
+static void cmd_call_handler(u32 cmd_id, void *data)
+{
+	const struct sif_cmd_handler *handler = handler_from_cid(cmd_id);
+
+	if (handler == NULL) {
+		pr_err_once("sif: Invalid command id %x ignored\n", cmd_id);
+		return;
+	}
+
+	if (handler->func == NULL) {
+		pr_err_once("sif: Unknown command id %x ignored\n", cmd_id);
+		return;
+	}
+
+	handler->func(data, handler->arg);
+}
+
+static irqreturn_t sif0_dma_handler(int irq, void *dev_id)
+{
+	struct sif_cmd_header header;
+	u8 data[CMD_PACKET_MAX - sizeof(header)] __attribute__((aligned(16)));
+	const u8 * const pktbuf = sif0_buffer;
+
+	if (sif0_busy())
+		return IRQ_NONE;
+
+	/* Copy header and data before it is clobbered by the next packet. */
+	dma_cache_inv((unsigned long)pktbuf, CMD_PACKET_MAX);
+	memcpy(&header, &pktbuf[0], sizeof(header));
+	memcpy(&data[0], &pktbuf[sizeof(header)], sizeof(data));
+
+	sif0_reset_dma();	/* Reset DMA for next incoming packet. */
+
+	cmd_call_handler(header.cmd_id, data);
+
+	return IRQ_HANDLED;
 }
 
 static void cmd_rpc_end(void *data, void *arg)
@@ -484,7 +527,16 @@ static int __init sif_init(void)
 
 	sif0_reset_dma();
 
+	err = request_irq(IRQ_DMAC_SIF0, sif0_dma_handler, 0, "SIF0 DMA", NULL);
+	if (err) {
+		pr_err("sif: Failed to setup SIF0 handler.\n");
+		goto err_irq_sif0;
+	}
+
 	return 0;
+
+err_irq_sif0:
+	sif_disable_dma();
 
 err_request_commands:
 err_final_subaddr:
@@ -499,6 +551,8 @@ err_dma_buffers:
 static void __exit sif_exit(void)
 {
 	sif_disable_dma();
+
+	free_irq(IRQ_DMAC_SIF0, NULL);
 
 	put_dma_buffers();
 }
