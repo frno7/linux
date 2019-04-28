@@ -69,4 +69,9 @@ struct sif_cmd_header
 	u32 opt;
 };
 
+typedef void (*sif_cmd_cb)(const struct sif_cmd_header *header,
+	const void *data, void *arg);
+
+int sif_request_cmd(u32 cmd_id, sif_cmd_cb cb, void *arg);
+
 #endif /* __ASM_MACH_PS2_SIF_H */
