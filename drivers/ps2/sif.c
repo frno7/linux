@@ -164,11 +164,21 @@ static bool sif_smflag_bootend(void)
 	return (sif_read_smflag() & SIF_STATUS_BOOTEND) != 0;
 }
 
+static bool sif0_busy(void)
+{
+	return (inl(DMAC_SIF0_CHCR) & DMAC_CHCR_BUSY) != 0;
+}
+
 static bool sif1_busy(void)
 {
 	return (inl(DMAC_SIF1_CHCR) & DMAC_CHCR_BUSY) != 0;
 }
 
+/*
+ * sif1_ready may be called via cmd_rpc_bind that is a response from
+ * SIF_CMD_RPC_BIND via sif0_dma_handler from IRQ_DMAC_SIF0. Thus we
+ * currently have to busy-wait here if SIF1 is busy.
+ */
 static bool sif1_ready(void)
 {
 	size_t countout = 50000;	/* About 5 s */
@@ -303,6 +313,48 @@ static struct sif_cmd_handler *handler_from_cid(u32 cmd_id)
 		(cmd_id & SIF_CMD_ID_SYS) != 0 ?  sys_cmds : usr_cmds;
 
 	return id < CMD_HANDLER_MAX ? &cmd_handlers[id] : NULL;
+}
+
+static void cmd_call_handler(
+	const struct sif_cmd_header *header, const void *data)
+{
+	const struct sif_cmd_handler *handler = handler_from_cid(header->cmd);
+
+	if (!handler || !handler->cb) {
+		pr_err_once("sif: Invalid command 0x%x ignored\n", header->cmd);
+		return;
+	}
+
+	handler->cb(header, data, handler->arg);
+}
+
+static irqreturn_t sif0_dma_handler(int irq, void *dev_id)
+{
+	const struct sif_cmd_header *header = sif0_buffer;
+	const void *payload = &header[1];
+
+	if (sif0_busy())
+		return IRQ_NONE;
+
+	dma_cache_inv((unsigned long)sif0_buffer, SIF_CMD_PACKET_MAX);
+
+	if (header->data_size)
+		dma_cache_inv((unsigned long)phys_to_virt(header->data_addr),
+				header->data_size);
+
+	if (header->packet_size < sizeof(*header) ||
+	    header->packet_size > SIF_CMD_PACKET_MAX) {
+		pr_err_once("sif: Invalid command header size %u bytes\n",
+			header->packet_size);
+		goto err;
+	}
+
+	cmd_call_handler(header, payload);
+
+err:
+	sif0_reset_dma();	/* Reset DMA for the next incoming packet. */
+
+	return IRQ_HANDLED;
 }
 
 static void cmd_rpc_end(const struct sif_cmd_header *header,
@@ -530,6 +582,8 @@ EXPORT_SYMBOL_GPL(iop_error_message);
  *
  * 10. Reset the SIF0 (sub-to-main) DMA controller.
  *
+ * 11. Service SIF0 RPCs via interrupts.
+ *
  * Return: 0 on success, otherwise a negative error number
  */
 static int __init sif_init(void)
@@ -584,7 +638,16 @@ static int __init sif_init(void)
 
 	sif0_reset_dma();
 
+	err = request_irq(IRQ_DMAC_SIF0, sif0_dma_handler, 0, "SIF0 DMA", NULL);
+	if (err) {
+		pr_err("sif: Failed to setup SIF0 handler with %d\n", err);
+		goto err_irq_sif0;
+	}
+
 	return 0;
+
+err_irq_sif0:
+	sif_disable_dma();
 
 err_request_commands:
 err_final_subaddr:
@@ -599,6 +662,8 @@ err_dma_buffers:
 static void __exit sif_exit(void)
 {
 	sif_disable_dma();
+
+	free_irq(IRQ_DMAC_SIF0, NULL);
 
 	put_dma_buffers();
 }
