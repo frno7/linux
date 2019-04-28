@@ -266,6 +266,27 @@ static struct sif_cmd_handler *handler_from_cid(u32 cmd_id)
 	return id < CMD_HANDLER_MAX ? &cmd_handlers[id] : NULL;
 }
 
+static void cmd_rpc_end(void *data, void *arg)
+{
+	const struct sif_rpc_request_end_packet *packet = data;
+	struct sif_rpc_client *client = packet->client;
+
+	switch (packet->client_id) {
+	case SIF_CMD_RPC_CALL:
+		break;
+
+	case SIF_CMD_RPC_BIND:
+		client->server = packet->server;
+		client->server_buffer = packet->server_buffer;
+		break;
+
+	default:
+		BUG();
+	}
+
+	complete_all(&client->done);
+}
+
 static void cmd_rpc_bind(void *data, void *arg)
 {
 	const struct sif_rpc_bind_packet *bind = data;
@@ -374,6 +395,7 @@ static int sif_request_cmds(void)
 	} cmds[] = {
 		{ SIF_CMD_WRITE_SREG, cmd_write_sreg, NULL },
 
+		{ SIF_CMD_RPC_END,    cmd_rpc_end,    NULL },
 		{ SIF_CMD_RPC_BIND,   cmd_rpc_bind,   NULL },
 	};
 	int err = 0;
