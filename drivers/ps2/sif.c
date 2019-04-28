@@ -76,6 +76,20 @@ struct sif_rpc_bind_packet {
 	u32 server_id;
 };
 
+struct sif_rpc_call_packet {
+	struct sif_rpc_packet_header header;
+	struct sif_rpc_client *client;
+	u32 rpc_id;
+
+	u32 send_size;
+
+	dma_addr_t recv_addr;
+	u32 recv_size;
+	u32 recv_mode;
+
+	iop_addr_t server;
+};
+
 struct sif_cmd_change_addr_packet {
 	iop_addr_t addr;
 };
@@ -441,6 +455,68 @@ void sif_rpc_unbind(struct sif_rpc_client *client)
 }
 EXPORT_SYMBOL_GPL(sif_rpc_unbind);
 
+static int sif_rpc_dma(struct sif_rpc_client *client, u32 rpc_id,
+	const void *send, size_t send_size, size_t recv_size)
+{
+	const struct sif_rpc_call_packet call = {
+		.rpc_id    = rpc_id,
+		.send_size = send_size,
+		.recv_addr = virt_to_phys(client->client_buffer),
+		.recv_size = recv_size,
+		.recv_mode = 1,
+		.client    = client,
+		.server    = client->server
+	};
+	int err;
+
+	if (call.send_size != send_size)
+		return -EINVAL;
+	if (recv_size > client->client_size_max)
+		return -EINVAL;
+
+	reinit_completion(&client->done);
+
+	err = sif_cmd_copy(SIF_CMD_RPC_CALL, &call, sizeof(call),
+		client->server_buffer, send, send_size);
+	if (err)
+		return err;
+
+	wait_for_completion(&client->done);
+
+	if (recv_size > 0)
+		dma_cache_inv((unsigned long)client->client_buffer, recv_size);
+
+	return 0;
+}
+
+/**
+ * sif_rpc - issue a remote procedure call (RPC)
+ * @client: RPC client object initialised with sif_rpc_bind()
+ * @rpc_id: identification number of remote procedure to call
+ * @send: data to send with the RPC via DMA, or %NULL if @send_size is zero
+ * @send_size: size in bytes of the data to send
+ * @recv: data to receive from the RPC via DMA, or %NULL if @recv_size is zero
+ * @recv_size: size in bytes of the data to receive
+ *
+ * Due to DMA hardware restrictions, the @send buffer must align with 16-byte
+ * memory boundaries and @send_size is rounded up to a 16-byte multiple.
+ *
+ * FIXME: Lift these send restrictions and use memcpy similar to receive?
+ *
+ * Return: 0 on success, otherwise a negative error number
+ */
+int sif_rpc(struct sif_rpc_client *client, u32 rpc_id,
+	const void *send, size_t send_size, void *recv, size_t recv_size)
+{
+	int err = sif_rpc_dma(client, rpc_id, send, send_size, recv_size);
+
+	if (err == 0)
+		memcpy(recv, client->client_buffer, recv_size);
+
+	return err;
+}
+EXPORT_SYMBOL_GPL(sif_rpc);
+
 static void cmd_rpc_end(const struct sif_cmd_header *header,
 	const void *data, void *arg)
 {
@@ -699,6 +775,8 @@ static int __init sif_init(void)
 	BUILD_BUG_ON(sizeof(struct sif_rpc_packet_header) != 12);
 	BUILD_BUG_ON(sizeof(struct sif_rpc_request_end_packet) != 32);
 	BUILD_BUG_ON(sizeof(struct sif_rpc_bind_packet) != 20);
+	BUILD_BUG_ON(sizeof(struct sif_rpc_call_packet) != 40);
+
 	BUILD_BUG_ON(sizeof(struct sif_cmd_header) != 16);
 	BUILD_BUG_ON(sizeof(struct sif_cmd_change_addr_packet) != 4);
 
