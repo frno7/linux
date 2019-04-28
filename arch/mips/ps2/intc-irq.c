@@ -85,6 +85,12 @@ static struct irqaction cascade_intc_irqaction = {
 	.handler = intc_cascade,
 };
 
+void intc_sif_irq(unsigned int irq)
+{
+	do_IRQ(irq);
+}
+EXPORT_SYMBOL_GPL(intc_sif_irq);
+
 int __init intc_irq_init(void)
 {
 	size_t i;
