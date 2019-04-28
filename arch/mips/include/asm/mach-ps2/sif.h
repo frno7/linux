@@ -64,5 +64,6 @@ struct sif_rpc_client
 };
 
 int sif_rpc_bind(struct sif_rpc_client *client, u32 server_id);
+void sif_rpc_unbind(struct sif_rpc_client *client);
 
 #endif /* __ASM_PS2_SIF_H */
