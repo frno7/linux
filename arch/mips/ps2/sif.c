@@ -314,6 +314,13 @@ static int sif_request_cmd(u32 cmd_id, sif_cmd_func func, void *arg)
 	return 0;
 }
 
+static void cmd_rpc_irq(void *data, void *arg)
+{
+	const struct sif_rpc_request_end_packet *packet = data;
+
+	intc_sif_irq(packet->header.rec_id);
+}
+
 static int iop_reset_arg(const char *arg)
 {
 	const size_t arglen = strlen(arg) + 1;
@@ -397,6 +404,7 @@ static int sif_request_cmds(void)
 
 		{ SIF_CMD_RPC_END,    cmd_rpc_end,    NULL },
 		{ SIF_CMD_RPC_BIND,   cmd_rpc_bind,   NULL },
+		{ SIF_CMD_RPC_IRQ,    cmd_rpc_irq,    NULL },
 	};
 	int err = 0;
 	size_t i;
