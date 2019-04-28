@@ -29,6 +29,8 @@
 #define SIF0_BUFFER_SIZE	PAGE_SIZE
 #define SIF1_BUFFER_SIZE	PAGE_SIZE
 
+#define SIF_SREG_RPCINIT	0
+
 struct sif_rpc_packet_header {
 	u32 rec_id;
 	void *pkt_addr;
@@ -69,6 +71,10 @@ struct sif_cmd_header
 	u32 opt;
 };
 
+struct sif_cmd_change_addr_packet {
+	iop_addr_t addr;
+};
+
 typedef void (*sif_cmd_cb)(const struct sif_cmd_header *header,
 	const void *data, void *arg);
 
@@ -99,6 +105,25 @@ static void cmd_write_sreg(const struct sif_cmd_header *header,
 	spin_lock_irqsave(&sregs_lock, flags);
 	sregs[packet->reg] = packet->val;
 	spin_unlock_irqrestore(&sregs_lock, flags);
+}
+
+static s32 read_sreg(u32 reg)
+{
+	unsigned long flags;
+	s32 val;
+
+	BUG_ON(reg >= ARRAY_SIZE(sregs));
+
+	spin_lock_irqsave(&sregs_lock, flags);
+	val = sregs[reg];
+	spin_unlock_irqrestore(&sregs_lock, flags);
+
+	return val;
+}
+
+static bool sif_sreg_rpcinit(void)
+{
+	return read_sreg(SIF_SREG_RPCINIT) != 0;
 }
 
 /**
@@ -294,6 +319,11 @@ static int sif_cmd_copy(u32 cmd_id, const void *pkt, size_t pktsize,
 	return sif_cmd_opt_copy(cmd_id, 0, pkt, pktsize, dst, src, nbytes);
 }
 
+static int sif_cmd_opt(u32 cmd_id, u32 opt, const void *pkt, size_t pktsize)
+{
+	return sif_cmd_opt_copy(cmd_id, opt, pkt, pktsize, 0, NULL, 0);
+}
+
 static int sif_cmd(u32 cmd_id, const void *pkt, size_t pktsize)
 {
 	return sif_cmd_copy(cmd_id, pkt, pktsize, 0, NULL, 0);
@@ -469,6 +499,17 @@ static int sif_cmd_init(dma_addr_t cmd_buffer)
 	return sif_cmd_opt(SIF_CMD_INIT_CMD, 0, &cmd, sizeof(cmd));
 }
 
+static int sif_rpc_init(void)
+{
+	int err;
+
+	err = sif_cmd_opt(SIF_CMD_INIT_CMD, 1, NULL, 0);
+	if (err)
+		return err;
+
+	return completed(sif_sreg_rpcinit) ? 0 : -EIO;
+}
+
 static int sif_read_subaddr(dma_addr_t *subaddr)
 {
 	if (!completed(sif_smflag_cmdinit))
@@ -586,6 +627,7 @@ static int __init sif_init(void)
 	BUILD_BUG_ON(sizeof(struct sif_rpc_request_end_packet) != 32);
 	BUILD_BUG_ON(sizeof(struct sif_rpc_bind_packet) != 20);
 	BUILD_BUG_ON(sizeof(struct sif_cmd_header) != 16);
+	BUILD_BUG_ON(sizeof(struct sif_cmd_change_addr_packet) != 4);
 
 	sif_disable_dma();
 
@@ -642,8 +684,15 @@ static int __init sif_init(void)
 		goto err_cmd_init;
 	}
 
+	err = sif_rpc_init();
+	if (err) {
+		pr_err("sif: Failed to initialise RPC with %d\n", err);
+		goto err_rpc_init;
+	}
+
 	return 0;
 
+err_rpc_init:
 err_cmd_init:
 	free_irq(IRQ_DMAC_SIF0, NULL);
 
