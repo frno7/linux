@@ -29,6 +29,29 @@
 #define SIF0_BUFFER_SIZE	PAGE_SIZE
 #define SIF1_BUFFER_SIZE	PAGE_SIZE
 
+struct sif_rpc_packet_header {
+	u32 rec_id;
+	void *pkt_addr;
+	u32 rpc_id;
+};
+
+struct sif_rpc_request_end_packet {
+	struct sif_rpc_packet_header header;
+	struct sif_rpc_client *client;
+	u32 client_id;
+
+	iop_addr_t server;
+	iop_addr_t server_buffer;
+
+	void *client_buffer;
+};
+
+struct sif_rpc_bind_packet {
+	struct sif_rpc_packet_header header;
+	struct sif_rpc_client *client;
+	u32 server_id;
+};
+
 /**
  * struct sif_cmd_header - 16-byte SIF command header
  * @packet_size: min 1x16 for header only, max 7*16 bytes
@@ -44,6 +67,15 @@ struct sif_cmd_header
 	u32 data_addr;
 	u32 cmd;
 	u32 opt;
+};
+
+typedef void (*sif_cmd_cb)(const struct sif_cmd_header *header,
+	const void *data, void *arg);
+
+struct sif_cmd_handler
+{
+	sif_cmd_cb cb;
+	void *arg;
 };
 
 static DEFINE_SPINLOCK(sregs_lock);
@@ -264,6 +296,21 @@ static struct sif_cmd_handler *handler_from_cid(u32 cmd_id)
 	return id < CMD_HANDLER_MAX ? &cmd_handlers[id] : NULL;
 }
 
+static void cmd_rpc_bind(const struct sif_cmd_header *header,
+	const void *data, void *arg)
+{
+	const struct sif_rpc_bind_packet *bind = data;
+	const struct sif_rpc_request_end_packet packet = {
+		.client    = bind->client,
+		.client_id = SIF_CMD_RPC_BIND,
+	};
+	int err;
+
+	err = sif_cmd(SIF_CMD_RPC_END, &packet, sizeof(packet));
+	if (err)
+		pr_err_once("sif: cmd_rpc_bind failed with %d\n", err);
+}
+
 static int sif_request_cmd(u32 cmd_id, sif_cmd_cb cb, void *arg)
 {
 	struct sif_cmd_handler *handler = handler_from_cid(cmd_id);
@@ -355,6 +402,8 @@ static int sif_request_cmds(void)
 		struct cmd_data *arg;
 	} cmds[] = {
 		{ SIF_CMD_WRITE_SREG, cmd_write_sreg, NULL },
+
+		{ SIF_CMD_RPC_BIND,   cmd_rpc_bind,   NULL },
 	};
 	int err = 0;
 	size_t i;
@@ -418,6 +467,9 @@ static int __init sif_init(void)
 {
 	int err;
 
+	BUILD_BUG_ON(sizeof(struct sif_rpc_packet_header) != 12);
+	BUILD_BUG_ON(sizeof(struct sif_rpc_request_end_packet) != 32);
+	BUILD_BUG_ON(sizeof(struct sif_rpc_bind_packet) != 20);
 	BUILD_BUG_ON(sizeof(struct sif_cmd_header) != 16);
 
 	sif_disable_dma();

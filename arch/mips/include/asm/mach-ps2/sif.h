@@ -52,4 +52,15 @@
 #define SIF_CMD_PACKET_MAX	112
 #define SIF_CMD_PACKET_DATA_MAX 96
 
+struct sif_rpc_client
+{
+	iop_addr_t server;
+	iop_addr_t server_buffer;
+
+	size_t client_size_max;
+	void *client_buffer;
+
+	struct completion done;
+};
+
 #endif /* __ASM_PS2_SIF_H */
