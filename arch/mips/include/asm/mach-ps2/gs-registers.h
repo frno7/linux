@@ -5,7 +5,10 @@
  * Copyright (C) 2019 Fredrik Noring
  *
  * All privileged GS registers are write-only except CSR (system status)
- * and SIGLBLID (signal and label id).
+ * and SIGLBLID (signal and label id). Reading write-only registers is
+ * emulated by shadow registers in memory. Reading unwritten registers
+ * is not permitted. Predicate functions indicate whether registers are
+ * readable.
  */
 
 #ifndef __ASM_PS2_GS_REGISTERS_H
@@ -310,5 +313,47 @@ struct gs_siglblid {
 	u64 sigid : 32;		/* Id value set by SIGNAL register */
 	u64 lblid : 32;		/* Id value set by LABEL register */
 };
+
+#define GS_DECLARE_VALID_REG(reg)			\
+	bool gs_valid_##reg(void)
+
+#define GS_DECLARE_WQ_REG(reg)				\
+	void gs_writeq_##reg(u64 value)
+
+#define GS_DECLARE_RW_REG(reg)				\
+	GS_DECLARE_VALID_REG(reg);			\
+	GS_DECLARE_WQ_REG(reg)
+
+/*
+ * All registers follow the same pattern. For example, the CSR register has
+ * the following functions:
+ *
+ *	bool gs_valid_csr(void);
+ *	void gs_writeq_csr(u64 value);
+ *
+ * gs_valid_csr indicates whether CSR is readable, which is always true,
+ * since CSR is read-write in hardware. The IMR register however is write-
+ * only in hardware, so its shadow register is only valid and readable once
+ * it is written at least once. Reading nonvalid registers is not permitted.
+ */
+GS_DECLARE_RW_REG(pmode);
+GS_DECLARE_RW_REG(smode1);
+GS_DECLARE_RW_REG(smode2);
+GS_DECLARE_RW_REG(srfsh);
+GS_DECLARE_RW_REG(synch1);
+GS_DECLARE_RW_REG(synch2);
+GS_DECLARE_RW_REG(syncv);
+GS_DECLARE_RW_REG(dispfb1 );
+GS_DECLARE_RW_REG(display1);
+GS_DECLARE_RW_REG(dispfb2);
+GS_DECLARE_RW_REG(display2);
+GS_DECLARE_RW_REG(extbuf);
+GS_DECLARE_RW_REG(extdata);
+GS_DECLARE_RW_REG(extwrite);
+GS_DECLARE_RW_REG(bgcolor);
+GS_DECLARE_RW_REG(csr);
+GS_DECLARE_RW_REG(imr);
+GS_DECLARE_RW_REG(busdir);
+GS_DECLARE_RW_REG(siglblid);
 
 #endif /* __ASM_PS2_GS_REGISTERS_H */
