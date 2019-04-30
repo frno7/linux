@@ -8,4 +8,4 @@ obj-y		+= setup.o
 obj-m		+= sif.o
 obj-y		+= time.o
 
-obj-$(CONFIG_PS2_GS)	+= gs.o gs-registers.o gs-irq.o gif.o
+obj-$(CONFIG_PS2_GS)	+= gs.o gs-registers.o gs-irq.o gs-sysfs.o gif.o
