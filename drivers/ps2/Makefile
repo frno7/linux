@@ -1,3 +1,5 @@
+obj-$(CONFIG_PS2_GS)		+= gs-registers.o
+
 obj-m				+= iop-heap.o
 obj-m				+= iop-irq.o
 obj-m				+= iop-memory.o
