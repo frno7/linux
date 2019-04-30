@@ -545,4 +545,52 @@ struct gs_siglblid {
 	u64 lblid : 32;
 };
 
+#define GS_DECLARE_VALID_REG(reg)			\
+	bool gs_valid_##reg(void)
+
+#define GS_DECLARE_WQ_REG(reg)				\
+	void gs_writeq_##reg(u64 value)
+
+#define GS_DECLARE_RW_REG(reg)				\
+	GS_DECLARE_VALID_REG(reg);			\
+	GS_DECLARE_WQ_REG(reg)
+
+/**
+ * DOC:
+ *
+ * All privileged Graphics Synthesizer register functions follow the same
+ * pattern. For example, the CSR register has the following functions::
+ *
+ *	bool gs_valid_csr(void);
+ *	void gs_writeq_csr(u64 value);
+ *
+ * gs_valid_csr() indicates whether CSR is readable, which is always true,
+ * since CSR is read-write in hardware. The IMR register however is write-
+ * only in hardware, so its shadow register is only valid and readable once
+ * it is written at least once. Reading nonvalid registers is not permitted.
+ *
+ * The following registers have functions: PMODE, SMODE1, SMODE2, SRFSH,
+ * SYNCH1, SYNCH2, SYNCV, DISPFB1 , DISPLAY1, DISPFB2, DISPLAY2, EXTBUF,
+ * EXTDATA, EXTWRITE, BGCOLOR, CSR, IMR, BUSDIR and SIGLBLID.
+ */
+GS_DECLARE_RW_REG(pmode);
+GS_DECLARE_RW_REG(smode1);
+GS_DECLARE_RW_REG(smode2);
+GS_DECLARE_RW_REG(srfsh);
+GS_DECLARE_RW_REG(synch1);
+GS_DECLARE_RW_REG(synch2);
+GS_DECLARE_RW_REG(syncv);
+GS_DECLARE_RW_REG(dispfb1 );
+GS_DECLARE_RW_REG(display1);
+GS_DECLARE_RW_REG(dispfb2);
+GS_DECLARE_RW_REG(display2);
+GS_DECLARE_RW_REG(extbuf);
+GS_DECLARE_RW_REG(extdata);
+GS_DECLARE_RW_REG(extwrite);
+GS_DECLARE_RW_REG(bgcolor);
+GS_DECLARE_RW_REG(csr);
+GS_DECLARE_RW_REG(imr);
+GS_DECLARE_RW_REG(busdir);
+GS_DECLARE_RW_REG(siglblid);
+
 #endif /* __ASM_MACH_PS2_GS_REGISTERS_H */
