@@ -52,6 +52,14 @@ static struct {
 	}								\
 	EXPORT_SYMBOL_GPL(gs_valid_##reg)
 
+/* Read-write registers are not shadowed and trivially read. */
+#define GS_DEFINE_RQ_RW_REG(reg, addr)					\
+	u64 gs_readq_##reg(void)					\
+	{								\
+		return inq(addr);					\
+	}								\
+	EXPORT_SYMBOL_GPL(gs_readq_##reg)
+
 /* Read-write registers are not shadowed and trivially write. */
 #define GS_DEFINE_WQ_RW_REG(reg, addr)					\
 	void gs_writeq_##reg(u64 value)					\
@@ -74,6 +82,20 @@ static struct {
 	EXPORT_SYMBOL_GPL(gs_valid_##reg)
 
 /* Write-only registers are shadowed and reading requires a previous write. */
+#define GS_DEFINE_RQ_WO_REG(reg, addr)					\
+	u64 gs_readq_##reg(void)					\
+	{								\
+		unsigned long flags;					\
+		u64 value;						\
+		spin_lock_irqsave(&gs_registers.lock, flags);		\
+		WARN_ON_ONCE(!gs_registers.reg.valid);			\
+		value = gs_registers.reg.value;				\
+		spin_unlock_irqrestore(&gs_registers.lock, flags);	\
+		return value;						\
+	}								\
+	EXPORT_SYMBOL_GPL(gs_readq_##reg)
+
+/* Write-only registers are shadowed and reading requires a previous write. */
 #define GS_DEFINE_WQ_WO_REG(reg, addr)					\
 	void gs_writeq_##reg(u64 value)					\
 	{								\
@@ -89,11 +111,13 @@ static struct {
 /* Only CSR and SIGLBLID are read-write (RW) with hardware. */
 #define GS_DEFINE_RW_REG(reg, addr)					\
 	GS_DEFINE_VALID_RW_REG(reg, addr);				\
+	GS_DEFINE_RQ_RW_REG(reg, addr);					\
 	GS_DEFINE_WQ_RW_REG(reg, addr)
 
 /* The rest are write-only (WO) with reading emulated by shadow registers. */
 #define GS_DEFINE_WO_REG(reg, addr)					\
 	GS_DEFINE_VALID_WO_REG(reg, addr);				\
+	GS_DEFINE_RQ_WO_REG(reg, addr);					\
 	GS_DEFINE_WQ_WO_REG(reg, addr)
 
 GS_DEFINE_WO_REG(pmode,    GS_PMODE);
