@@ -643,4 +643,10 @@ GS_DECLARE_RW_REG(siglblid, siglblid);
  */
 u64 gs_xorq_imr(u64 value);
 
+/* FIXME */
+void gs_write_csr_flush(void);
+
+/* FIXME */
+void gs_write_csr_reset(void);
+
 #endif /* __ASM_MACH_PS2_GS_REGISTERS_H */

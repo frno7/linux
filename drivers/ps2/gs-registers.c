@@ -184,6 +184,22 @@ u64 gs_xorq_imr(u64 value)
 }
 EXPORT_SYMBOL_GPL(gs_xorq_imr);
 
+void gs_write_csr_flush(void)
+{
+	GS_WRITE_CSR( .flush = 1 );
+
+	udelay(2500);		/* 2.5 ms hardware delay */
+}
+EXPORT_SYMBOL_GPL(gs_write_csr_flush);
+
+void gs_write_csr_reset(void)
+{
+	GS_WRITE_CSR( .reset = 1 );
+
+	udelay(2500);		/* 2.5 ms hardware delay */
+}
+EXPORT_SYMBOL_GPL(gs_write_csr_reset);
+
 MODULE_DESCRIPTION("PlayStation 2 privileged Graphics Synthesizer registers");
 MODULE_AUTHOR("Fredrik Noring");
 MODULE_LICENSE("GPL");
