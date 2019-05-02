@@ -186,4 +186,69 @@
 #define DMAC_ENABLER	0x1000f520	/* Acquisition of DMA suspend status */
 #define DMAC_ENABLEW	0x1000f590	/* DMA suspend control */
 
+enum dma_tag_reg {		/* Data start address:	Next tag address: */
+	dma_tag_id_refe = 0,	/* ADDR			(none) */
+	dma_tag_id_cnts = 0,	/* ADDR			(none) */
+	dma_tag_id_cnt,		/* next to tag		next to transfer data */
+	dma_tag_id_next,	/* next to tag		ADDR */
+	dma_tag_id_ref,		/* ADDR			next to tag */
+	dma_tag_id_refs,	/* ADDR			next to tag */
+	dma_tag_id_call,	/* next to tag		ADDR */
+	dma_tag_id_ret,		/* next to tag		Dn_ASR */
+	dma_tag_id_end		/* next to tag		(none) */
+};
+
+/**
+ * enum dma_tag_spr - memory or scratch-pad RAM
+ * @dma_tag_spr_memory: select memory
+ * @dma_tag_spr_scratchpad: select scratch-pad RAM
+ */
+enum dma_tag_spr {
+	dma_tag_spr_memory,
+	dma_tag_spr_scratchpad
+};
+
+/**
+ * struct dma_tag - DMA tag
+ * @qwc: 128-bit quadword count
+ * @pce: priority control enable
+ * @id: &enum dma_tag_reg tag identifier
+ * @irq: interrupt request
+ * @addr: address with lower 4 bits zero
+ * @spr: &enum dma_tag_spr memory or scratch-pad RAM
+ *
+ * The DMA tag must be aligned with 16 byte boundaries.
+ */
+struct dma_tag {
+	u64 qwc : 16;
+	u64 : 10;
+	u64 pce : 2;
+	u64 id : 3;
+	u64 irq : 1;
+	u64 addr : 31;
+	u64 spr : 1;
+
+	u64 : 64;
+} __attribute__((aligned(16)));
+
+/**
+ * struct iop_dma_tag - I/O processor (IOP) DMA tag
+ * @addr: IOP address
+ * @int_0: assert IOP interupt on completion
+ * @ert: FIXME
+ * @wc: 32-bit word count
+ *
+ * The IOP DMA tag must be aligned with 16 byte boundaries.
+ */
+struct iop_dma_tag {
+	u32 addr : 24;
+	u32 : 6;
+	u32 int_0 : 1;
+	u32 ert : 1;
+
+	u32 wc;
+
+	u64 : 64;
+} __attribute__((aligned(16)));
+
 #endif /* __ASM_MACH_PS2_DMAC_H */
