@@ -108,37 +108,64 @@ static struct {
 	}								\
 	EXPORT_SYMBOL_GPL(gs_writeq_##reg)
 
+/* Read registers as structures, which simplifies notation. */
+#define GS_DEFINE_RS_REG(reg, str)					\
+	struct gs_##str gs_read_##reg(void)				\
+	{								\
+		const u64 v = gs_readq_##reg();				\
+		struct gs_##str value;					\
+		BUILD_BUG_ON(sizeof(v) != sizeof(value));		\
+		memcpy(&value, &v, sizeof(v));				\
+		return value;						\
+	}								\
+	EXPORT_SYMBOL_GPL(gs_read_##reg)
+
+/* Write registers as structures, which simplifies notation. */
+#define GS_DEFINE_WS_REG(reg, str)					\
+	void gs_write_##reg(struct gs_##str value)			\
+	{								\
+		u64 v;							\
+		BUILD_BUG_ON(sizeof(v) != sizeof(value));		\
+		memcpy(&v, &value, sizeof(v));				\
+		gs_writeq_##reg(v);					\
+	}								\
+	EXPORT_SYMBOL_GPL(gs_write_##reg)
+
 /* Only CSR and SIGLBLID are read-write (RW) with hardware. */
-#define GS_DEFINE_RW_REG(reg, addr)					\
+#define GS_DEFINE_RW_REG(reg, str, addr)				\
 	GS_DEFINE_VALID_RW_REG(reg, addr);				\
 	GS_DEFINE_RQ_RW_REG(reg, addr);					\
-	GS_DEFINE_WQ_RW_REG(reg, addr)
+	GS_DEFINE_WQ_RW_REG(reg, addr);					\
+	GS_DEFINE_RS_REG(reg, str);					\
+	GS_DEFINE_WS_REG(reg, str)
 
 /* The rest are write-only (WO) with reading emulated by shadow registers. */
-#define GS_DEFINE_WO_REG(reg, addr)					\
+#define GS_DEFINE_WO_REG(reg, str, addr)				\
 	GS_DEFINE_VALID_WO_REG(reg, addr);				\
 	GS_DEFINE_RQ_WO_REG(reg, addr);					\
-	GS_DEFINE_WQ_WO_REG(reg, addr)
+	GS_DEFINE_WQ_WO_REG(reg, addr);					\
+	GS_DEFINE_RS_REG(reg, str);					\
+	GS_DEFINE_WS_REG(reg, str)
 
-GS_DEFINE_WO_REG(pmode,    GS_PMODE);
-GS_DEFINE_WO_REG(smode1,   GS_SMODE1);
-GS_DEFINE_WO_REG(smode2,   GS_SMODE2);
-GS_DEFINE_WO_REG(srfsh,    GS_SRFSH);
-GS_DEFINE_WO_REG(synch1,   GS_SYNCH1);
-GS_DEFINE_WO_REG(synch2,   GS_SYNCH2);
-GS_DEFINE_WO_REG(syncv,    GS_SYNCV);
-GS_DEFINE_WO_REG(dispfb1,  GS_DISPFB1);
-GS_DEFINE_WO_REG(display1, GS_DISPLAY1);
-GS_DEFINE_WO_REG(dispfb2,  GS_DISPFB2);
-GS_DEFINE_WO_REG(display2, GS_DISPLAY2);
-GS_DEFINE_WO_REG(extbuf,   GS_EXTBUF);
-GS_DEFINE_WO_REG(extdata,  GS_EXTDATA);
-GS_DEFINE_WO_REG(extwrite, GS_EXTWRITE);
-GS_DEFINE_WO_REG(bgcolor,  GS_BGCOLOR);
-GS_DEFINE_RW_REG(csr,      GS_CSR);		/* Read-write */
-GS_DEFINE_WO_REG(imr,      GS_IMR);
-GS_DEFINE_WO_REG(busdir,   GS_BUSDIR);
-GS_DEFINE_RW_REG(siglblid, GS_SIGLBLID);	/* Read-write */
+GS_DEFINE_WO_REG(pmode,    pmode,    GS_PMODE);
+GS_DEFINE_WO_REG(smode1,   smode1,   GS_SMODE1);
+GS_DEFINE_WO_REG(smode2,   smode2,   GS_SMODE2);
+GS_DEFINE_WO_REG(srfsh,    srfsh,    GS_SRFSH);
+GS_DEFINE_WO_REG(synch1,   synch1,   GS_SYNCH1);
+GS_DEFINE_WO_REG(synch2,   synch2,   GS_SYNCH2);
+GS_DEFINE_WO_REG(syncv,    syncv,    GS_SYNCV);
+GS_DEFINE_WO_REG(dispfb1,  dispfb,   GS_DISPFB1);
+GS_DEFINE_WO_REG(display1, display,  GS_DISPLAY1);
+GS_DEFINE_WO_REG(dispfb2,  dispfb,   GS_DISPFB2);
+GS_DEFINE_WO_REG(display2, display,  GS_DISPLAY2);
+GS_DEFINE_WO_REG(extbuf,   extbuf,   GS_EXTBUF);
+GS_DEFINE_WO_REG(extdata,  extdata,  GS_EXTDATA);
+GS_DEFINE_WO_REG(extwrite, extwrite, GS_EXTWRITE);
+GS_DEFINE_WO_REG(bgcolor,  bgcolor,  GS_BGCOLOR);
+GS_DEFINE_RW_REG(csr,      csr,      GS_CSR);		/* Read-write */
+GS_DEFINE_WO_REG(imr,      imr,      GS_IMR);
+GS_DEFINE_WO_REG(busdir,   busdir,   GS_BUSDIR);
+GS_DEFINE_RW_REG(siglblid, siglblid, GS_SIGLBLID);	/* Read-write */
 
 MODULE_DESCRIPTION("PlayStation 2 privileged Graphics Synthesizer registers");
 MODULE_AUTHOR("Fredrik Noring");
