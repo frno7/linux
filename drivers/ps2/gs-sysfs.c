@@ -4,9 +4,9 @@
  *
  * Copyright (C) 2019 Fredrik Noring
  *
- * Reading arbitrary numerical and symbolical privileged GS register
- * bit fields is supported. For example, the PMODE register can be
- * inspected with:
+ * Reading and writing arbitrary numerical and symbolical privileged
+ * GS register bit fields is supported. For example, the PMODE register
+ * can be inspected with:
  *
  *	# cat /sys/devices/platform/gs/registers/pmode
  *	en1 1
@@ -16,6 +16,11 @@
  *	amod circuit1
  *	slbg circuit2
  *	alp 0
+ *
+ * One or several bit fields can be written simultaneously. For example,
+ * the PMODE slbg field can be changed with:
+ *
+ * 	# echo "slbg bgcolor" >/sys/devices/platform/gs/registers/pmode
  *
  * The implementation uses a fair amount of macro expansions. This greatly
  * simplifies register definitions, which in the case of PMODE is:
@@ -63,6 +68,76 @@
 #include <uapi/asm/gs.h>
 
 static struct kobject *registers_kobj;
+
+static size_t line_size(const char *s)
+{
+	const size_t n = strchrnul(s, '\n') - s;
+
+	return s[n] == '\n' ? n + 1 : n;
+}
+
+static const char *trim_line_space(const char *s)
+{
+	while (isspace(*s) && *s != '\n')
+		s++;
+
+	return s;
+}
+
+static bool symbol_match(const char **s, const char *symbol)
+{
+	const size_t length = strlen(symbol);
+	const char *t = *s;
+
+	t = trim_line_space(t);
+	if (strncmp(t, symbol, length) != 0)
+		return false;
+	t += length;
+	t = trim_line_space(t);
+
+	*s = t;
+
+	return true;
+}
+
+static bool number_match(const char **s, u64 *value)
+{
+	const char *t = *s;
+	char *e;
+
+	t = trim_line_space(t);
+	*value = simple_strtoull(t, &e, 0);
+	if (t == e)
+		return false;
+	t = e;
+	t = trim_line_space(t);
+
+	*s = t;
+
+	return true;
+}
+
+static bool end_of_field(const char *s)
+{
+	return *s == '\n' || *s == '\0';
+}
+
+static bool symbol_field(const char *s, const char *field, const char *value)
+{
+	return symbol_match(&s, field) &&
+	       symbol_match(&s, value) &&
+	       end_of_field(s);
+}
+
+static bool number_field(const char *s, const char *field, u64 *value)
+{
+	return symbol_match(&s, field) &&
+	       number_match(&s, value) &&
+	       end_of_field(s);
+}
+
+#define for_each_line(s, n)						\
+	for (n = 0; (s)[n] != '\0'; n += line_size(&(s)[n]))
 
 #define SYSFS_STATEMENT1(prefix_, macro_)				\
 	prefix_##macro_;
@@ -234,13 +309,73 @@ static struct kobject *registers_kobj;
 		CONCATENATE(SYSFS_STATEMENT,				\
 			COUNT_ARGS(__VA_ARGS__))(SHOW_, __VA_ARGS__))
 
+#define STORE_SYSFS_DECNUM_FIELD(field_)				\
+	do {								\
+		u64 value_;						\
+		if (number_field(&buf[n], #field_, &value_))		\
+			value.field_ = value_;				\
+	} while (false)
+
+#define STORE_SYSFS_HEXNUM_FIELD(field_)				\
+	STORE_SYSFS_DECNUM_FIELD(field_)
+
+#define STORE_SYSFS_SYMBOL_FIELD_ENTRY(field_, prefix_, value_)		\
+	do {								\
+		if (symbol_field(&buf[n], #field_, #value_))		\
+			value.field_ = prefix_##_##value_;		\
+	} while (false)
+
+#define STORE_SYSFS_SYMBOL_FIELD1(field_, prefix_, value_)		\
+	STORE_SYSFS_SYMBOL_FIELD_ENTRY(field_, prefix_, value_)
+
+#define STORE_SYSFS_SYMBOL_FIELD2(field_, prefix_, value_, ...)		\
+	STORE_SYSFS_SYMBOL_FIELD_ENTRY(field_, prefix_, value_);	\
+	STORE_SYSFS_SYMBOL_FIELD1(field_, prefix_, __VA_ARGS__)
+
+#define STORE_SYSFS_SYMBOL_FIELD3(field_, prefix_, value_, ...)		\
+	STORE_SYSFS_SYMBOL_FIELD_ENTRY(field_, prefix_, value_);	\
+	STORE_SYSFS_SYMBOL_FIELD2(field_, prefix_, __VA_ARGS__)
+
+#define STORE_SYSFS_SYMBOL_FIELD4(field_, prefix_, value_, ...)		\
+	STORE_SYSFS_SYMBOL_FIELD_ENTRY(field_, prefix_, value_);	\
+	STORE_SYSFS_SYMBOL_FIELD3(field_, prefix_, __VA_ARGS__)
+
+#define STORE_SYSFS_SYMBOL_FIELD5(field_, prefix_, value_, ...)		\
+	STORE_SYSFS_SYMBOL_FIELD_ENTRY(field_, prefix_, value_);	\
+	STORE_SYSFS_SYMBOL_FIELD4(field_, prefix_, __VA_ARGS__)
+
+#define STORE_SYSFS_SYMBOL_FIELD(field_, ...)			\
+	CONCATENATE(STORE_SYSFS_SYMBOL_FIELD,				\
+		COUNT_ARGS(__VA_ARGS__))(field_, gs_##field_, __VA_ARGS__)
+
+#define STORE_SYSFS_REGISTER(reg, str, ...)				\
+	static ssize_t store_##reg(struct device *device,		\
+	       struct device_attribute *attr, const char *buf, size_t size) \
+	{								\
+		const bool valid = gs_valid_##reg();			\
+		struct gs_##str value = valid ?			\
+			gs_read_##reg() : (struct gs_##str) { };	\
+		size_t n;						\
+		for_each_line(buf, n) {					\
+			__VA_ARGS__;					\
+		}							\
+		gs_write_##reg(value);					\
+		return size;						\
+	}
+
+#define SYSFS_STORE(reg, str, ...)					\
+	STORE_SYSFS_REGISTER(reg, str,				\
+		CONCATENATE(SYSFS_STATEMENT,				\
+			COUNT_ARGS(__VA_ARGS__))(STORE_, __VA_ARGS__))
+
 #define SYSFS_RO_REG(reg, str, ...)					\
 	SYSFS_SHOW(reg, str, __VA_ARGS__)				\
 	static DEVICE_ATTR(reg, S_IRUGO, show_##reg, NULL)
 
 #define SYSFS_RW_REG(reg, str, ...)					\
 	SYSFS_SHOW(reg, str, __VA_ARGS__)				\
-	static DEVICE_ATTR(reg, S_IRUGO, show_##reg, NULL)
+	SYSFS_STORE(reg, str, __VA_ARGS__)				\
+	static DEVICE_ATTR(reg, S_IRUGO | S_IWUSR, show_##reg, store_##reg)
 
 SYSFS_RW_REG(pmode, pmode,
 	SYSFS_DECNUM_FIELD(en1),
@@ -415,7 +550,7 @@ static struct attribute_group gs_registers_attribute_group = {
 
 static int __init gs_sysfs_init(void)
 {
-	struct device *gs_dev = gs_device();	/* FIXME: Is this method appropriate? */
+	struct device *gs_dev = gs_device_driver();	/* FIXME: Is this method appropriate? */
 	int err;
 
 	if (!gs_dev) {
