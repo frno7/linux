@@ -548,11 +548,15 @@ struct gs_siglblid {
 #define GS_DECLARE_VALID_REG(reg)			\
 	bool gs_valid_##reg(void)
 
+#define GS_DECLARE_RQ_REG(reg)				\
+	u64 gs_readq_##reg(void)
+
 #define GS_DECLARE_WQ_REG(reg)				\
 	void gs_writeq_##reg(u64 value)
 
 #define GS_DECLARE_RW_REG(reg)				\
 	GS_DECLARE_VALID_REG(reg);			\
+	GS_DECLARE_RQ_REG(reg);				\
 	GS_DECLARE_WQ_REG(reg)
 
 /**
@@ -562,6 +566,7 @@ struct gs_siglblid {
  * pattern. For example, the CSR register has the following functions::
  *
  *	bool gs_valid_csr(void);
+ *	u64 gs_readq_csr(void);
  *	void gs_writeq_csr(u64 value);
  *
  * gs_valid_csr() indicates whether CSR is readable, which is always true,
