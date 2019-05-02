@@ -554,10 +554,18 @@ struct gs_siglblid {
 #define GS_DECLARE_WQ_REG(reg)				\
 	void gs_writeq_##reg(u64 value)
 
-#define GS_DECLARE_RW_REG(reg)				\
+#define GS_DECLARE_RS_REG(reg, str)			\
+	struct gs_##str gs_read_##reg(void)
+
+#define GS_DECLARE_WS_REG(reg, str)			\
+	void gs_write_##reg(struct gs_##str value)
+
+#define GS_DECLARE_RW_REG(reg, str)			\
 	GS_DECLARE_VALID_REG(reg);			\
 	GS_DECLARE_RQ_REG(reg);				\
-	GS_DECLARE_WQ_REG(reg)
+	GS_DECLARE_WQ_REG(reg);				\
+	GS_DECLARE_RS_REG(reg, str);			\
+	GS_DECLARE_WS_REG(reg, str)
 
 /**
  * DOC:
@@ -569,6 +577,9 @@ struct gs_siglblid {
  *	u64 gs_readq_csr(void);
  *	void gs_writeq_csr(u64 value);
  *
+ *	struct gs_csr gs_read_csr(void);
+ *	void gs_write_csr(struct gs_csr value);
+ *
  * gs_valid_csr() indicates whether CSR is readable, which is always true,
  * since CSR is read-write in hardware. The IMR register however is write-
  * only in hardware, so its shadow register is only valid and readable once
@@ -578,24 +589,24 @@ struct gs_siglblid {
  * SYNCH1, SYNCH2, SYNCV, DISPFB1 , DISPLAY1, DISPFB2, DISPLAY2, EXTBUF,
  * EXTDATA, EXTWRITE, BGCOLOR, CSR, IMR, BUSDIR and SIGLBLID.
  */
-GS_DECLARE_RW_REG(pmode);
-GS_DECLARE_RW_REG(smode1);
-GS_DECLARE_RW_REG(smode2);
-GS_DECLARE_RW_REG(srfsh);
-GS_DECLARE_RW_REG(synch1);
-GS_DECLARE_RW_REG(synch2);
-GS_DECLARE_RW_REG(syncv);
-GS_DECLARE_RW_REG(dispfb1 );
-GS_DECLARE_RW_REG(display1);
-GS_DECLARE_RW_REG(dispfb2);
-GS_DECLARE_RW_REG(display2);
-GS_DECLARE_RW_REG(extbuf);
-GS_DECLARE_RW_REG(extdata);
-GS_DECLARE_RW_REG(extwrite);
-GS_DECLARE_RW_REG(bgcolor);
-GS_DECLARE_RW_REG(csr);
-GS_DECLARE_RW_REG(imr);
-GS_DECLARE_RW_REG(busdir);
-GS_DECLARE_RW_REG(siglblid);
+GS_DECLARE_RW_REG(pmode,    pmode);
+GS_DECLARE_RW_REG(smode1,   smode1);
+GS_DECLARE_RW_REG(smode2,   smode2);
+GS_DECLARE_RW_REG(srfsh,    srfsh);
+GS_DECLARE_RW_REG(synch1,   synch1);
+GS_DECLARE_RW_REG(synch2,   synch2);
+GS_DECLARE_RW_REG(syncv,    syncv);
+GS_DECLARE_RW_REG(dispfb1 , dispfb);
+GS_DECLARE_RW_REG(display1, display);
+GS_DECLARE_RW_REG(dispfb2,  dispfb);
+GS_DECLARE_RW_REG(display2, display);
+GS_DECLARE_RW_REG(extbuf,   extbuf);
+GS_DECLARE_RW_REG(extdata,  extdata);
+GS_DECLARE_RW_REG(extwrite, extwrite);
+GS_DECLARE_RW_REG(bgcolor,  bgcolor);
+GS_DECLARE_RW_REG(csr,      csr);
+GS_DECLARE_RW_REG(imr,      imr);
+GS_DECLARE_RW_REG(busdir,   busdir);
+GS_DECLARE_RW_REG(siglblid, siglblid);
 
 #endif /* __ASM_MACH_PS2_GS_REGISTERS_H */
