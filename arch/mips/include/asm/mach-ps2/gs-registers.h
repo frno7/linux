@@ -609,4 +609,12 @@ GS_DECLARE_RW_REG(imr,      imr);
 GS_DECLARE_RW_REG(busdir,   busdir);
 GS_DECLARE_RW_REG(siglblid, siglblid);
 
+/**
+ * gs_xorq_imr - exclusive or (XOR) value with the IMR register
+ * @value: value to XOR with the IMR register
+ *
+ * Return: the resulting IMR value
+ */
+u64 gs_xorq_imr(u64 value);
+
 #endif /* __ASM_MACH_PS2_GS_REGISTERS_H */
