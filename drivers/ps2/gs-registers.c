@@ -167,6 +167,23 @@ GS_DEFINE_WO_REG(imr,      imr,      GS_IMR);
 GS_DEFINE_WO_REG(busdir,   busdir,   GS_BUSDIR);
 GS_DEFINE_RW_REG(siglblid, siglblid, GS_SIGLBLID);	/* Read-write */
 
+u64 gs_xorq_imr(u64 value)
+{
+	unsigned long flags;
+
+	spin_lock_irqsave(&gs_registers.lock, flags);
+
+	WARN_ON_ONCE(!gs_registers.imr.valid);
+	value = value ^ gs_registers.imr.value;
+	gs_registers.imr.value = value;
+	outq(value, GS_IMR);
+
+	spin_unlock_irqrestore(&gs_registers.lock, flags);
+
+	return value;
+}
+EXPORT_SYMBOL_GPL(gs_xorq_imr);
+
 MODULE_DESCRIPTION("PlayStation 2 privileged Graphics Synthesizer registers");
 MODULE_AUTHOR("Fredrik Noring");
 MODULE_LICENSE("GPL");
