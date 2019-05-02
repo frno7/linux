@@ -182,4 +182,39 @@
 #define DMAC_ENABLER	0x1000f520	/* Acquisition of DMA suspend status */
 #define DMAC_ENABLEW	0x1000f590	/* DMA suspend control */
 
+enum dma_tag_reg {		/* Data start address:	Next tag address: */
+	dma_tag_id_refe = 0,	/* ADDR			(none) */
+	dma_tag_id_cnts = 0,	/* ADDR			(none) */
+	dma_tag_id_cnt,		/* next to tag		next to transfer data */
+	dma_tag_id_next,	/* next to tag		ADDR */
+	dma_tag_id_ref,		/* ADDR			next to tag */
+	dma_tag_id_refs,	/* ADDR			next to tag */
+	dma_tag_id_call,	/* next to tag		ADDR */
+	dma_tag_id_ret,		/* next to tag		Dn_ASR */
+	dma_tag_id_end		/* next to tag		(none) */
+};
+
+struct dma_tag {
+	u64 qwc : 16;		/* 128-bit quadword count */
+	u64 : 10;
+	u64 pce : 2;		/* Priority control enable */
+	u64 id : 3;		/* Tag identifier */
+	u64 irq : 1;		/* Interrupt request */
+	u64 addr : 31;		/* Address with lower 4 bits zero */
+	u64 spr : 1;		/* 0 = memory, 1 = scratch-pad RAM */
+
+	u64 : 64;
+} __attribute__((aligned(16)));
+
+struct iop_dma_tag {
+	u32 addr : 24;		/* IOP address */
+	u32 : 6;
+	u32 int_0 : 1;		/* Assert IOP interupt on completion */
+	u32 ert : 1;
+
+	u32 wc;			/* 32-bit word count */
+
+	u64 : 64;
+} __attribute__((aligned(16)));
+
 #endif /* __ASM_PS2_DMAC_H */
