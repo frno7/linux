@@ -67,6 +67,7 @@
 
 /* Module parameters */
 static char *mode_option;
+static char *mode_margin = "";
 
 union package {
 	union gif_data gif;
@@ -1923,9 +1924,45 @@ static struct gs_sync_param vm_to_sp(const struct fb_videomode *vm)
 	return vm_to_sp_for_synch_gen(vm, gs_synch_gen_for_vck(vm->pixclock));
 }
 
+/**
+ * struct margin_adjustment - move display screen relative given display mode
+ * @dx: positive, negative or zero horizontal x adjustment in pixels
+ * @dy: positive, negative or zero vertical y adjustment in pixels
+ */
+struct margin_adjustment {
+	int dx;
+	int dy;
+};
+
+static struct margin_adjustment margin_adjustment(struct fb_info *info)
+{
+	char sx = '+', sy = '+';
+	int dx = 0, dy = 0;
+
+	bool valid =
+		sscanf(mode_margin, "%c%d%c%d", &sx, &dx, &sy, &dy) == 4 &&
+		(sx == '-' || sx == '+') &&
+		(sy == '-' || sy == '+');
+
+	if (sx == '-')
+		dx = -dx;
+	if (sy == '-')
+		dy = -dy;
+
+	if (mode_margin[0] != '\0')
+		fb_info(info, "Mode margin \"%s\" with %d dx %d dy is %s\n",
+			mode_margin, dx, dy, valid ? "valid" : "invalid");
+
+	if (!valid)
+		return (struct margin_adjustment) { };
+
+	return (struct margin_adjustment) { .dx = dx, .dy = dy };
+}
+
 static int ps2fb_set_par(struct fb_info *info)
 {
 	struct ps2fb_par *par = info->par;
+	const struct margin_adjustment margin_adjust = margin_adjustment(info);
 	const struct fb_var_screeninfo *var = &info->var;
 	const struct fb_videomode *mm = fb_match_mode(var, &info->modelist);
 	const struct fb_videomode vm = (struct fb_videomode) {
@@ -1933,10 +1970,10 @@ static int ps2fb_set_par(struct fb_info *info)
 		.xres         = var->xres,
 		.yres         = var->yres,
 		.pixclock     = var->pixclock,
-		.left_margin  = var->left_margin,
-		.right_margin = var->right_margin,
-		.upper_margin = var->upper_margin,
-		.lower_margin = var->lower_margin,
+		.left_margin  = var->left_margin  + margin_adjust.dx,
+		.right_margin = var->right_margin - margin_adjust.dx,
+		.upper_margin = var->upper_margin + margin_adjust.dy,
+		.lower_margin = var->lower_margin - margin_adjust.dy,
 		.hsync_len    = var->hsync_len,
 		.vsync_len    = var->vsync_len,
 		.sync         = var->sync,
@@ -2198,6 +2235,9 @@ static int ps2fb_probe(struct platform_device *pdev)
 		goto err_register_framebuffer;
 	}
 
+	/* Clear the mode adjustment after setting the initial mode. */
+	mode_margin = "";
+
 	platform_set_drvdata(pdev, info);
 
 	return 0;
@@ -2269,6 +2309,8 @@ static int __init ps2fb_init(void)
 			mode_option = &this_opt[12];
 		else if ('0' <= this_opt[0] && this_opt[0] <= '9')
 			mode_option = this_opt;
+		else if (!strncmp(this_opt, "mode_margin:", 12))
+			mode_margin = &this_opt[12];
 		else
 			pr_warn(DEVICE_NAME ": Unrecognized option \"%s\"\n",
 				this_opt);
@@ -2306,6 +2348,14 @@ module_exit(ps2fb_exit);
 module_param(mode_option, charp, 0);
 MODULE_PARM_DESC(mode_option,
 	"Specify initial video mode as \"<xres>x<yres>[-<bpp>][@<refresh>]\"");
+
+/*
+ * Analogue devices are frequently a few pixels off. Use this mode_margin
+ * option to make necessary device dependent adjustments to the built-in modes.
+ */
+module_param(mode_margin, charp, 0);
+MODULE_PARM_DESC(mode_margin,
+	"Adjust initial video mode margin as \"<-|+><dx><-|+><dy>\"");
 
 MODULE_DESCRIPTION("PlayStation 2 frame buffer driver");
 MODULE_AUTHOR("Fredrik Noring");
