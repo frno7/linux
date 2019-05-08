@@ -285,6 +285,128 @@ static u32 framebuffer_size(const u32 xres_virtual, const u32 yres_virtual,
 	return (xres_virtual * yres_virtual * bits_per_pixel) / 8;
 }
 
+struct environment {
+	u32 xres;
+	u32 yres;
+	u32 fbw;
+	enum gs_psm psm;
+	u32 fbp;
+};
+
+static struct environment var_to_env(const struct fb_var_screeninfo *var,
+	const struct fb_info *info)
+{
+	return (struct environment) {
+		.xres = var->xres,
+		.yres = var->yres,
+		.fbw  = var_to_fbw(var),
+		.psm  = var_to_psm(var, info)
+	};
+}
+
+static size_t package_environment(union package *package,
+	const struct environment env)
+{
+	union package * const base_package = package;
+
+	GIF_PACKAGE_TAG(package) {
+		.flg = gif_packed_mode,
+		.reg0 = gif_reg_ad,
+		.nreg = 1,
+		.nloop = 11
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_frame_1,
+		.data.frame_1 = {
+			.fbw = env.fbw,
+			.fbp = env.fbp,
+			.psm = env.psm
+		}
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_xyoffset_1,
+		.data.xyoffset_1 = {
+			.ofx = 0,
+			.ofy = 0,
+		}
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_scissor_1,
+		.data.scissor_1 = {
+			.scax0 = 0, .scax1 = env.xres,
+			.scay0 = 0, .scay1 = env.yres
+		}
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_scanmsk,
+		.data.scanmsk = {
+			.msk = gs_scanmsk_normal
+		}
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_prmode,
+		.data.prmode = { }	/* Reset PRMODE to a known value */
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_prmodecont,
+		.data.prmodecont = {
+			.ac = 1
+		}
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_test_1,
+		.data.test_1 = {
+			.zte  = gs_depth_test_on,	/* Must always be ON */
+			.ztst = gs_depth_pass		/* Emulate OFF */
+		}
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_texa,
+		.data.texa = {
+			.ta0 = GS_ALPHA_ONE,
+			.aem = gs_aem_normal,
+			.ta1 = GS_ALPHA_ONE
+		}
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_tex1_1,
+		.data.tex1 = {
+			.lcm = gs_lcm_fixed,
+			.mmag = gs_lod_nearest,
+			.mmin = gs_lod_nearest,
+			.k = 0
+		}
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_zbuf_1,
+		.data.zbuf = {
+			.zmsk = gs_zbuf_off
+		}
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_dthe,
+		.data.dthe = {
+			.dthe = gs_dthe_off
+		}
+	};
+
+	return package - base_package;
+}
+
+void write_cb_environment(struct fb_info *info)
+{
+        if (gif_wait()) {
+		struct ps2fb_par *par = info->par;
+		union package * const base_package = par->package.buffer;
+		union package *package = base_package;
+
+		package += package_environment(package,
+			var_to_env(&info->var, info));
+
+		gif_write(&base_package->gif, package - base_package);
+	}
+}
+
 static int ps2fb_cb_get_tilemax(struct fb_info *info)
 {
 	const struct ps2fb_par *par = info->par;
@@ -704,8 +826,11 @@ static int ps2fb_cb_set_par(struct fb_info *info)
 	spin_lock_irqsave(&par->lock, flags);
 
 	err = ps2fb_set_par(info);
-	if (!err)
+	if (!err) {
 		par->cb.block_count = var_to_block_count(info);
+
+		write_cb_environment(info);
+	}
 
 	spin_unlock_irqrestore(&par->lock, flags);
 
