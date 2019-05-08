@@ -943,6 +943,34 @@ static void ps2fb_cb_tilefill(struct fb_info *info, struct fb_tilerect *rect)
 	spin_unlock_irqrestore(&par->lock, flags);
 }
 
+static void ps2fb_cb_tileblit(struct fb_info *info, struct fb_tileblit *blit)
+{
+	struct ps2fb_par *par = info->par;
+	int i = 0, dx, dy;
+
+	if (info->state != FBINFO_STATE_RUNNING)
+		return;
+
+	for (dy = 0; i < blit->length && dy < blit->height; dy++)
+	for (dx = 0; i < blit->length && dx < blit->width; dx++, i++) {
+		unsigned long flags;
+
+		spin_lock_irqsave(&par->lock, flags);
+
+		write_tilefill(info, (struct fb_tilerect) {
+			.sx = blit->sx + dx,
+			.sy = blit->sy + dy,
+			.width = 1,
+			.height = 1,
+			.index = blit->indices[i],
+			.fg = blit->fg,
+			.bg = blit->bg
+		});	/* Note: This could be done faster. */
+
+		spin_unlock_irqrestore(&par->lock, flags);
+	}
+}
+
 static int ps2fb_cb_get_tilemax(struct fb_info *info)
 {
 	const struct ps2fb_par *par = info->par;
@@ -1486,6 +1514,7 @@ static int init_console_buffer(struct platform_device *pdev,
 		.fb_settile	= ps2fb_cb_settile,
 		.fb_tilecopy	= ps2fb_cb_tilecopy,
 		.fb_tilefill    = ps2fb_cb_tilefill,
+		.fb_tileblit    = ps2fb_cb_tileblit,
 		.fb_get_tilemax = ps2fb_cb_get_tilemax
 	};
 
@@ -1503,6 +1532,7 @@ static int init_console_buffer(struct platform_device *pdev,
 	info->flags = FBINFO_DEFAULT |
 		      FBINFO_HWACCEL_COPYAREA |
 		      FBINFO_HWACCEL_FILLRECT |
+		      FBINFO_HWACCEL_IMAGEBLIT |
 		      FBINFO_READS_FAST;
 
 	info->flags |= FBINFO_MISC_TILEBLITTING;
