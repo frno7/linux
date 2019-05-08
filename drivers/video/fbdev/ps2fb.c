@@ -419,6 +419,43 @@ static int ps2fb_cb_get_tilemax(struct fb_info *info)
 	return blocks_available > 0 ? blocks_available * block_tile_count : 0;
 }
 
+static void clear_screen(struct fb_info *info)
+{
+	struct ps2fb_par *par = info->par;
+	union package * const base_package = par->package.buffer;
+	union package *package = base_package;
+
+        if (!gif_wait())
+		return;
+
+	GIF_PACKAGE_TAG(package) {
+		.flg = gif_reglist_mode,
+		.reg0 = gif_reg_prim,
+		.reg1 = gif_reg_rgbaq,
+		.reg2 = gif_reg_xyz2,
+		.reg3 = gif_reg_xyz2,
+		.nreg = 4,
+		.nloop = 1,
+		.eop = 1
+	};
+	GIF_PACKAGE_REG(package) {
+		.lo.prim = { .prim = gs_sprite },
+		.hi.rgbaq = { .a = GS_ALPHA_ONE }
+        };
+	GIF_PACKAGE_REG(package) {
+		.lo.xyz2 = {
+			.x = gs_fbcs_to_pcs(0),
+			.y = gs_fbcs_to_pcs(0)
+		},
+		.hi.xyz2 = {
+			.x = gs_fbcs_to_pcs(info->var.xres_virtual),
+			.y = gs_fbcs_to_pcs(info->var.yres_virtual)
+		}
+        };
+
+	gif_write(&base_package->gif, package - base_package);
+}
+
 static bool bits_per_pixel_fits(const u32 xres_virtual, const u32 yres_virtual,
       const int bits_per_pixel, const size_t buffer_size)
 {
@@ -830,6 +867,8 @@ static int ps2fb_cb_set_par(struct fb_info *info)
 		par->cb.block_count = var_to_block_count(info);
 
 		write_cb_environment(info);
+
+		clear_screen(info);
 	}
 
 	spin_unlock_irqrestore(&par->lock, flags);
