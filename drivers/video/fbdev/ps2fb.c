@@ -573,6 +573,49 @@ static int ps2fb_cb_get_tilemax(struct fb_info *info)
 }
 
 /**
+ * clear_screen - clear the displayed buffer screen
+ * @info: frame buffer info object
+ */
+static void clear_screen(struct fb_info *info)
+{
+	struct ps2fb_par *par = info->par;
+	union package * const base_package = par->package.buffer;
+	union package *package = base_package;
+
+	if (!gif_wait()) {
+		fb_err(info, "Failed to clear the screen, GIF is busy\n");
+		return;
+	}
+
+	GIF_PACKAGE_TAG(package) {
+		.flg = gif_reglist_mode,
+		.reg0 = gif_reg_prim,
+		.reg1 = gif_reg_rgbaq,
+		.reg2 = gif_reg_xyz2,
+		.reg3 = gif_reg_xyz2,
+		.nreg = 4,
+		.nloop = 1,
+		.eop = 1
+	};
+	GIF_PACKAGE_REG(package) {
+		.lo.prim = { .prim = gs_sprite },
+		.hi.rgbaq = { .a = GS_ALPHA_ONE }
+	};
+	GIF_PACKAGE_REG(package) {
+		.lo.xyz2 = {
+			.x = gs_fbcs_to_pcs(0),
+			.y = gs_fbcs_to_pcs(0)
+		},
+		.hi.xyz2 = {
+			.x = gs_fbcs_to_pcs(info->var.xres_virtual),
+			.y = gs_fbcs_to_pcs(info->var.yres_virtual)
+		}
+	};
+
+	gif_write(&base_package->gif, package - base_package);
+}
+
+/**
  * bits_per_pixel_fits - does the given resolution fit the given buffer size?
  * @xres_virtual: virtual x resolution in pixels
  * @yres_virtual: virtual y resolution in pixels
@@ -1086,6 +1129,8 @@ static int ps2fb_cb_set_par(struct fb_info *info)
 		par->cb.block_count = var_to_block_count(info);
 
 		write_cb_environment(info);
+
+		clear_screen(info);
 	}
 
 	spin_unlock_irqrestore(&par->lock, flags);
