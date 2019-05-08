@@ -971,6 +971,17 @@ static void ps2fb_cb_tileblit(struct fb_info *info, struct fb_tileblit *blit)
 	}
 }
 
+static void ps2fb_cb_tilecursor(struct fb_info *info,
+	struct fb_tilecursor *cursor)
+{
+	/*
+	 * FIXME: Drawing the cursor seem to require composition such as
+	 * xor, which is not possible. If the character under the cursor
+	 * was known, a simple change of foreground and background colors
+	 * could be implemented to achieve the same effect.
+	 */
+}
+
 static int ps2fb_cb_get_tilemax(struct fb_info *info)
 {
 	const struct ps2fb_par *par = info->par;
@@ -1515,6 +1526,7 @@ static int init_console_buffer(struct platform_device *pdev,
 		.fb_tilecopy	= ps2fb_cb_tilecopy,
 		.fb_tilefill    = ps2fb_cb_tilefill,
 		.fb_tileblit    = ps2fb_cb_tileblit,
+		.fb_tilecursor  = ps2fb_cb_tilecursor,
 		.fb_get_tilemax = ps2fb_cb_get_tilemax
 	};
 
