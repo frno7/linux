@@ -105,6 +105,7 @@ struct ps2fb_par {
 
 	struct fb_videomode mode;
 	struct gs_rgba32 pseudo_palette[PALETTE_SIZE];
+	bool grayscale;
 
 	struct console_buffer cb;
 
@@ -215,6 +216,12 @@ static struct gs_rgbaq console_pseudo_palette(
 	const struct gs_rgba32 c = regno < PALETTE_SIZE ?
 		par->pseudo_palette[regno] : (struct gs_rgba32) { };
 	const u32 a = (c.a + 1) / 2;	/* 0x80 = GS_ALPHA_ONE = 1.0 */
+
+	if (par->grayscale) {
+		const u32 y = (c.r*77 + c.g*151 + c.b*28) >> 8;
+
+		return (struct gs_rgbaq) { .r = y, .g = y, .b = y, .a = a };
+	}
 
 	return (struct gs_rgbaq) { .r = c.r, .g = c.g, .b = c.b, .a = a };
 }
@@ -1500,6 +1507,7 @@ static int ps2fb_set_par(struct fb_info *info)
 	struct gs_smode1 smode1 = sp.smode1;
 
 	par->mode = vm;
+	par->grayscale = (var->grayscale == 1);
 	invalidate_palette(par);
 
 	info->fix.type = FB_TYPE_PACKED_PIXELS;
