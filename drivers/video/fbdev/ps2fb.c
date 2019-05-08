@@ -103,6 +103,9 @@ struct console_buffer {
 struct ps2fb_par {
 	spinlock_t lock;
 
+	struct fb_videomode mode;
+	struct gs_rgba32 pseudo_palette[PALETTE_SIZE];
+
 	struct console_buffer cb;
 
 	struct {
@@ -417,6 +420,37 @@ static int ps2fb_cb_get_tilemax(struct fb_info *info)
 		GS_BLOCK_COUNT - par->cb.block_count - PALETTE_BLOCK_COUNT;
 
 	return blocks_available > 0 ? blocks_available * block_tile_count : 0;
+}
+
+static void invalidate_palette(struct ps2fb_par *par)
+{
+	par->cb.bg = ~0;
+	par->cb.fg = ~0;
+}
+
+static int ps2fb_setcolreg(unsigned regno, unsigned red, unsigned green,
+	unsigned blue, unsigned transp, struct fb_info *info)
+{
+	const struct gs_rgba32 color = {
+		.r = red    >> 8,
+		.g = green  >> 8,
+		.b = blue   >> 8,
+		.a = transp >> 8
+	};
+	struct ps2fb_par *par = info->par;
+	unsigned long flags;
+
+	if (regno >= PALETTE_SIZE)
+		return -EINVAL;
+
+	spin_lock_irqsave(&par->lock, flags);
+
+	par->pseudo_palette[regno] = color;
+	invalidate_palette(par);
+
+	spin_unlock_irqrestore(&par->lock, flags);
+
+	return 0;
 }
 
 static void clear_screen(struct fb_info *info)
@@ -814,6 +848,7 @@ static int ps2fb_set_par(struct fb_info *info)
 	struct gs_smode1 smode1 = sp.smode1;
 
 	par->mode = vm;
+	invalidate_palette(par);
 
 	info->fix.type = FB_TYPE_PACKED_PIXELS;
 	info->fix.visual = FB_VISUAL_TRUECOLOR;
@@ -909,6 +944,7 @@ static int init_console_buffer(struct platform_device *pdev,
 {
 	static struct fb_ops fbops = {
 		.owner		= THIS_MODULE,
+		.fb_setcolreg	= ps2fb_setcolreg,
 		.fb_set_par	= ps2fb_cb_set_par,
 		.fb_check_var	= ps2fb_cb_check_var,
 	};
@@ -940,6 +976,8 @@ static int init_console_buffer(struct platform_device *pdev,
 	 */
 	info->pixmap.blit_x = block_dimensions(GS_PSMT4_BLOCK_WIDTH, 4);
 	info->pixmap.blit_y = block_dimensions(GS_PSMT4_BLOCK_HEIGHT, 1);
+
+	info->pseudo_palette = par->pseudo_palette;
 
 	/* 8x8 default font tile size for fb_get_tilemax */
 	par->cb.tile = cb_tile(8, 8);
@@ -994,6 +1032,13 @@ static int ps2fb_probe(struct platform_device *pdev)
 
 	info->mode = &par->mode;
 
+	if (fb_alloc_cmap(&info->cmap, PALETTE_SIZE, 0) < 0) {
+		fb_err(info, "fb_alloc_cmap failed\n");
+		err = -ENOMEM;
+		goto err_alloc_cmap;
+	}
+	fb_set_cmap(&info->cmap, info);
+
 	if (register_framebuffer(info) < 0) {
 		fb_err(info, "register_framebuffer failed\n");
 		err = -EINVAL;
@@ -1005,6 +1050,8 @@ static int ps2fb_probe(struct platform_device *pdev)
 	return 0;
 
 err_register_framebuffer:
+	fb_dealloc_cmap(&info->cmap);
+err_alloc_cmap:
 err_find_mode:
 err_init_buffer:
 	free_page((unsigned long)par->package.buffer);
