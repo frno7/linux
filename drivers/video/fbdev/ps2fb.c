@@ -250,11 +250,43 @@ static u32 var_to_block_count(const struct fb_info *info)
 	return 0;
 }
 
+static u32 var_to_block_address(const u32 block_index,
+	const struct fb_info *info)
+{
+	const struct fb_var_screeninfo *var = &info->var;
+	const enum gs_psm psm = var_to_psm(var, info);
+	const u32 fbw = var_to_fbw(var);
+
+	if (psm == gs_psm_ct16)
+		return gs_psm_ct16_block_address(fbw, block_index);
+	if (psm == gs_psm_ct32)
+		return gs_psm_ct32_block_address(fbw, block_index);
+
+	fb_warn_once(info, "%s: Unsupported pixel storage format %u\n",
+		__func__, psm);
+	return 0;
+}
+
 static u32 color_base_pointer(const struct fb_info *info)
 {
 	const struct ps2fb_par *par = info->par;
 
 	return par->cb.block_count;
+}
+
+static u32 texture_base_pointer(const struct fb_info *info,
+	const u32 block_index)
+{
+	const struct ps2fb_par *par = info->par;
+
+	return var_to_block_address(
+		par->cb.block_count + PALETTE_BLOCK_COUNT + block_index,
+		info);
+}
+
+static u32 least_divisible_by_8(u32 x)
+{
+	return (x + 7) & ~7;
 }
 
 static u32 texture_least_power_of_2(u32 x)
@@ -278,6 +310,28 @@ static struct cb_tile cb_tile(u32 width, u32 height)
 			.cols = GS_PSMT4_BLOCK_WIDTH / width2,
 			.rows = GS_PSMT4_BLOCK_HEIGHT / height2,
 		},
+	};
+}
+
+/* Returns texture base pointer and texel coordinates given a tile index. */
+static struct tile_texture texture_for_tile(const struct fb_info *info,
+	const u32 tile_index)
+{
+	const struct ps2fb_par *par = info->par;
+
+	const u32 texture_tile_count =
+		par->cb.tile.block.cols * par->cb.tile.block.rows;
+	const u32 block_tile = tile_index / texture_tile_count;
+	const u32 texture_tile = tile_index % texture_tile_count;
+	const u32 block_address = texture_base_pointer(info, block_tile);
+
+	const u32 row = texture_tile / par->cb.tile.block.cols;
+	const u32 col = texture_tile % par->cb.tile.block.cols;
+
+	return (struct tile_texture) {
+		.tbp	= block_address,
+		.u	= col * par->cb.tile.width2,
+		.v	= row * par->cb.tile.height2
 	};
 }
 
@@ -408,6 +462,179 @@ void write_cb_environment(struct fb_info *info)
 
 		gif_write(&base_package->gif, package - base_package);
 	}
+}
+
+static u32 pixel(const struct fb_image * const image,
+	const int x, const int y, struct fb_info *info)
+{
+	if (x < 0 || x >= image->width ||
+	    y < 0 || y >= image->height)
+		return 0;
+
+	if (image->depth == 1)
+		return (image->data[y*((image->width + 7) >> 3) + (x >> 3)] &
+			(0x80 >> (x & 0x7))) ?
+			image->fg_color : image->bg_color;
+
+	fb_warn_once(info, "%s: Unsupported image depth %u\n",
+		__func__, image->depth);
+	return 0;
+}
+
+static void ps2fb_cb_texflush(struct fb_info *info)
+{
+	struct ps2fb_par *par = info->par;
+	union package * const base_package = par->package.buffer;
+	union package *package = base_package;
+	unsigned long flags;
+
+	if (info->state != FBINFO_STATE_RUNNING)
+		return;
+
+	spin_lock_irqsave(&par->lock, flags);
+
+        if (!gif_wait())
+		goto timeout;
+
+	GIF_PACKAGE_TAG(package) {
+		.flg = gif_packed_mode,
+		.reg0 = gif_reg_ad,
+		.nreg = 1,
+		.nloop = 1
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_texflush
+	};
+
+	gif_write(&base_package->gif, package - base_package);
+
+timeout:
+	spin_unlock_irqrestore(&par->lock, flags);
+}
+
+static size_t package_psmt4_texture(struct fb_info *info,
+	union package *package, const struct fb_image *image)
+{
+	union package * const base_package = package;
+	const u32 width2 = texture_least_power_of_2(image->width);
+	const u32 height2 = texture_least_power_of_2(image->height);
+	const u32 texels_per_quadword = 32;	/* PSMT4 are 4 bit texels */
+	const u32 nloop = (width2 * height2 + texels_per_quadword - 1) /
+		texels_per_quadword;
+	u32 x, y;
+
+	GIF_PACKAGE_TAG(package) {
+		.flg = gif_image_mode,
+		.nloop = nloop,
+		.eop = 1
+	};
+
+	for (y = 0; y < height2; y++)
+	for (x = 0; x < width2; x += 2) {
+		const int p0 = pixel(image, x + 0, y, info);
+		const int p1 = pixel(image, x + 1, y, info);
+		const int i = 4*y + x/2;
+
+		package[i/16].gif.image[i%16] =
+			(p1 ? 0x10 : 0) | (p0 ? 0x01 : 0);
+	}
+
+	package += nloop;
+
+	return package - base_package;
+}
+
+static void write_cb_tile(struct fb_info *info, const int tile_index,
+	const struct fb_image *image)
+{
+	struct ps2fb_par *par = info->par;
+	const struct tile_texture tt = texture_for_tile(info, tile_index);
+	union package * const base_package = par->package.buffer;
+	union package *package = base_package;
+
+        if (!gif_wait())
+		return;
+
+	GIF_PACKAGE_TAG(package) {
+		.flg = gif_packed_mode,
+		.reg0 = gif_reg_ad,
+		.nreg = 1,
+		.nloop = 4
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_bitbltbuf,
+		.data.bitbltbuf = {
+			.dpsm = gs_psm_t4,
+			.dbw = GS_PSMT4_BLOCK_WIDTH / 64,
+			.dbp = tt.tbp
+		}
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_trxpos,
+		.data.trxpos = {
+			.dsax = tt.u,
+			.dsay = tt.v
+		}
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_trxreg,
+		.data.trxreg = {
+			.rrw = texture_least_power_of_2(image->width),
+			.rrh = texture_least_power_of_2(image->height)
+		}
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_trxdir,
+		.data.trxdir = { .xdir = gs_trxdir_host_to_local }
+	};
+
+	package += package_psmt4_texture(info, package, image);
+
+	gif_write(&base_package->gif, package - base_package);
+}
+
+static void ps2fb_cb_settile(struct fb_info *info, struct fb_tilemap *map)
+{
+	const u32 glyph_size =
+		least_divisible_by_8(map->width) * map->height / 8;
+	struct ps2fb_par *par = info->par;
+	const u8 *font = map->data;
+	int i;
+
+	if (!font)
+		return;	/* FIXME: Why is fb_settile called with a NULL font? */
+
+	if (info->state != FBINFO_STATE_RUNNING)
+		return;
+
+	if (map->width > GS_PSMT4_BLOCK_WIDTH ||
+	    map->height > GS_PSMT4_BLOCK_HEIGHT ||
+	    map->depth != 1) {
+		fb_err(info, "Unsupported font parameters: "
+			"width %d height %d depth %d length %d\n",
+			map->width, map->height, map->depth, map->length);
+		return;
+	}
+
+	par->cb.tile = cb_tile(map->width, map->height);
+
+	for (i = 0; i < map->length; i++) {
+		const struct fb_image image = {
+			.width = map->width,
+			.height = map->height,
+			.fg_color = 1,
+			.bg_color = 0,
+			.depth = 1,
+			.data = &font[i * glyph_size],
+		};
+		unsigned long flags;
+
+		spin_lock_irqsave(&par->lock, flags);
+		write_cb_tile(info, i, &image);
+		spin_unlock_irqrestore(&par->lock, flags);
+	}
+
+	ps2fb_cb_texflush(info);
 }
 
 static int ps2fb_cb_get_tilemax(struct fb_info *info)
@@ -950,6 +1177,7 @@ static int init_console_buffer(struct platform_device *pdev,
 	};
 
 	static struct fb_tile_ops tileops = {
+		.fb_settile	= ps2fb_cb_settile,
 		.fb_get_tilemax = ps2fb_cb_get_tilemax
 	};
 
