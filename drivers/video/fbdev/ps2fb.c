@@ -118,6 +118,16 @@ struct console_buffer {
 			u32 rows;
 		} block;
 	} tile;
+
+	struct cb_cursor {
+		u32 sx;
+		u32 sy;
+		u32 dy;
+		u32 tw;
+		u32 th;
+		bool draw;
+		struct gs_rgbaq fg_rgbaq;
+	} cursor;
 };
 
 /**
@@ -605,6 +615,16 @@ static size_t package_environment(union package *package,
 		.data.scissor_1 = {
 			.scax0 = 0, .scax1 = env.xres,
 			.scay0 = 0, .scay1 = env.yres
+		}
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_alpha_1,
+		.data.alpha_1 = {
+			.a = gs_alpha_a_cs,
+			.b = gs_alpha_b_cd,
+			.c = gs_alpha_c_fix,
+			.d = gs_alpha_d_0,
+			.fix = GS_ALPHA_ONE
 		}
 	};
 	GIF_PACKAGE_AD(package) {
@@ -1256,6 +1276,98 @@ static void ps2fb_cb_tileblit(struct fb_info *info, struct fb_tileblit *blit)
 
 		spin_unlock_irqrestore(&par->lock, flags);
 	}
+}
+
+static size_t package_cb_tilecursor(union package *package,
+	const struct cb_cursor *c)
+{
+
+	union package * const base_package = package;
+	GIF_PACKAGE_TAG(package) {
+		.flg = gif_reglist_mode,
+		.reg0 = gif_reg_prim,
+		.reg1 = gif_reg_rgbaq,
+		.reg2 = gif_reg_xyz2,
+		.reg3 = gif_reg_xyz2,
+		.nreg = 4,
+		.nloop = 1,
+		.eop = 1
+	};
+	GIF_PACKAGE_REG(package) {
+		.lo.prim = {
+			.abe = gs_blendning_on,
+			.prim = gs_sprite
+		},
+		.hi.rgbaq = c->fg_rgbaq
+	};
+	GIF_PACKAGE_REG(package) {
+		.lo.xyz2 = {
+			.x = gs_fbcs_to_pcs(c->sx),
+			.y = gs_fbcs_to_pcs(c->sy + c->th - c->dy)
+		},
+		.hi.xyz2 = {
+			.x = gs_fbcs_to_pcs(c->sx + c->tw),
+			.y = gs_fbcs_to_pcs(c->sy + c->th)
+		}
+	};
+
+	return package - base_package;
+}
+
+static void write_cb_tilecursor(struct ps2fb_par *par,
+	const struct fb_var_screeninfo *var,
+	const struct fb_tilecursor *cursor)
+{
+	union package * const base_package = par->package.buffer;
+	union package *package = base_package;
+	const u32 tw = par->cb.tile.width;
+	const u32 th = par->cb.tile.height;
+	const u32 ch =
+		cursor->shape == FB_TILE_CURSOR_NONE        ? 0 :
+		cursor->shape == FB_TILE_CURSOR_UNDERLINE   ? 1 :
+		cursor->shape == FB_TILE_CURSOR_LOWER_THIRD ? th / 3 :
+		cursor->shape == FB_TILE_CURSOR_LOWER_HALF  ? th / 2 :
+		cursor->shape == FB_TILE_CURSOR_TWO_THIRDS  ? (2 * th) / 3 :
+		cursor->shape == FB_TILE_CURSOR_BLOCK       ? th : th;
+	const struct cb_cursor c = {
+		.sx = (var->xoffset + tw * cursor->sx) % var->xres_virtual,
+		.sy = (var->yoffset + th * cursor->sy) % var->yres_virtual,
+		.dy = ch,
+		.tw = tw,
+		.th = th,
+		.draw = cursor->mode,
+		.fg_rgbaq = console_pseudo_palette(cursor->fg, par)
+	};
+
+	if (!gif_wait())
+		return;
+
+	if (par->cb.cursor.draw)
+		package += package_cb_tilecursor(package, &par->cb.cursor);
+
+	if (c.draw)
+		package += package_cb_tilecursor(package, &c);
+
+	par->cb.cursor = c;
+
+	gif_write(&base_package->gif, package - base_package);
+}
+
+static void ps2fb_cb_tilecursor(struct fb_info *info,
+	struct fb_tilecursor *cursor)
+{
+	const struct fb_var_screeninfo *var = &info->var;
+	struct ps2fb_par *par = info->par;
+	unsigned long flags;
+
+	if (info->state != FBINFO_STATE_RUNNING)
+		return;
+
+	spin_lock_irqsave(&par->lock, flags);
+
+	write_cb_tilecursor(par, var, cursor);
+
+	spin_unlock_irqrestore(&par->lock, flags);
 }
 
 /**
@@ -1924,6 +2036,7 @@ static int init_console_buffer(struct platform_device *pdev,
 		.fb_tilecopy	= ps2fb_cb_tilecopy,
 		.fb_tilefill    = ps2fb_cb_tilefill,
 		.fb_tileblit    = ps2fb_cb_tileblit,
+		.fb_tilecursor  = ps2fb_cb_tilecursor,
 		.fb_get_tilemax = ps2fb_cb_get_tilemax
 	};
 
