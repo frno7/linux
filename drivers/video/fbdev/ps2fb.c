@@ -1730,6 +1730,12 @@ static int ps2fb_probe(struct platform_device *pdev)
 	}
 	fb_set_cmap(&info->cmap, info);
 
+	/*
+	 * The GIF asserts DMA completion interrupts that are uninteresting
+	 * because DMA operations are fast enough to busy-wait for.
+	 */
+	disable_irq(IRQ_DMAC_GIF);
+
 	if (register_framebuffer(info) < 0) {
 		fb_err(info, "register_framebuffer failed\n");
 		err = -EINVAL;
@@ -1741,6 +1747,7 @@ static int ps2fb_probe(struct platform_device *pdev)
 	return 0;
 
 err_register_framebuffer:
+	enable_irq(IRQ_DMAC_GIF);
 	fb_dealloc_cmap(&info->cmap);
 err_alloc_cmap:
 err_find_mode:
@@ -1769,6 +1776,7 @@ static int ps2fb_remove(struct platform_device *pdev)
 		fb_err(info, "Failed to complete GIF DMA transfer\n");
 		err = -EBUSY;
 	}
+	enable_irq(IRQ_DMAC_GIF);
 	free_page((unsigned long)par->package.buffer);
 
 	return err;
