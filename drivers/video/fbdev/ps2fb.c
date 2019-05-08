@@ -135,6 +135,7 @@ struct console_buffer {
  * @lock: spin lock to be taken for all structure operations
  * @mode: frame buffer video mode
  * @pseudo_palette: pseudo palette, used for texture colouring
+ * @grayscale: perform grayscale colour conversion if %true
  * @cb: console buffer definition
  * @package: tags and datafor the GIF
  * @package.capacity: maximum number of GIF packages in 16-byte unit
@@ -145,6 +146,7 @@ struct ps2fb_par {
 
 	struct fb_videomode mode;
 	struct gs_rgba32 pseudo_palette[PALETTE_SIZE];
+	bool grayscale;
 
 	struct console_buffer cb;
 
@@ -275,6 +277,16 @@ static struct gs_rgbaq console_pseudo_palette(const u32 regno,
 	const struct gs_rgba32 c = regno < PALETTE_SIZE ?
 		par->pseudo_palette[regno] : (struct gs_rgba32) { };
 	const u32 a = (c.a + 1) / 2;	/* 0x80 = GS_ALPHA_ONE = 1.0 */
+
+	if (par->grayscale) {
+		/*
+		 * Construct luminance Y' = 0.299R' + 0.587G' + 0.114B' with
+		 * fixed-point integer arithmetic, where 77 + 150 + 29 = 256.
+		 */
+		const u32 y = (c.r*77 + c.g*150 + c.b*29) >> 8;
+
+		return (struct gs_rgbaq) { .r = y, .g = y, .b = y, .a = a };
+	}
 
 	return (struct gs_rgbaq) { .r = c.r, .g = c.g, .b = c.b, .a = a };
 }
@@ -2036,6 +2048,7 @@ static int ps2fb_set_par(struct fb_info *info)
 	struct gs_smode1 smode1 = sp.smode1;
 
 	par->mode = vm;
+	par->grayscale = (var->grayscale == 1);
 	invalidate_palette(par);
 
 	info->fix.type = FB_TYPE_PACKED_PIXELS;
