@@ -2105,6 +2105,38 @@ static int ps2fb_cb_set_par(struct fb_info *info)
 	return err;
 }
 
+/**
+ * ps2fb_blank - VESA display power management signaling (DPMS)
+ * @blank: frame buffer blanking level
+ * @info: frame buffer info object
+ *
+ * Return: 0 on success, otherwise a negative error number
+ */
+static int ps2fb_blank(int blank, struct fb_info *info)
+{
+	struct ps2fb_par *par = info->par;
+	struct gs_smode2 smode2;
+	unsigned long flags;
+
+	if (!gs_valid_smode2())
+		return -EIO;	/* Blanking before video mode is set. */
+
+	spin_lock_irqsave(&par->lock, flags);
+
+	smode2 = gs_read_smode2();
+
+	smode2.dpms = blank == FB_BLANK_POWERDOWN     ? gs_dpms_off :
+		      blank == FB_BLANK_NORMAL        ? gs_dpms_standby :
+		      blank == FB_BLANK_VSYNC_SUSPEND ? gs_dpms_suspend :
+		      blank == FB_BLANK_HSYNC_SUSPEND ? gs_dpms_suspend :
+							gs_dpms_on;
+	gs_write_smode2(smode2);
+
+	spin_unlock_irqrestore(&par->lock, flags);
+
+	return 0;
+}
+
 static u32 block_dimensions(u32 dim, u32 alignment)
 {
 	u32 mask = 0;
@@ -2133,6 +2165,7 @@ static int init_console_buffer(struct platform_device *pdev,
 {
 	static struct fb_ops fbops = {
 		.owner		= THIS_MODULE,
+		.fb_blank	= ps2fb_blank,
 		.fb_setcolreg	= ps2fb_setcolreg,
 		.fb_set_par	= ps2fb_cb_set_par,
 		.fb_check_var	= ps2fb_cb_check_var,
