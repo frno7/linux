@@ -209,6 +209,16 @@ static const struct fb_videomode standard_modes[] = {
 	  FB_VMODE_NONINTERLACED, FB_MODE_IS_VESA }
 };
 
+static struct gs_rgbaq console_pseudo_palette(
+	const struct ps2fb_par *par, const u32 regno)
+{
+	const struct gs_rgba32 c = regno < PALETTE_SIZE ?
+		par->pseudo_palette[regno] : (struct gs_rgba32) { };
+	const u32 a = (c.a + 1) / 2;	/* 0x80 = GS_ALPHA_ONE = 1.0 */
+
+	return (struct gs_rgbaq) { .r = c.r, .g = c.g, .b = c.b, .a = a };
+}
+
 /* Pixel width to FBW (frame buffer width) */
 static u32 var_to_fbw(const struct fb_var_screeninfo *var)
 {
@@ -734,6 +744,173 @@ static void ps2fb_cb_settile(struct fb_info *info, struct fb_tilemap *map)
 	ps2fb_cb_texflush(info);
 }
 
+static size_t package_palette(struct fb_info *info,
+	union package *package, const int bg, const int fg)
+{
+	struct ps2fb_par *par = info->par;
+	union package * const base_package = par->package.buffer;
+	const struct gs_rgbaq bg_rgbaq = console_pseudo_palette(par, bg);
+	const struct gs_rgbaq fg_rgbaq = console_pseudo_palette(par, fg);
+
+	GIF_PACKAGE_TAG(package) {
+		.flg = gif_packed_mode,
+		.reg0 = gif_reg_ad,
+		.nreg = 1,
+		.nloop = 4
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_bitbltbuf,
+		.data.bitbltbuf = {
+			.dpsm = gs_psm_ct32,
+			.dbw = 1,	/* Palette is one block wide */
+			.dbp = color_base_pointer(info)
+		}
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_trxpos,
+		.data.trxpos = {
+			.dsax = 0,
+			.dsay = 0
+		}
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_trxreg,
+		.data.trxreg = {
+			.rrw = 2,	/* Background and foreground color */
+			.rrh = 1
+		}
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_trxdir,
+		.data.trxdir = { .xdir = gs_trxdir_host_to_local }
+	};
+
+	GIF_PACKAGE_TAG(package) {
+		.flg = gif_image_mode,
+		.nloop = 1,
+		.eop = 1
+	};
+	package->gif.rgba32[0] = (struct gs_rgba32) {
+		.r = bg_rgbaq.r,
+		.g = bg_rgbaq.g,
+		.b = bg_rgbaq.b,
+		.a = bg_rgbaq.a
+	};
+	package->gif.rgba32[1] = (struct gs_rgba32) {
+		.r = fg_rgbaq.r,
+		.g = fg_rgbaq.g,
+		.b = fg_rgbaq.b,
+		.a = fg_rgbaq.a
+	};
+	package++;
+
+	GIF_PACKAGE_TAG(package) {
+		.flg = gif_packed_mode,
+		.reg0 = gif_reg_ad,
+		.nreg = 1,
+		.nloop = 1
+	};
+	GIF_PACKAGE_AD(package) {
+		.addr = gs_addr_texflush
+	};
+
+	return package - base_package;
+}
+
+static void write_tilefill(struct fb_info *info, const struct fb_tilerect rect)
+{
+	const struct tile_texture tt = texture_for_tile(info, rect.index);
+	struct ps2fb_par *par = info->par;
+	union package * const base_package = par->package.buffer;
+	union package *package = base_package;
+	const u32 cbp = color_base_pointer(info);
+	const u32 dsax = par->cb.tile.width * rect.sx;
+	const u32 dsay = par->cb.tile.height * rect.sy;
+	const u32 rrw = par->cb.tile.width * rect.width;
+	const u32 rrh = par->cb.tile.height * rect.height;
+	const u32 tw2 = par->cb.tile.width2;
+	const u32 th2 = par->cb.tile.height2;
+
+	/* Determine whether background or foreground color needs update. */
+	const bool cld = (par->cb.bg != rect.bg || par->cb.fg != rect.fg);
+
+        if (!gif_wait())
+		return;
+
+	if (cld) {
+		package += package_palette(info, package, rect.bg, rect.fg);
+		par->cb.bg = rect.bg;
+		par->cb.fg = rect.fg;
+	}
+
+	GIF_PACKAGE_TAG(package) {
+		.flg = gif_reglist_mode,
+		.reg0 = gif_reg_prim,
+		.reg1 = gif_reg_nop,
+		.reg2 = gif_reg_tex0_1,
+		.reg3 = gif_reg_clamp_1,
+		.reg4 = gif_reg_uv,
+		.reg5 = gif_reg_xyz2,
+		.reg6 = gif_reg_uv,
+		.reg7 = gif_reg_xyz2,
+		.nreg = 8,
+		.nloop = 1,
+		.eop = 1
+	};
+	GIF_PACKAGE_REG(package) {
+		.lo.prim = {
+			.prim = gs_sprite,
+			.tme = gs_texturing_on,
+			.fst = gs_texturing_uv
+		}
+	};
+	GIF_PACKAGE_REG(package) {
+		.lo.tex0 = {
+			.tbp0 = tt.tbp,
+			.tbw = GS_PSMT4_BLOCK_WIDTH / 64,
+			.psm = gs_psm_t4,
+			.tw = 5,	/* 2^5 = 32 texels wide PSMT4 block */
+			.th = 4,	/* 2^4 = 16 texels high PSMT4 block */
+			.tcc = gs_tcc_rgba,
+			.tfx = gs_tfx_decal,
+			.cbp = cbp,
+			.cpsm = gs_psm_ct32,
+			.csm = gs_csm1,
+			.cld = cld ? 1 : 0
+		},
+		.hi.clamp_1 = {
+			.wms = gs_clamp_region_repeat,
+			.wmt = gs_clamp_region_repeat,
+			.minu = tw2 - 1,  /* Mask, tw is always a power of 2 */
+			.maxu = tt.u,
+			.minv = th2 - 1,  /* Mask, th is always a power of 2 */
+			.maxv = tt.v
+		}
+	};
+	GIF_PACKAGE_REG(package) {
+		.lo.uv = {
+			.u = gs_pxcs_to_tcs(tt.u),
+			.v = gs_pxcs_to_tcs(tt.v)
+		},
+		.hi.xyz2 = {
+			.x = gs_fbcs_to_pcs(dsax),
+			.y = gs_fbcs_to_pcs(dsay)
+		}
+	};
+	GIF_PACKAGE_REG(package) {
+		.lo.uv = {
+			.u = gs_pxcs_to_tcs(tt.u + rrw),
+			.v = gs_pxcs_to_tcs(tt.v + rrh)
+		},
+		.hi.xyz2 = {
+			.x = gs_fbcs_to_pcs(dsax + rrw),
+			.y = gs_fbcs_to_pcs(dsay + rrh)
+		}
+	};
+
+	gif_write(&base_package->gif, package - base_package);
+}
+
 static void ps2fb_cb_tilecopy(struct fb_info *info, struct fb_tilearea *area)
 {
 	const struct ps2fb_par *par = info->par;
@@ -749,6 +926,21 @@ static void ps2fb_cb_tilecopy(struct fb_info *info, struct fb_tilearea *area)
 	};
 
 	ps2fb_cb_copyarea(&a, info);
+}
+
+static void ps2fb_cb_tilefill(struct fb_info *info, struct fb_tilerect *rect)
+{
+	struct ps2fb_par *par = info->par;
+	unsigned long flags;
+
+	if (info->state != FBINFO_STATE_RUNNING)
+		return;
+
+	spin_lock_irqsave(&par->lock, flags);
+
+	write_tilefill(info, *rect);
+
+	spin_unlock_irqrestore(&par->lock, flags);
 }
 
 static int ps2fb_cb_get_tilemax(struct fb_info *info)
@@ -1293,6 +1485,7 @@ static int init_console_buffer(struct platform_device *pdev,
 	static struct fb_tile_ops tileops = {
 		.fb_settile	= ps2fb_cb_settile,
 		.fb_tilecopy	= ps2fb_cb_tilecopy,
+		.fb_tilefill    = ps2fb_cb_tilefill,
 		.fb_get_tilemax = ps2fb_cb_get_tilemax
 	};
 
@@ -1309,6 +1502,7 @@ static int init_console_buffer(struct platform_device *pdev,
 	info->fbops = &fbops;
 	info->flags = FBINFO_DEFAULT |
 		      FBINFO_HWACCEL_COPYAREA |
+		      FBINFO_HWACCEL_FILLRECT |
 		      FBINFO_READS_FAST;
 
 	info->flags |= FBINFO_MISC_TILEBLITTING;
