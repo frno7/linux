@@ -395,10 +395,73 @@ static struct gs_sync_param vm_to_sp_sdtv(const struct fb_videomode *vm)
         };
 }
 
+static struct gs_sync_param vm_to_sp_hdtv(
+	const struct fb_videomode *vm, const struct gs_synch_gen sg)
+{
+	const u32 spml  = sg.spml;
+	const u32 t1248 = sg.t1248;
+	const u32 lc    = sg.lc;
+	const u32 rc    = sg.rc;
+	const u32 vc    = vm->yres <= 576 ? 1 : 0;
+	const u32 hadj  = spml / 2;
+	const u32 vhp   = (vm->vmode & FB_VMODE_INTERLACED) ? 0 : 1;
+	const u32 hb    = vm->xres * spml * 3 / 5;
+
+	return (struct gs_sync_param) {
+		.smode1 = {
+			.vhp    = vhp, .vcksel = vc, .slck2 =     1, .nvck = 1,
+			.clksel =   1, .pevs   =  0, .pehs  =     0, .pvs  = 0,
+			.phs    =   0, .gcont  =  0, .spml  =  spml, .pck2 = 0,
+			.xpck   =   0, .sint   =  1, .prst  =     0, .ex   = 0,
+			.cmod   =   0, .slck   =  0, .t1248 = t1248,
+			.lc     =  lc, .rc     = rc
+		},
+		.smode2 = {
+			.intm = (vm->vmode & FB_VMODE_INTERLACED) ? 1 : 0
+                },
+		.srfsh = {
+			.rfsh = gs_rfsh_from_synch_gen(sg)
+		},
+		.synch1 = {
+			.hs   = vm->hsync_len * spml,
+                        .hsvs = (vm->left_margin + vm->xres +
+                                 vm->right_margin - vm->hsync_len) * spml / 2,
+                        .hseq = vm->hsync_len * spml,
+			.hbp  = vm->left_margin * spml - hadj,
+                        .hfp  = vm->right_margin * spml + hadj
+		},
+		.synch2 = {
+			.hb = hb,
+			.hf = vm->xres * spml - hb
+		},
+		.syncv = {
+			.vs   = vm->vsync_len,
+                        .vdp  = vm->yres,
+			.vbpe = 0,
+                        .vbp  = vm->upper_margin,
+			.vfpe = 0,
+                        .vfp  = vm->lower_margin
+		},
+		.display = {
+			.dh   = vm->yres - 1,
+			.dw   = vm->xres * spml - 1,
+			.magv = 0,
+			.magh = spml - 1,
+			.dy   = vm->vsync_len + vm->upper_margin - 1,
+			.dx   = (vm->hsync_len + vm->left_margin) * spml - 1 - hadj
+		}
+	};
+}
+
 static struct gs_sync_param vm_to_sp_for_synch_gen(
 	const struct fb_videomode *vm, const struct gs_synch_gen sg)
 {
-	struct gs_sync_param sp = vm_to_sp_sdtv(vm);
+	const bool bc = vm->sync & FB_SYNC_BROADCAST;
+	const bool il = vm->vmode & FB_VMODE_INTERLACED;
+	struct gs_sync_param sp =
+		vm->yres <= 288 &&       bc ? vm_to_sp_sdtv(vm) :
+		vm->yres <= 576 && il && bc ? vm_to_sp_sdtv(vm) :
+					      vm_to_sp_hdtv(vm, sg);
 
 	sp.smode1.gcont = gs_gcont_ycrcb;
 	sp.smode1.sint = 1;
