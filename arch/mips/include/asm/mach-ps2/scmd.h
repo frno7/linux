@@ -41,4 +41,14 @@ int scmd(enum scmd_cmd cmd,
 	const void *send, size_t send_size,
 	void *recv, size_t recv_size);
 
+/**
+ * scmd_power_off - system command to power off the system
+ *
+ * On success, the processor will have to wait for the shut down to take effect.
+ *
+ * Context: sleep
+ * Return: 0 on success, else a negative error number
+ */
+int scmd_power_off(void);
+
 #endif /* __ASM_PS2_SCMD_H */
