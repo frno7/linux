@@ -21,9 +21,11 @@
 /**
  * enum scmd_cmd - system commands
  * @scmd_cmd_power_off: power off the system
+ * @scmd_cmd_read_machine_name: read machine name
  */
 enum scmd_cmd {
 	scmd_cmd_power_off = 15,
+	scmd_cmd_read_machine_name = 23,
 };
 
 /**
@@ -50,5 +52,26 @@ int scmd(enum scmd_cmd cmd,
  * Return: 0 on success, else a negative error number
  */
 int scmd_power_off(void);
+
+/**
+ * struct scmd_machine_name - machine name, or the empty string
+ * @name: NUL terminated string, for example ``"SCPH-50004"``
+ */
+struct scmd_machine_name {
+	char name[16];
+};
+
+/**
+ * scmd_read_machine_name - system command to read the machine name
+ *
+ * An example of machine name is SCPH-50004.
+ *
+ * Machines SCPH-10000 and SCPH-15000 do not implement this command. Late
+ * SCPH-10000 and all SCPH-15000 have the name in rom0:OSDSYS instead.
+ *
+ * Context: sleep
+ * Return: the machine name, or the empty string on failure
+ */
+struct scmd_machine_name scmd_read_machine_name(void);
 
 #endif /* __ASM_PS2_SCMD_H */
