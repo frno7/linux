@@ -8,6 +8,7 @@
 #ifndef __ASM_PS2_SCMD_H
 #define __ASM_PS2_SCMD_H
 
+#include <linux/time64.h>
 #include <linux/types.h>
 
 #define SCMD_COMMAND	0x1f402016
@@ -36,5 +37,8 @@ struct scmd_machine_name {
  * have the name in rom0:OSDSYS instead.
  */
 struct scmd_machine_name scmd_read_machine_name(void);
+
+/* System command to read the real-time clock (RTC). */
+int scmd_read_rtc(time64_t *t);
 
 #endif /* __ASM_PS2_SCMD_H */
