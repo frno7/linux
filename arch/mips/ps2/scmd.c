@@ -175,6 +175,12 @@ out_err:
 }
 EXPORT_SYMBOL_GPL(scmd);
 
+static int scmd_send_byte(enum scmd_cmd cmd, u8 send_byte,
+	void *recv, size_t recv_size)
+{
+	return scmd(cmd, &send_byte, sizeof(send_byte), recv, recv_size);
+}
+
 /**
  * scmd_power_off - system command to power off the system
  *
@@ -203,6 +209,62 @@ int scmd_power_off(void)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(scmd_power_off);
+
+/**
+ * scmd_read_machine_name - system command to read the machine name
+ *
+ * An example of machine name is SCPH-50004.
+ *
+ * Machines SCPH-10000 and SCPH-15000 do not implement this command. Late
+ * SCPH-10000 and all SCPH-15000 have the name in rom0:OSDSYS instead.
+ *
+ * Context: sleep
+ * Return: the machine name, or the empty string on failure
+ */
+struct scmd_machine_name scmd_read_machine_name(void)
+{
+	struct scmd_machine_name machine = { .name = "" };
+	struct __attribute__ ((packed)) {
+		u8 status;
+		char name[8];
+	} buffer0, buffer8;
+	int err;
+
+	BUILD_BUG_ON(sizeof(buffer0) != 9 ||
+		     sizeof(buffer8) != 9);
+
+	/* The machine name comes in two halves that need to be combined. */
+
+	err = scmd_send_byte(scmd_cmd_read_machine_name, 0,
+		&buffer0, sizeof(buffer0));
+	if (err < 0) {
+		pr_debug("%s: Read failed with %d at 0\n", __func__, err);
+		goto out_err;
+	}
+
+	err = scmd_send_byte(scmd_cmd_read_machine_name, 8,
+		&buffer8, sizeof(buffer8));
+	if (err < 0) {
+		pr_debug("%s: Read failed with %d at 8\n", __func__, err);
+		goto out_err;
+	}
+
+	if (buffer0.status != 0 ||
+	    buffer8.status != 0) {
+		pr_debug("%s: Invalid results with statuses 0x%x and 0x%x\n",
+			__func__, buffer0.status, buffer8.status);
+		goto out_err;
+	}
+
+	BUILD_BUG_ON(sizeof(machine.name) < 16);
+	memcpy(&machine.name[0], buffer0.name, 8);
+	memcpy(&machine.name[8], buffer8.name, 8);
+	machine.name[15] = '\0';
+
+out_err:
+	return machine;
+}
+EXPORT_SYMBOL_GPL(scmd_read_machine_name);
 
 MODULE_DESCRIPTION("PlayStation 2 system commands");
 MODULE_AUTHOR("Fredrik Noring");
