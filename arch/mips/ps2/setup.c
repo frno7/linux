@@ -13,6 +13,9 @@
 #include <linux/platform_device.h>
 
 #include <asm/bootinfo.h>
+#include <asm/prom.h>
+
+#include <asm/mach-ps2/scmd.h>
 
 const char *get_system_type(void)
 {
@@ -33,9 +36,31 @@ void __init plat_mem_setup(void)
 	set_io_port_base(CKSEG1);	/* KSEG1 is uncached */
 }
 
+static int __init set_machine_name(void)
+{
+	const struct scmd_machine_name machine = scmd_read_machine_name();
+
+	/*
+	 * FIXME: There are issues reading the machine name for
+	 * SCPH-10000 and SCPH-15000. Late SCPH-10000 and all
+	 * SCPH-15000 have the name in rom0:OSDSYS.
+	 */
+
+	if (!strlen(machine.name)) {
+		pr_err("%s: scmd_read_machine_name failed\n", __func__);
+		return -EIO;
+	}
+
+	mips_set_machine_name(machine.name);
+
+	return 0;
+}
+
 static int __init ps2_board_setup(void)
 {
 	pr_info("PlayStation 2 board setup\n");
+
+	set_machine_name();
 
 	return 0;
 }
