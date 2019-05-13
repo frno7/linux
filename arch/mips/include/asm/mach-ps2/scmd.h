@@ -26,4 +26,15 @@ int scmd(u8 cmd,
 /* Send power off system command. */
 int scmd_power_off(void);
 
+struct scmd_machine_name {
+	char name[17];	/* NUL terminated string, for example "SCPH-50004" */
+};
+
+/*
+ * Reads the machine name. Returns the empty string on failure, most notably
+ * for models SCPH-10000 and SCPH-15000. Late SCPH-10000 and all SCPH-15000
+ * have the name in rom0:OSDSYS instead.
+ */
+struct scmd_machine_name scmd_read_machine_name(void);
+
 #endif /* __ASM_PS2_SCMD_H */
