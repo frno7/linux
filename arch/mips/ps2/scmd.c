@@ -175,6 +175,35 @@ out_err:
 }
 EXPORT_SYMBOL_GPL(scmd);
 
+/**
+ * scmd_power_off - system command to power off the system
+ *
+ * On success, the processor will have to wait for the shut down to take effect.
+ *
+ * Context: sleep
+ * Return: 0 on success, else a negative error number
+ */
+int scmd_power_off(void)
+{
+	u8 status;
+	int err;
+
+	err = scmd(scmd_cmd_power_off, NULL, 0, &status, sizeof(status));
+	if (err < 0) {
+		pr_err("%s: Write failed with %d\n", __func__, err);
+		return err;
+	}
+
+	if (status != 0) {
+		pr_err("%s: Invalid result with status 0x%x\n",
+			__func__, status);
+		return -EIO;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(scmd_power_off);
+
 MODULE_DESCRIPTION("PlayStation 2 system commands");
 MODULE_AUTHOR("Fredrik Noring");
 MODULE_LICENSE("GPL");
