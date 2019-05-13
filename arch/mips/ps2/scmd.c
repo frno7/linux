@@ -279,6 +279,47 @@ int scmd_read_rtc(time64_t *t)
 }
 EXPORT_SYMBOL_GPL(scmd_read_rtc);
 
+int scmd_write_rtc(time64_t t)
+{
+	struct __attribute__ ((packed)) {
+		u8 second;
+		u8 minute;
+		u8 hour;
+		u8 pad;
+		u8 day;
+		u8 month;
+		u8 year;
+	} rtc = { };
+	struct rtc_time tm;
+	u8 status;
+	int err;
+
+	rtc_time_to_tm(t + UTC_TO_JST, &tm);
+	rtc.second = bin2bcd(tm.tm_sec);
+	rtc.minute = bin2bcd(tm.tm_min);
+	rtc.hour   = bin2bcd(tm.tm_hour);
+	rtc.day    = bin2bcd(tm.tm_mday);
+	rtc.month  = bin2bcd(tm.tm_mon + 1);
+	rtc.year   = bin2bcd(tm.tm_year - 100);
+
+	BUILD_BUG_ON(sizeof(rtc) != 7);
+	err = scmd(scmd_cmd_write_rtc, &rtc, sizeof(rtc),
+		&status, sizeof(status));
+	if (err < 0) {
+		pr_debug("%s: Write failed with %d\n", __func__, err);
+		return err;
+	}
+
+	if (status != 0) {
+		pr_debug("%s: Invalid result with status 0x%x\n",
+			__func__, status);
+		return -EIO;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(scmd_write_rtc);
+
 MODULE_DESCRIPTION("PlayStation 2 system commands");
 MODULE_AUTHOR("Fredrik Noring");
 MODULE_LICENSE("GPL");
