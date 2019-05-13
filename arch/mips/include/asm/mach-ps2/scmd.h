@@ -21,9 +21,11 @@
 /**
  * enum scmd_cmd - system commands
  * @scmd_cmd_power_off: power off the system
+ * @scmd_cmd_read_machine_name: read machine name
  */
 enum scmd_cmd {
 	scmd_cmd_power_off = 15,
+	scmd_cmd_read_machine_name = 23,
 };
 
 int scmd(enum scmd_cmd cmd,
@@ -31,5 +33,15 @@ int scmd(enum scmd_cmd cmd,
 	void *recv, size_t recv_size);
 
 int scmd_power_off(void);
+
+/**
+ * struct scmd_machine_name - machine name, or the empty string
+ * @name: NUL terminated string, for example ``"SCPH-50004"``
+ */
+struct scmd_machine_name {
+	char name[16];
+};
+
+struct scmd_machine_name scmd_read_machine_name(void);
 
 #endif /* __ASM_MACH_PS2_SCMD_H */
