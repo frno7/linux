@@ -8,6 +8,7 @@
 #ifndef __ASM_MACH_PS2_SCMD_H
 #define __ASM_MACH_PS2_SCMD_H
 
+#include <linux/time64.h>
 #include <linux/types.h>
 
 #define SCMD_COMMAND	0x1f402016
@@ -20,10 +21,12 @@
 
 /**
  * enum scmd_cmd - system commands
+ * @scmd_cmd_read_rtc: read the real-time clock (RTC)
  * @scmd_cmd_power_off: power off the system
  * @scmd_cmd_read_machine_name: read machine name
  */
 enum scmd_cmd {
+	scmd_cmd_read_rtc = 8,
 	scmd_cmd_power_off = 15,
 	scmd_cmd_read_machine_name = 23,
 };
@@ -43,5 +46,7 @@ struct scmd_machine_name {
 };
 
 struct scmd_machine_name scmd_read_machine_name(void);
+
+int scmd_read_rtc(time64_t *t);
 
 #endif /* __ASM_MACH_PS2_SCMD_H */
