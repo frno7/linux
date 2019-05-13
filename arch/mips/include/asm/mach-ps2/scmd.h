@@ -30,4 +30,6 @@ int scmd(enum scmd_cmd cmd,
 	const void *send, size_t send_size,
 	void *recv, size_t recv_size);
 
+int scmd_power_off(void);
+
 #endif /* __ASM_MACH_PS2_SCMD_H */
