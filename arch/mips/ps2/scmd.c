@@ -13,7 +13,13 @@
 #include <linux/sched.h>
 #include <linux/sched/signal.h>
 
+#include <linux/bcd.h>
+#include <linux/rtc.h>
+
 #include <asm/mach-ps2/scmd.h>
+
+#define UTC_TO_JST (9*60*60)		/* UTC to Japan standard time */
+#define JST_TO_UTC (-UTC_TO_JST)	/* Japan standard time to UTC */
 
 /**
  * completed - poll for condition to happen, or timeout
@@ -265,6 +271,55 @@ out_err:
 	return machine;
 }
 EXPORT_SYMBOL_GPL(scmd_read_machine_name);
+
+/**
+ * scmd_read_rtc - system command to read the real-time clock (RTC)
+ * @t: pointer to store the time on a successful reading
+ *
+ * The hardware clock is designed to keep Japan standard time (JST), regardless
+ * of the region of the machine. This is adjusted in the driver so that the
+ * clock to the kernel appears to be kept in coordinated universal time (UTC).
+ * Tools such as hwclock should therefore read the clock in the UTC timescale.
+ *
+ * Context: sleep
+ * Return: 0 on success, else a negative error number
+ */
+int scmd_read_rtc(time64_t *t)
+{
+	struct __attribute__ ((packed)) {
+		u8 status;
+		u8 second;
+		u8 minute;
+		u8 hour;
+		u8 pad;
+		u8 day;
+		u8 month;
+		u8 year;
+	} rtc;
+	int err;
+
+	BUILD_BUG_ON(sizeof(rtc) != 8);
+	err = scmd(scmd_cmd_read_rtc, NULL, 0, &rtc, sizeof(rtc));
+	if (err < 0) {
+		pr_debug("%s: Read failed with %d at 0\n", __func__, err);
+		return err;
+	}
+	if (rtc.status != 0) {
+		pr_debug("%s: Invalid result with status 0x%x\n",
+			__func__, rtc.status);
+		return -EIO;
+	}
+
+	*t = mktime64(bcd2bin(rtc.year) + 2000,
+		      bcd2bin(rtc.month),
+		      bcd2bin(rtc.day),
+		      bcd2bin(rtc.hour),
+		      bcd2bin(rtc.minute),
+		      bcd2bin(rtc.second)) + JST_TO_UTC;
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(scmd_read_rtc);
 
 MODULE_DESCRIPTION("PlayStation 2 system commands");
 MODULE_AUTHOR("Fredrik Noring");
