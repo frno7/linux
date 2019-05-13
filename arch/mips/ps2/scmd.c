@@ -117,6 +117,27 @@ out_err:
 }
 EXPORT_SYMBOL_GPL(scmd);
 
+int scmd_power_off(void)
+{
+	u8 status;
+	int err;
+
+	err = scmd(0xf, NULL, 0, &status, sizeof(status));
+	if (err < 0) {
+		pr_debug("%s: Write failed with %d\n", __func__, err);
+		return err;
+	}
+
+	if (status != 0) {
+		pr_debug("%s: Invalid result with status 0x%x\n",
+			__func__, status);
+		return -EIO;
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(scmd_power_off);
+
 MODULE_DESCRIPTION("PlayStation 2 system command driver");
 MODULE_AUTHOR("Fredrik Noring");
 MODULE_LICENSE("GPL");

@@ -23,4 +23,7 @@ int scmd(u8 cmd,
 	const void *send, size_t send_size,
 	void *recv, size_t recv_size);
 
+/* Send power off system command. */
+int scmd_power_off(void);
+
 #endif /* __ASM_PS2_SCMD_H */
