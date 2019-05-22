@@ -225,6 +225,41 @@ struct rom_file rom_first_file(const struct rom_dir dir)
 EXPORT_SYMBOL_GPL(rom_first_file);
 
 /**
+ * rom_read_file - read ROM file data
+ * @dir: directory to read the file from
+ * @name: file name to read
+ * @buffer: pointer to buffer to store data that is read
+ * @size: size in bytes to read
+ * @offset: offset in bytes to start reading
+ *
+ * Context: any
+ * Return: on successful completion, a nonnegative integer indicating the
+ * 	number of bytes actually read; otherwise, a negative error number
+ */
+ssize_t rom_read_file(const struct rom_dir dir,
+	const char *name, void *buffer, size_t size, loff_t offset)
+{
+	struct rom_file file;
+
+	rom_find_files (file, dir, name) {
+		if (offset < file.size) {
+			const u8 *b = file.data;
+			size_t remaining = file.size - offset;
+			size_t n = min(size, remaining);
+
+			memcpy(buffer, &b[offset], n);
+
+			return n;
+		}
+
+		return 0;
+	}
+
+	return -ENOENT;
+}
+EXPORT_SYMBOL_GPL(rom_read_file);
+
+/**
  * find_reset_string - find the offset to the ``"RESET"`` string, if it exists
  * @rom: ROM to search in
  *
