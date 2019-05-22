@@ -1,3 +1,4 @@
+obj-m				+= iop-heap.o
 obj-m				+= iop-memory.o
 obj-m				+= iop-module.o
 obj-m				+= iop-registers.o
