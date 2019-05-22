@@ -3,5 +3,6 @@ obj-y		+= intc-irq.o
 obj-y		+= irq.o
 obj-y		+= memory.o
 obj-y		+= rom.o
+obj-m		+= rom-sysfs.o
 obj-y		+= scmd.o
 obj-y		+= time.o
