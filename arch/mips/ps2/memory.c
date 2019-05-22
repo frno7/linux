@@ -13,11 +13,13 @@
 #include <asm/bootinfo.h>
 #include <asm/io.h>
 
+#include <asm/mach-ps2/iop.h>
 #include <asm/mach-ps2/rom.h>
 
 int valid_phys_addr_range(phys_addr_t addr, size_t size)
 {
 	return addr + size <= __pa(high_memory) ||
+	       (IOP_RAM_BASE <= addr && addr + size <= IOP_RAM_BASE + IOP_RAM_SIZE) ||
 	       (ROM0_BASE <= addr && addr + size <= ROM0_BASE + ROM0_SIZE) ||
 	       (ROM1_BASE <= addr && addr + size <= ROM1_BASE + ROM1_SIZE);
 }
