@@ -85,6 +85,19 @@ extern struct rom_dir rom1_dir;		/* ROM1 directory (DVD) */
 	     !rom_terminating_file(file);				\
 	     (file) = rom_next_file(file))
 
+/**
+ * rom_find_files - find ROM files with the given name, if they exist
+ * @file: &struct rom_file to use as a ROM file match cursor
+ * @dir: &struct rom_dir with ROM directory to search in
+ * @filename: file name to look for
+ *
+ * The statement following the macro is executed for ROM files having the
+ * given name.
+ */
+#define rom_find_files(file, dir, filename)				\
+	rom_for_each_file((file), (dir))				\
+		if (strcmp((file).name, filename) != 0) continue; else
+
 bool rom_empty_dir(const struct rom_dir dir);
 
 bool rom_terminating_file(const struct rom_file file);
