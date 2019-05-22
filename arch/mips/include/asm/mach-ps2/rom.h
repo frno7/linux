@@ -98,6 +98,9 @@ extern struct rom_dir rom1_dir;		/* ROM1 directory (DVD) */
 	rom_for_each_file((file), (dir))				\
 		if (strcmp((file).name, filename) != 0) continue; else
 
+ssize_t rom_read_file(const struct rom_dir dir,
+	const char *name, void *buffer, size_t size, loff_t offset);
+
 /* The ROM functions below are mainly for internal use. */
 
 bool rom_empty_dir(const struct rom_dir dir);
