@@ -123,6 +123,36 @@ ssize_t rom_read_file(const struct rom_dir dir,
 struct rom_extinfo rom_read_extinfo(const char *name,
 	const void *buffer, size_t size);
 
+/**
+ * struct rom_ver - ROM version
+ * @number: ROM version number
+ * @region: ROM region with ``'J'`` for Japan, ``'E'`` for Europe,
+ * 	``'C'`` for China, and ``'A'`` or ``'H'`` for the USA
+ * @type: ROM type with ``'C'`` for retail (CEX), ``'D'`` for debug (DEX),
+ * 	and `'T'`` for TOOL, or ``'-'`` for undefined
+ * @date: date ROM was created
+ * @date.year: year ROM was created
+ * @date.month: month ROM was created
+ * @date.day: day ROM was created
+ *
+ * Note that the Namco System 246 arcade systems are TOOL types as well.
+ *
+ * A ROM version is considered to be invalid if @number is zero, in which
+ * case all members are zero except @region and @type that are ``'-'``.
+ */
+struct rom_ver {
+	int number;
+	char region;
+	char type;
+	struct {
+		int year;
+		int month;
+		int day;
+	} date;
+};
+
+struct rom_ver rom_version(void);
+
 /* The ROM functions below are mainly for internal use. */
 
 bool rom_empty_dir(const struct rom_dir dir);
