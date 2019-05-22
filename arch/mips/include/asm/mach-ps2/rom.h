@@ -98,6 +98,21 @@ extern struct rom_dir rom1_dir;		/* ROM1 directory (DVD) */
 	rom_for_each_file((file), (dir))				\
 		if (strcmp((file).name, filename) != 0) continue; else
 
+/**
+ * rom_read_file - read ROM file data
+ * @dir: directory to read the file from
+ * @name: file name to read
+ * @buffer: pointer to buffer to store data that is read
+ * @size: size in bytes to read
+ * @offset: offset in bytes to start reading
+ *
+ * Context: any
+ * Return: on successful completion, a nonnegative integer indicating the
+ * 	number of bytes actually read; otherwise, a negative error number
+ */
+ssize_t rom_read_file(const struct rom_dir dir,
+	const char *name, void *buffer, size_t size, loff_t offset);
+
 /* The ROM functions below are mainly for internal use. */
 
 /**
