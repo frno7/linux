@@ -365,6 +365,27 @@ struct rom_extinfo rom_read_extinfo(const char *name,
 EXPORT_SYMBOL_GPL(rom_read_extinfo);
 
 /**
+ * rom_version - read the ROMVER file in ROM0
+ *
+ * Context: any
+ * Return: ROM version; or, if reading failed, all members zeroed except
+ *      @region and @type that are set to ``'-'``
+ */
+struct rom_ver rom_version(void)
+{
+	struct rom_ver v = { };
+	char buffer[20] = { };
+	ssize_t r = rom_read_file(rom0_dir, "ROMVER",
+		buffer, sizeof(buffer) - 1, 0);
+
+	return r > 0 && sscanf(buffer, "%4x%c%c%4d%2d%2d",
+				&v.number, &v.region, &v.type,
+				&v.date.year, &v.date.month, &v.date.day) == 6 ?
+		v : (struct rom_ver) { .region = '-', .type = '-' };
+}
+EXPORT_SYMBOL_GPL(rom_version);
+
+/**
  * find_reset_string - find the offset to the ``"RESET"`` string, if it exists
  * @rom: ROM to search in
  *
@@ -631,11 +652,18 @@ static struct rom_dir __init rom_dir_init(const char *name,
 
 static int __init ps2_rom_init(void)
 {
+	struct rom_ver v;
+
 	BUILD_BUG_ON(sizeof(struct rom_dir_entry) != 16);
 	BUILD_BUG_ON(sizeof(struct rom_extinfo_entry) != 4);
 
 	rom0_dir = rom_dir_init("rom0", ROM0_BASE, ROM0_SIZE);
 	rom1_dir = rom_dir_init("rom1", ROM1_BASE, ROM1_SIZE);
+
+	v = rom_version();
+	pr_info("rom0: Version %04x %c %c %04d-%02d-%02d\n",
+		v.number, v.region, v.type,
+		v.date.year, v.date.month, v.date.day);
 
 	return 0;
 }
