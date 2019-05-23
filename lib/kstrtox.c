@@ -45,14 +45,15 @@ const char *_parse_integer_fixup_radix(const char *s, unsigned int *base)
  *
  * Don't you dare use this function.
  */
-unsigned int _parse_integer(const char *s, unsigned int base, unsigned long long *p)
+unsigned int _parse_integer_end(const char *s, const char *e,
+	unsigned int base, unsigned long long *p)
 {
 	unsigned long long res;
 	unsigned int rv;
 
 	res = 0;
 	rv = 0;
-	while (1) {
+	while (!e || s < e) {
 		unsigned int c = *s;
 		unsigned int lc = c | 0x20; /* don't tolower() this line */
 		unsigned int val;
@@ -80,6 +81,11 @@ unsigned int _parse_integer(const char *s, unsigned int base, unsigned long long
 	}
 	*p = res;
 	return rv;
+}
+
+unsigned int _parse_integer(const char *s, unsigned int base, unsigned long long *p)
+{
+	return _parse_integer_end(s, NULL, base, p);
 }
 
 static int _kstrtoull(const char *s, unsigned int base, unsigned long long *res)
