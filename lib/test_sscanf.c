@@ -2,19 +2,35 @@
 
 #include <linux/init.h>
 #include <linux/module.h>
+#include <linux/string.h>
+#include <linux/ctype.h>
+#include <linux/kernel.h>
 
 static int __init test_sscanf(void)
 {
+#if 1
+	int year, month, day, hour, minute, second;
+	int r;
+
+	r = sscanf("20190523123456", "%4d%2d%2d%2d%2d%2d",
+		&year, &month, &day,
+		&hour, &minute, &second);
+
+	pr_info("%s: %d %04d-%02d-%2d %02d:%02d:%02d\n",
+		__func__, r,
+		year, month, day,
+		hour, minute, second);
+#else
    struct {
       int v, y, m, d;
       char r, u;
    } s = { };
    int n;
 
-   n = sscanf("0170EC20031217", "%4x%c%c%4d%2d%2d",
-         &s.v, &s.r, &s.u, &s.y, &s.m, &s.d);
+   n = sscanf("0170EC20031217", "%4x", &s.v);
 
    pr_info("sscanf %d %x\n", n, s.v);
+#endif
 
    return 0;
 }
