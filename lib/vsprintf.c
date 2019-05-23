@@ -123,6 +123,48 @@ long long simple_strtoll(const char *cp, char **endp, unsigned int base)
 }
 EXPORT_SYMBOL(simple_strtoll);
 
+static unsigned long long sscanf_strtoull(const char *cp, int field_width,
+	char **endp, unsigned int base)
+{
+	const char *e = field_width > 0 ? &cp[field_width] : NULL;
+	unsigned long long result;
+	unsigned int rv;
+
+	cp = _parse_integer_fixup_radix(cp, &base);
+	rv = _parse_integer_end(cp, e, base, &result);
+	/* FIXME */
+	cp += (rv & ~KSTRTOX_OVERFLOW);
+
+	if (endp)
+		*endp = (char *)cp;
+
+	return result;
+}
+
+static unsigned long sscanf_strtoul(const char *cp, int field_width,
+	char **endp, unsigned int base)
+{
+	return sscanf_strtoull(cp, field_width, endp, base);
+}
+
+static long sscanf_strtol(const char *cp, int field_width,
+	char **endp, unsigned int base)
+{
+	if (*cp == '-')
+		return -sscanf_strtoul(cp + 1, field_width - 1, endp, base);
+
+	return sscanf_strtoul(cp, field_width, endp, base);
+}
+
+static long long sscanf_strtoll(const char *cp, int field_width,
+	char **endp, unsigned int base)
+{
+	if (*cp == '-')
+		return -sscanf_strtoull(cp + 1, field_width - 1, endp, base);
+
+	return sscanf_strtoull(cp, field_width, endp, base);
+}
+
 static noinline_for_stack
 int skip_atoi(const char **s)
 {
@@ -3337,24 +3379,12 @@ int vsscanf(const char *buf, const char *fmt, va_list args)
 
 		if (is_sign)
 			val.s = qualifier != 'L' ?
-				simple_strtol(str, &next, base) :
-				simple_strtoll(str, &next, base);
+				sscanf_strtol(str, field_width, &next, base) :
+				sscanf_strtoll(str, field_width, &next, base);
 		else
 			val.u = qualifier != 'L' ?
-				simple_strtoul(str, &next, base) :
-				simple_strtoull(str, &next, base);
-
-		if (field_width > 0 && next - str > field_width) {
-			if (base == 0)
-				_parse_integer_fixup_radix(str, &base);
-			while (next - str > field_width) {
-				if (is_sign)
-					val.s = div_s64(val.s, base);
-				else
-					val.u = div_u64(val.u, base);
-				--next;
-			}
-		}
+				sscanf_strtoul(str, field_width, &next, base) :
+				sscanf_strtoull(str, field_width, &next, base);
 
 		switch (qualifier) {
 		case 'H':	/* that's 'hh' in format */
