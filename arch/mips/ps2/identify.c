@@ -9,10 +9,16 @@
 #include <linux/init.h>
 #include <linux/printk.h>
 
+#include <asm/bootinfo.h>
 #include <asm/prom.h>
 
 #include <asm/mach-ps2/rom.h>
 #include <asm/mach-ps2/scmd.h>
+
+const char *get_system_type(void)
+{
+	return "Sony PlayStation 2";
+}
 
 static int __init set_machine_name_by_scmd(void)
 {
