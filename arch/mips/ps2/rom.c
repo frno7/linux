@@ -386,6 +386,26 @@ struct rom_ver rom_version(void)
 EXPORT_SYMBOL_GPL(rom_version);
 
 /**
+ * rom_region_name - name for the ROM region character in the ROMVER file
+ * @region: &rom_ver.region region character.
+ *
+ * Context: any
+ * Return: ROM region name, ``"-"`` if undefined or ``"?"`` if unrecognised
+ */
+const char *rom_region_name(char region)
+{
+	return region == 'J' ? "Japan" :
+	       region == 'E' ? "Europe" : /* Including Australia. */
+	       region == 'C' ? "China" :
+	       region == 'A' ? "USA" :	/* Including Mexico. */
+	       region == 'H' ? "Asia" :	/* Technically same as the USA. */
+	       region == 'T' ? "TOOL" :	/* Namco system if ROM type is 'Z'. */
+	       region == 'X' ? "TEST" :	/* Only the DTL-H10000 model. */
+	       region == '-' ? "-" : "?";
+}
+EXPORT_SYMBOL_GPL(rom_region_name);
+
+/**
  * rom_type_name - name for the ROM type character in the ROMVER file in ROM0
  * @type: &rom_ver.type type character.
  *
@@ -677,8 +697,8 @@ static int __init ps2_rom_init(void)
 	rom1_dir = rom_dir_init("rom1", ROM1_BASE, ROM1_SIZE);
 
 	v = rom_version();
-	pr_info("rom0: Version %04x %c %s %04d-%02d-%02d\n",
-		v.number, v.region, rom_type_name(v.type),
+	pr_info("rom0: Version %04x %s %s %04d-%02d-%02d\n",
+		v.number, rom_region_name(v.region), rom_type_name(v.type),
 		v.date.year, v.date.month, v.date.day);
 
 	return 0;

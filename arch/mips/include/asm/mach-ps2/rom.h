@@ -137,7 +137,8 @@ struct rom_extinfo rom_read_extinfo(const char *name,
  * @date.month: month ROM was created
  * @date.day: day ROM was created
  *
- * The @type name can be resolved with rom_type_name().
+ * The @region and @type names can be resolved with rom_region_name() and
+ * rom_type_name().
  *
  * Note that ``'E'`` includes Australia and ``'A'`` includes Mexico.
  *
@@ -156,6 +157,8 @@ struct rom_ver {
 };
 
 struct rom_ver rom_version(void);
+
+const char *rom_region_name(char region);
 
 const char *rom_type_name(char type);
 
