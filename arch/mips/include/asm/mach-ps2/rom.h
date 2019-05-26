@@ -156,6 +156,8 @@ struct rom_extinfo rom_read_extinfo(const char *name,
  * @date.month: month ROM was created
  * @date.day: day ROM was created
  *
+ * The @type name can be resolved with rom_type_name().
+ *
  * Note that the Namco System 246 arcade systems are TOOL types as well.
  *
  * A ROM version is considered to be invalid if @number is zero, in which
@@ -180,6 +182,15 @@ struct rom_ver {
  *      @region and @type that are set to ``'-'``
  */
 struct rom_ver rom_version(void);
+
+/**
+ * rom_type_name - name for the ROM type character in the ROMVER file in ROM0
+ * @type: &rom_ver.type type character.
+ *
+ * Context: any
+ * Return: ROM type name, ``"-"`` if undefined or ``"?"`` if unrecognised
+ */
+const char *rom_type_name(char type);
 
 /* The ROM functions below are mainly for internal use. */
 

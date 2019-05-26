@@ -325,6 +325,15 @@ struct rom_ver rom_version(void)
 }
 EXPORT_SYMBOL_GPL(rom_version);
 
+const char *rom_type_name(char type)
+{
+	return type == 'C' ? "CEX" :
+	       type == 'D' ? "DEX" :
+	       type == 'T' ? "TOOL" :
+	       type == '-' ? "-" : "?";
+}
+EXPORT_SYMBOL_GPL(rom_type_name);
+
 /**
  * find_reset_string - find the offset to the ``"RESET"`` string, if it exists
  * @rom: ROM to search in
@@ -533,8 +542,8 @@ static int __init ps2_rom_init(void)
 	rom1_dir = rom_dir_init("rom1", ROM1_BASE, ROM1_SIZE);
 
 	v = rom_version();
-	pr_info("rom0: Version %04x %c %c %04d-%02d-%02d\n",
-		v.number, v.region, v.type,
+	pr_info("rom0: Version %04x %c %s %04d-%02d-%02d\n",
+		v.number, v.region, rom_type_name(v.type),
 		v.date.year, v.date.month, v.date.day);
 
 	return 0;
