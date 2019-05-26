@@ -137,6 +137,8 @@ struct rom_extinfo rom_read_extinfo(const char *name,
  * @date.month: month ROM was created
  * @date.day: day ROM was created
  *
+ * The @type name can be resolved with rom_type_name().
+ *
  * Note that ``'E'`` includes Australia and ``'A'`` includes Mexico.
  *
  * A ROM version is considered to be invalid if @number is zero, in which
@@ -154,6 +156,8 @@ struct rom_ver {
 };
 
 struct rom_ver rom_version(void);
+
+const char *rom_type_name(char type);
 
 bool rom_empty_dir(const struct rom_dir dir);
 
