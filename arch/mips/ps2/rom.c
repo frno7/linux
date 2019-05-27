@@ -66,6 +66,7 @@
  * a specific address.
  */
 
+#include <linux/bcd.h>
 #include <linux/build_bug.h>
 #include <linux/errno.h>
 #include <linux/init.h>
@@ -106,6 +107,32 @@ struct rom_dir_entry {
 		u16 size;
 	} extinfo;
 	u32 size;
+};
+
+/**
+ * enum rom_extinfo_entry_type - EXTINFO &rom_extinfo_entry.type for a ROM file
+ * @rom_extinfo_entry_date: BCD of day, month and year follows as 4 byte data
+ * @rom_extinfo_entry_version: version number is in &rom_extinfo_entry.value
+ * @rom_extinfo_entry_comment: NUL terminated comment string follows as data
+ * @rom_extinfo_entry_unknown: unclear, but seems to indicate file is aligned
+ */
+enum rom_extinfo_entry_type {
+	rom_extinfo_entry_date		= 1,
+	rom_extinfo_entry_version	= 2,
+	rom_extinfo_entry_comment	= 3,
+	rom_extinfo_entry_unknown	= 0x7f
+};
+
+/**
+ * struct rom_extinfo_entry - raw 4-byte EXTINFO entry for a ROM file
+ * @value: only known use is the version number for &rom_extinfo_entry_version
+ * @size: size in bytes of following data
+ * @type: &rom_extinfo_entry_type type
+ */
+struct rom_extinfo_entry {
+	u16 value;
+	u8 size;
+	u8 type;
 };
 
 /**
@@ -258,6 +285,84 @@ ssize_t rom_read_file(const struct rom_dir dir,
 	return -ENOENT;
 }
 EXPORT_SYMBOL_GPL(rom_read_file);
+
+/**
+ * rom_read_extinfo - read EXTINFO for a ROM file
+ * @name: name of ROM file, used for error reporting
+ * @buffer: pointer to EXTINFO data
+ * @size: size of EXTINFO data
+ *
+ * Return: EXTINFO for ROM file, where undefined members are zero or the empty
+ * 	string in the case of the comment
+ */
+struct rom_extinfo rom_read_extinfo(const char *name,
+	const void *buffer, size_t size)
+{
+	struct rom_extinfo ei = { .comment = "" };
+	struct rom_extinfo_entry entry;
+	const u8 *buf = buffer;
+	size_t i = 0;
+
+	/*
+	 * As an example, three EXTINFO entries for a ROM file might look
+	 * like this in binary form:
+	 *
+	 * 00 00 04 01 03 04 02 20 01 01 00 02 00 00 08 03  ................
+	 * 53 74 64 69 6f 00 00 00                          Stdio...
+	 *
+	 * The first entry is the date 2002-04-03, the second entry is the
+	 * version 0x101, and the last entry is the comment "Stdio".
+	 */
+
+	while (i + sizeof(entry) <= size) {
+		const u8 *data = &buf[i + sizeof(entry)];
+
+		memcpy(&entry, &buf[i], sizeof(entry));
+		i += sizeof(entry) + entry.size;
+
+		if (i > size) {
+			pr_debug("%s: %s: Invalid entry size %zu > %zu\n",
+				__func__, name, i, size);
+			break;
+		}
+
+		switch (entry.type) {
+		case rom_extinfo_entry_date:
+			if (entry.size == 4) {
+				ei.date.day   = bcd2bin(data[0]);
+				ei.date.month = bcd2bin(data[1]);
+				ei.date.year  = bcd2bin(data[2]) +
+						bcd2bin(data[3]) * 100;
+			} else
+				pr_debug("%s: %s: Invalid date size %u\n",
+					__func__, name, entry.size);
+			break;
+
+		case rom_extinfo_entry_version:
+			ei.version = entry.value;
+			break;
+
+		case rom_extinfo_entry_comment:
+			if (entry.size > 0 && data[entry.size - 1] == '\0') {
+				ei.comment = (const char *)data;
+			} else
+				pr_debug("%s: %s: Malformed comment\n",
+					__func__, name);
+			break;
+
+		case rom_extinfo_entry_unknown:
+			/* Ignore */
+			break;
+
+		default:
+			pr_debug("%s: %s: Invalid type %d\n",
+				__func__, name, entry.type);
+		}
+	}
+
+	return ei;
+}
+EXPORT_SYMBOL_GPL(rom_read_extinfo);
 
 /**
  * find_reset_string - find the offset to the ``"RESET"`` string, if it exists
@@ -527,6 +632,7 @@ static struct rom_dir __init rom_dir_init(const char *name,
 static int __init ps2_rom_init(void)
 {
 	BUILD_BUG_ON(sizeof(struct rom_dir_entry) != 16);
+	BUILD_BUG_ON(sizeof(struct rom_extinfo_entry) != 4);
 
 	rom0_dir = rom_dir_init("rom0", ROM0_BASE, ROM0_SIZE);
 	rom1_dir = rom_dir_init("rom1", ROM1_BASE, ROM1_SIZE);
