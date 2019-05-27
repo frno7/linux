@@ -69,6 +69,25 @@ struct rom_file {
 	const struct rom_dir_entry *next;
 };
 
+/**
+ * struct rom_extinfo - extended ROM file information
+ * @version: version number
+ * @date: date ROM was created
+ * @date.year: year ROM was created
+ * @date.month: month ROM was created
+ * @date.day: day ROM was created
+ * @comment: comment or the empty string
+ */
+struct rom_extinfo {
+	int version;
+	struct {
+		int year;
+		int month;
+		int day;
+	} date;
+	const char *comment;
+};
+
 extern struct rom_dir rom0_dir;		/* ROM0 directory (boot) */
 extern struct rom_dir rom1_dir;		/* ROM1 directory (DVD) */
 
@@ -112,6 +131,18 @@ extern struct rom_dir rom1_dir;		/* ROM1 directory (DVD) */
  */
 ssize_t rom_read_file(const struct rom_dir dir,
 	const char *name, void *buffer, size_t size, loff_t offset);
+
+/**
+ * rom_read_extinfo - read EXTINFO for a ROM file
+ * @name: name of ROM file, used for error reporting
+ * @buffer: pointer to EXTINFO data
+ * @size: size of EXTINFO data
+ *
+ * Return: EXTINFO for ROM file, where undefined members are zero or the empty
+ * 	string in the case of the comment
+ */
+struct rom_extinfo rom_read_extinfo(const char *name,
+	const void *buffer, size_t size);
 
 /* The ROM functions below are mainly for internal use. */
 
