@@ -28,6 +28,8 @@
 //	# grep -l ROMVER /sys/rom/rom0/file/*/name
 //	/sys/rom/rom0/file/3/name
 //	# cd /sys/rom/rom0/file/3
+//	# ls
+//	data     extinfo  name     size
 //	# dd if=/dev/mem bs=$(cat size) iflag=skip_bytes
 //		skip=$(( $(cat data) )) count=1 status=none
 //	0170EC20030227
@@ -44,6 +46,17 @@
 //
 // The CEX type indicates that it is a retail machine, as opposed to for
 // example DEX that would be a debug machine.
+//
+// The extended ROM file information can also be viewed with sysfs::
+//
+// 	# ls /sys/rom/rom0/file/8/extinfo
+// 	comment  data     date     size     version
+// 	# cat /sys/rom/rom0/file/8/extinfo/*
+// 	System_Memory_Manager
+// 	0x1fc02df4
+// 	2002-04-03
+// 	40
+// 	0x0101
 //
 
 #include <linux/ctype.h>
@@ -102,6 +115,14 @@ static struct rom_file rom_file_from_kobj(const struct kobject *kobj)
 	return (struct rom_file) { .name = "<undefined>" };
 }
 
+static struct rom_extinfo rom_extinfo_from_kobj(const struct kobject *kobj)
+{
+	const struct rom_file file = rom_file_from_kobj(kobj->parent);
+
+	return rom_read_extinfo(file.name,
+		file.extinfo.data, file.extinfo.size);
+}
+
 static ssize_t rom_version_number_show(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
@@ -129,6 +150,54 @@ static ssize_t rom_version_date_show(struct kobject *kobj,
 
 	return scnprintf(buf, PAGE_SIZE, "%04d-%02d-%02d\n",
 		v.date.year, v.date.month, v.date.day);
+}
+
+static ssize_t rom_extinfo_size_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%zu\n",
+		rom_file_from_kobj(kobj->parent).extinfo.size);
+}
+
+static ssize_t rom_extinfo_data_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "0x%lx\n",
+		virt_to_phys(rom_file_from_kobj(kobj->parent).extinfo.data));
+}
+
+static ssize_t rom_extinfo_version_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	const struct rom_extinfo ei = rom_extinfo_from_kobj(kobj);
+
+	if (!ei.version)
+		return 0;
+
+	return scnprintf(buf, PAGE_SIZE, "0x%04x\n", ei.version);
+}
+
+static ssize_t rom_extinfo_date_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	const struct rom_extinfo ei = rom_extinfo_from_kobj(kobj);
+
+	if (!ei.date.year && !ei.date.month && !ei.date.day)
+		return 0;
+
+	return scnprintf(buf, PAGE_SIZE, "%04d-%02d-%02d\n",
+		ei.date.year, ei.date.month, ei.date.day);
+}
+
+static ssize_t rom_extinfo_comment_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	const struct rom_extinfo ei = rom_extinfo_from_kobj(kobj);
+
+	if (ei.comment[0] == '\0')
+		return 0;
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n", ei.comment);
 }
 
 static ssize_t rom_file_name_show(struct kobject *kobj,
@@ -173,6 +242,25 @@ static struct attribute_group rom_version_attribute_group = {
 	.attrs = rom_version_attributes
 };
 
+DEFINE_ROM_FIELD_ATTR(extinfo, size);
+DEFINE_ROM_FIELD_ATTR(extinfo, data);
+DEFINE_ROM_FIELD_ATTR(extinfo, version);
+DEFINE_ROM_FIELD_ATTR(extinfo, date);
+DEFINE_ROM_FIELD_ATTR(extinfo, comment);
+
+static struct attribute *rom_extinfo_attributes[] = {
+	&rom_attribute_extinfo_size.attr,
+	&rom_attribute_extinfo_data.attr,
+	&rom_attribute_extinfo_version.attr,
+	&rom_attribute_extinfo_date.attr,
+	&rom_attribute_extinfo_comment.attr,
+	NULL
+};
+
+static struct attribute_group rom_extinfo_attribute_group = {
+	.attrs = rom_extinfo_attributes
+};
+
 DEFINE_ROM_FIELD_ATTR(file, name);
 DEFINE_ROM_FIELD_ATTR(file, size);
 DEFINE_ROM_FIELD_ATTR(file, data);
@@ -199,6 +287,18 @@ static int rom0_sysfs(struct kobject *rom0_kobj)
 	return sysfs_create_group(version_kobj, &rom_version_attribute_group);
 }
 
+static int __init rom_init_file_extinfo(struct kobject *index_kobj,
+	const struct rom_file file)
+{
+	struct kobject *extinfo_kobj;
+
+	extinfo_kobj = kobject_create_and_add("extinfo", index_kobj);
+	if (!extinfo_kobj)
+		return -ENOMEM;
+
+	return sysfs_create_group(extinfo_kobj, &rom_extinfo_attribute_group);
+}
+
 static int __init rom_init_file(struct kobject *file_kobj, size_t index,
 	const struct rom_file file)
 {
@@ -211,6 +311,10 @@ static int __init rom_init_file(struct kobject *file_kobj, size_t index,
 	index_kobj = kobject_create_and_add(index_string, file_kobj);
 	if (!index_kobj)
 		return -ENOMEM;
+
+	err = rom_init_file_extinfo(index_kobj, file);
+	if (err)
+		return err;
 
 	return sysfs_create_group(index_kobj, &rom_file_attribute_group);
 }
