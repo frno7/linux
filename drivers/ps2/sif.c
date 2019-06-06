@@ -356,6 +356,20 @@ static void cmd_irq_relay(const struct sif_cmd_header *header,
 	intc_sif_irq(packet->irq);
 }
 
+static void cmd_printk(const struct sif_cmd_header *header,
+	const void *data, void *arg)
+{
+	const char *msg = data;
+
+	if (msg[0] == KERN_SOH[0]) {
+		const char fmt[] = { msg[0], msg[1],
+			'i', 'o', 'p', ':', ' ', '%', 's', '\0' };
+
+		printk(fmt, &msg[2]);
+	} else
+		printk("iop: %s", msg);
+}
+
 static int iop_reset_arg(const char *arg)
 {
 	const size_t arglen = strlen(arg) + 1;
@@ -435,6 +449,7 @@ static int sif_request_cmds(void)
 	} cmds[] = {
 		{ SIF_CMD_WRITE_SREG, cmd_write_sreg, NULL },
 		{ SIF_CMD_IRQ_RELAY,  cmd_irq_relay,  NULL },
+		{ SIF_CMD_PRINTK,     cmd_printk,     NULL },
 
 		{ SIF_CMD_RPC_END,    cmd_rpc_end,    NULL },
 		{ SIF_CMD_RPC_BIND,   cmd_rpc_bind,   NULL },
