@@ -892,6 +892,30 @@ int iop_module_request(const char *name, int version, const char *arg)
 }
 EXPORT_SYMBOL_GPL(iop_module_request);
 
+/**
+ * cmd_printk - IOP module kernel log printk command
+ * @header: SIF command header
+ * @data: message to print
+ * @arg: optional argument to sif_request_cmd, set to %NULL
+ *
+ * The command allows IOP modules to print kernel messages, with kernel log
+ * levels. This greatly simplifies debugging of subsequent IOP modules. IOP
+ * messages are prefixed with "iop: " in the kernel log.
+ */
+static void cmd_printk(const struct sif_cmd_header *header,
+	const void *data, void *arg)
+{
+	const char *msg = data;
+
+	if (msg[0] == KERN_SOH[0]) {
+		const char fmt[] = { msg[0], msg[1],
+			'i', 'o', 'p', ':', ' ', '%', 's', '\0' };
+
+		printk(fmt, &msg[2]);
+	} else
+		printk("iop: %s", msg);
+}
+
 static int __init iop_module_init(void)
 {
 	int err;
@@ -902,6 +926,12 @@ static int __init iop_module_init(void)
 		return -ENOMEM;
 	}
 
+	err = sif_request_cmd(SIF_CMD_PRINTK, cmd_printk, NULL);
+	if (err < 0) {
+		pr_err("iop-module: Failed request printk cmd with %d\n", err);
+		goto err_printk;
+	}
+
 	err = sif_rpc_bind(&load_file_rpc_client, SIF_SID_LOAD_MODULE);
 	if (err < 0) {
 		pr_err("iop-module: Failed to bind load module with %d\n", err);
@@ -910,6 +940,7 @@ static int __init iop_module_init(void)
 
 	return 0;
 
+err_printk:
 err_bind:
 	root_device_unregister(iop_module_device);
 
