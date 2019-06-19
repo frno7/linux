@@ -13,7 +13,7 @@
 #define INTC_STAT	0x1000f000	/* Flags are cleared by writing 1 */
 #define INTC_MASK	0x1000f010	/* Bits are reversed by writing 1 */
 
-#define NR_IRQS		56
+#define NR_IRQS		128
 
 /*
  * The interrupt controller (INTC) arbitrates interrupts from peripheral
@@ -70,6 +70,64 @@
 #define IRQ_C0_INTC	50
 #define IRQ_C0_DMAC	51
 #define IRQ_C0_IRQ7	55
+
+/* Input/output processor (IOP) */
+#define IOP_IRQ_BASE	64
+#define IRQ_IOP_VBLANK	64
+#define IRQ_IOP_SBUS	65
+#define IRQ_IOP_CDVD	66
+#define IRQ_IOP_DMA	67
+#define IRQ_IOP_RTC0	68
+#define IRQ_IOP_RTC1	69
+#define IRQ_IOP_RTC2	70
+#define IRQ_IOP_SIO0	71
+#define IRQ_IOP_SIO1	72
+#define IRQ_IOP_SPU	73
+#define IRQ_IOP_PIO	74
+#define IRQ_IOP_EVBLANK	75
+#define IRQ_IOP_DVD	76
+#define IRQ_IOP_DEV9	77
+#define IRQ_IOP_RTC3	78
+#define IRQ_IOP_RTC4	79
+#define IRQ_IOP_RTC5	80
+#define IRQ_IOP_SIO2	81
+#define IRQ_IOP_HTR0	82
+#define IRQ_IOP_HTR1	83
+#define IRQ_IOP_HTR2	84
+#define IRQ_IOP_HTR3	85
+#define IRQ_IOP_USB	86
+#define IRQ_IOP_EXTR	87
+#define IRQ_IOP_ILINK	88
+#define IRQ_IOP_ILNKDMA	89
+
+#define IRQ_IOP_DMA_MDEC_IN	96	/* Ch 0 */
+#define IRQ_IOP_DMA_MDEC_OUT	97	/* Ch 1 */
+#define IRQ_IOP_DMA_SIF2	98	/* Ch 2 */
+#define IRQ_IOP_DMA_CDVD	99	/* Ch 3 */
+#define IRQ_IOP_DMA_SPU		100	/* Ch 4 */
+#define IRQ_IOP_DMA_PIO		101	/* Ch 5 */
+#define IRQ_IOP_DMA_GPU_OTC	102	/* Ch 6 */
+#define IRQ_IOP_DMA_BE		103	/* Bus error */
+#define IRQ_IOP_DMA_SPU2	104	/* Ch 7 */
+#define IRQ_IOP_DMA_DEV9	105	/* Ch 8 */
+#define IRQ_IOP_DMA_SIF0	106	/* Ch 9 */
+#define IRQ_IOP_DMA_SIF1	107	/* Ch 10 */
+#define IRQ_IOP_DMA_SIO2_IN	108	/* Ch 11 */
+#define IRQ_IOP_DMA_SIO2_OUT	109	/* Ch 12 */
+
+#define IRQ_IOP_SPD		110
+#define IRQ_IOP_SPD_ATA0	110
+#define IRQ_IOP_SPD_ATA1	111
+#define IRQ_IOP_SPD_TXDNV	112
+#define IRQ_IOP_SPD_RXDNV	113
+#define IRQ_IOP_SPD_TXEND	114
+#define IRQ_IOP_SPD_RXEND	115
+#define IRQ_IOP_SPD_EMAC3	116
+#define IRQ_IOP_SPD_DVR		119
+#define IRQ_IOP_SPD_UART	122
+
+#define IRQ_IOP_SW1	126	/* R3000A Software Interrupt 1 */
+#define IRQ_IOP_SW2	127	/* R3000A Software Interrupt 2 */
 
 int __init intc_irq_init(void);
 int __init dmac_irq_init(void);
