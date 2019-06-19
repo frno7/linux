@@ -42,6 +42,7 @@
 #include <asm/io.h>
 
 #include <asm/mach-ps2/dmac.h>
+#include <asm/mach-ps2/iop-error.h>
 #include <asm/mach-ps2/irq.h>
 #include <asm/mach-ps2/sif.h>
 
@@ -314,6 +315,44 @@ static void sif_disable_dma(void)
 
 	outl(DMAC_CHCR_STOP, DMAC_SIF1_CHCR);
 }
+
+/**
+ * errno_for_iop_error - kernel error number corresponding to a given IOP error
+ * @ioperr: IOP error number
+ *
+ * Return: approximative kernel error number
+ */
+int errno_for_iop_error(int ioperr)
+{
+	switch (ioperr) {
+#define IOP_ERROR_ERRNO(identifier, number, errno, description)		\
+	case -IOP_E##identifier: return -errno;
+	IOP_ERRORS(IOP_ERROR_ERRNO)
+	}
+
+	return -1000 < ioperr && ioperr < 0 ? -EINVAL : ioperr;
+}
+EXPORT_SYMBOL_GPL(errno_for_iop_error);
+
+/**
+ * iop_error_message - message corresponding to a given IOP error
+ * @ioperr: IOP error number
+ *
+ * Return: error message string
+ */
+const char *iop_error_message(int ioperr)
+{
+	switch (ioperr) {
+	case 0:              return "Success";
+	case 1:              return "Error";
+#define IOP_ERROR_MSG(identifier, number, errno, description)		\
+	case IOP_E##identifier: return description;
+	IOP_ERRORS(IOP_ERROR_MSG)
+	}
+
+	return "Unknown error";
+}
+EXPORT_SYMBOL_GPL(iop_error_message);
 
 /**
  * sif_init - initialise the SIF with a reset
