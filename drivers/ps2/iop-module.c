@@ -12,6 +12,10 @@
  * (ELF). All valid IOP modules have a special `.iopmod` section containing
  * the module name, version, etc.
  *
+ * IOP module link requests are only permitted if the major versions match
+ * and the module version is at least of the same minor as the requested
+ * version.
+ *
  * When the IOP is reset, a set of modules are automatically linked from
  * read-only memory (ROM). Non-ROM modules are handled as firmware by the
  * IOP module linker.
@@ -227,6 +231,34 @@ static unsigned int minor_version(unsigned int version)
 }
 
 /**
+ * version_compatible - is the version compatible with the requested version?
+ * @version: version to check
+ * @version_request: requested version
+ *
+ * Return: %true if the major versions match and the version to check is at
+ * 	least of the same minor as the requested version, otherwise %false
+ */
+static bool version_compatible(int version, int requested_version)
+{
+	return major_version(version) == major_version(requested_version) &&
+	       minor_version(version) >= minor_version(requested_version);
+}
+
+/**
+ * irx_version_compatible - is the module compatible with the requested version?
+ * @ehdr: ELF header of module to check
+ * @requested_version: request version
+ *
+ * Return: %true if the major versions match and the module version is at
+ * 	least of the same minor as the requested version, otherwise %false
+ */
+static bool irx_version_compatible(const struct elf32_hdr *ehdr,
+	int requested_version)
+{
+	return version_compatible(irx_iopmod(ehdr)->version, requested_version);
+}
+
+/**
  * irx_identify - does the buffer contain an IRX object?
  * @buffer: pointer to data to identify
  * @size: size in bytes of buffer
@@ -344,8 +376,20 @@ static int iop_module_request_firmware(
 
 	ehdr = (const struct elf32_hdr *)fw->data;
 
+	if (!irx_version_compatible(ehdr, version)) {
+		pr_err("iop-module: %s module version %u.%u is incompatible with requested version %u.%u\n",
+			filepath,
+			major_version(irx_iopmod(ehdr)->version),
+			minor_version(irx_iopmod(ehdr)->version),
+			major_version(version),
+			minor_version(version));
+		err = -ENOEXEC;
+		goto err_incompatible;
+	}
+
 	err = iop_module_link_buffer(fw->data, fw->size, arg);
 
+err_incompatible:
 err_identify:
 err_request:
 err_name:
