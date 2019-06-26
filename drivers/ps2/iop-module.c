@@ -69,6 +69,140 @@ static struct sif_rpc_client load_file_rpc_client;
 
 #define IOPMOD_MAX_PATH		252
 #define IOPMOD_MAX_ARG		252
+#define IOPMOD_MAX_LIBRARY_NAME	8
+
+#define IOPMOD_NO_ID		0xffffffff
+
+#define SHT_IOPMOD		(SHT_LOPROC + 0x80)
+
+/**
+ * struct irx_iopmod - special .iopmod section with module name, version, etc.
+ * @id_addr: address of a special identification structure, or %IOPMOD_NO_ID
+ * @entry_addr: module entry address to begin executing code
+ * @unknown: FIXME
+ * @text_size: size in bytes of text section
+ * @data_size: size in bytes of data section
+ * @bss_size: size in bytes of BSS section
+ * @version: module version in BCD
+ * @name: NUL-terminated name of module
+ */
+struct irx_iopmod {
+	u32 id_addr;
+	u32 entry_addr;
+	u32 unknown;
+	u32 text_size;
+	u32 data_size;
+	u32 bss_size;
+	u16 version;
+	char name[0];
+};
+
+/**
+ * elf_ent_for_offset - pointer given an ELF offset
+ * @offset: ELF offset
+ * @ehdr: ELF header of module
+ *
+ * Return: pointer for a given ELF offset
+ */
+static const void *elf_ent_for_offset(Elf32_Off offset,
+	const struct elf32_hdr *ehdr)
+{
+	return &((const u8 *)ehdr)[offset];
+}
+
+/**
+ * elf_first_section - first ELF section
+ * @ehdr: ELF header of module
+ *
+ * Return: pointer to the first ELF section, or %NULL if it does not exist
+ */
+static const struct elf32_shdr *elf_first_section(const struct elf32_hdr *ehdr)
+{
+	return ehdr->e_shnum ? elf_ent_for_offset(ehdr->e_shoff, ehdr) : NULL;
+}
+
+/**
+ * elf_next_section - next ELF section
+ * @shdr: header of current section
+ * @ehdr: ELF header of module
+ *
+ * Return: section following the current section, or %NULL
+ */
+static const struct elf32_shdr *elf_next_section(
+	const struct elf32_shdr *shdr, const struct elf32_hdr *ehdr)
+{
+	const struct elf32_shdr *next = &shdr[1];
+	const struct elf32_shdr *past = &elf_first_section(ehdr)[ehdr->e_shnum];
+
+	return next == past ? NULL: next;
+}
+
+/**
+ * elf_for_each_section - iterate over all ELF sections
+ * @shdr: &struct elf32_shdr loop cursor
+ * @ehdr: ELF header of module to iterate
+ */
+#define elf_for_each_section(shdr, ehdr)				\
+	for ((shdr) = elf_first_section((ehdr));			\
+	     (shdr);							\
+	     (shdr) = elf_next_section((shdr), (ehdr)))
+
+/**
+ * elf_first_section_with_type - first section with given type
+ * @type: type of section to search for
+ * @ehdr: ELF header of module to search
+ *
+ * Return: pointer to the first occurrence of the section, or %NULL if it does
+ * 	not exist
+ */
+static const struct elf32_shdr *elf_first_section_with_type(
+	Elf32_Word type, const struct elf32_hdr *ehdr)
+{
+	const struct elf32_shdr *shdr;
+
+	elf_for_each_section (shdr, ehdr)
+		if (shdr->sh_type == type)
+			return shdr;
+
+	return NULL;
+}
+
+/**
+ * elf_identify - does the buffer contain an ELF object?
+ * @buffer: pointer to data to identify
+ * @size: size in bytes of buffer
+ *
+ * Return: %true if the buffer looks like an ELF object, otherwise %false
+ */
+static bool elf_identify(const void *buffer, size_t size)
+{
+	const struct elf32_hdr *ehdr = buffer;
+
+	if (size < sizeof(*ehdr))
+		return false;
+
+	return ehdr->e_ident[EI_MAG0] == ELFMAG0 &&
+	       ehdr->e_ident[EI_MAG1] == ELFMAG1 &&
+	       ehdr->e_ident[EI_MAG2] == ELFMAG2 &&
+	       ehdr->e_ident[EI_MAG3] == ELFMAG3 &&
+	       ehdr->e_ident[EI_VERSION] == EV_CURRENT;
+}
+
+/**
+ * irx_iopmod - give .iopmod section pointer, if it exists
+ * @ehdr: ELF header of module
+ *
+ * The .iopmod section is specific to IOP (IRX) modules.
+ *
+ * Return: .iopmod section pointer, or %NULL
+ */
+static const struct irx_iopmod *irx_iopmod(const struct elf32_hdr *ehdr)
+{
+	const struct elf32_shdr *shdr =
+		elf_first_section_with_type(SHT_IOPMOD, ehdr);
+
+	return shdr ? elf_ent_for_offset(shdr->sh_offset, ehdr) : NULL;
+}
 
 /**
  * major_version - major version of version in BCD
@@ -90,6 +224,18 @@ static unsigned int major_version(unsigned int version)
 static unsigned int minor_version(unsigned int version)
 {
 	return bcd2bin(version & 0xff);
+}
+
+/**
+ * irx_identify - does the buffer contain an IRX object?
+ * @buffer: pointer to data to identify
+ * @size: size in bytes of buffer
+ *
+ * Return: %true if the buffer looks like an IRX object, otherwise %false
+ */
+static bool irx_identify(const void *buffer, size_t size)
+{
+	return elf_identify(buffer, size) && irx_iopmod(buffer) != NULL;
 }
 
 /**
@@ -189,10 +335,18 @@ static int iop_module_request_firmware(
 	if (err < 0)
 		goto err_request;
 
+	if (!irx_identify(fw->data, fw->size)) {
+		pr_err("iop-module: %s module is not an IRX object\n",
+			filepath);
+		err = -ENOEXEC;
+		goto err_identify;
+	}
+
 	ehdr = (const struct elf32_hdr *)fw->data;
 
 	err = iop_module_link_buffer(fw->data, fw->size, arg);
 
+err_identify:
 err_request:
 err_name:
 
