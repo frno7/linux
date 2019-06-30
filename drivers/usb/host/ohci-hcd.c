@@ -502,6 +502,7 @@ static int ohci_init (struct ohci_hcd *ohci)
 
 	if (ohci->hcca)
 		return 0;
+	BUG_ON(ohci->hcca_dma & 0xff);
 
 	timer_setup(&ohci->io_watchdog, io_watchdog_func, 0);
 	ohci->prev_frame_no = IO_WATCHDOG_OFF;

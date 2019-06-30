@@ -99,6 +99,7 @@ td_alloc (struct ohci_hcd *hc, gfp_t mem_flags)
 	else
 		td = dma_pool_zalloc(hc->td_cache, mem_flags, &dma);
 	if (td) {
+		BUG_ON(dma & 0x1f);
 		/* in case hc fetches it, make it look dead */
 		td->hwNextTD = cpu_to_hc32 (hc, dma);
 		td->td_dma = dma;
@@ -143,6 +144,7 @@ ed_alloc (struct ohci_hcd *hc, gfp_t mem_flags)
 	else
 		ed = dma_pool_zalloc(hc->ed_cache, mem_flags, &dma);
 	if (ed) {
+		BUG_ON(dma & 0xf);
 		INIT_LIST_HEAD (&ed->td_list);
 		ed->dma = dma;
 	}
