@@ -129,6 +129,15 @@ static bool short_loop_erratum(const size_t i,
 	if (!inst_branch_offset(&offset, inst[i]))
 		return false;
 
+#if 0
+	if (-10 <= offset && offset <= 0) {
+		if (inst_nop(i + 1, inst, inst_count))
+			printf("with NOP %d!\n", offset);
+		else
+			printf("not NOP %d!\n", offset);
+	}
+#endif
+
 	if (offset <= -6 || 0 <= offset)
 		return false;
 
