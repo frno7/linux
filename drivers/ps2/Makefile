@@ -13,3 +13,5 @@ obj-m				+= iop-registers.o
 obj-m				+= sif.o
 
 iop-module-objs			+= iop-module-request.o iop-module-patch.o
+
+obj-m				+= gamepad.o
