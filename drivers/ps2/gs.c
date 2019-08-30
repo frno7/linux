@@ -22,6 +22,36 @@
 static struct device *gs_dev;
 
 /**
+ * gs_region_pal - is the machine for a PAL video mode region?
+ *
+ * See also gs_region_ntsc(). The system region is determined by rom_version(),
+ * which is an approximation because the ROM region does not always correspdond
+ * to the video region.
+ *
+ * Return: %true if PAL video mode is appropriate for the region, else %false
+ */
+bool gs_region_pal(void)
+{
+	return rom_version().region == 'E';
+}
+EXPORT_SYMBOL_GPL(gs_region_pal);
+
+/**
+ * gs_region_ntsc - is the machine for an NTSC video mode region?
+ *
+ * See also gs_region_pal(). The system region is determined by rom_version(),
+ * which is an approximation because the ROM region does not always correspdond
+ * to the video region.
+ *
+ * Return: %true if NTSC video mode is appropriate for the region, else %false
+ */
+bool gs_region_ntsc(void)
+{
+	return !gs_region_pal();
+}
+EXPORT_SYMBOL_GPL(gs_region_ntsc);
+
+/**
  * gs_video_clock - video clock (VCK) frequency given SMODE1 bit fields
  * @t1248 - &gs_smode1.t1248 PLL output divider
  * @lc - &gs_smode1.lc PLL loop divider
