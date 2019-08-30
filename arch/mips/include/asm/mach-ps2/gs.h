@@ -34,6 +34,10 @@ struct gs_synch_gen {
 	u32 spml : 4;
 };
 
+bool gs_region_pal(void);
+
+bool gs_region_ntsc(void);
+
 u32 gs_video_clock(const u32 t1248, const u32 lc, const u32 rc);
 
 u32 gs_video_clock_for_smode1(const struct gs_smode1 smode1);
