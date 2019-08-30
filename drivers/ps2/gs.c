@@ -48,6 +48,100 @@ u32 gs_video_clock_for_smode1(const struct gs_smode1 smode1)
 }
 EXPORT_SYMBOL_GPL(gs_video_clock_for_smode1);
 
+/**
+ * gs_psm_ct16_block_count - number of blocks for 16-bit pixel storage
+ * @fbw: buffer width/64
+ * @fbh: buffer height
+ *
+ * Return: number of blocks for 16-bit pixel storage of given width and height
+ */
+u32 gs_psm_ct16_block_count(const u32 fbw, const u32 fbh)
+{
+	const u32 block_cols = fbw * GS_PSM_CT16_PAGE_COLS;
+	const u32 block_rows = (fbh + GS_PSM_CT16_BLOCK_HEIGHT - 1) /
+		GS_PSM_CT16_BLOCK_HEIGHT;
+
+	return block_cols * block_rows;
+}
+EXPORT_SYMBOL_GPL(gs_psm_ct16_block_count);
+
+/**
+ * gs_psm_ct32_block_count - number of blocks for 32-bit pixel storage
+ * @fbw: buffer width/64
+ * @fbh: buffer height
+ *
+ * Return: number of blocks for 32-bit pixel storage of given width and height
+ */
+u32 gs_psm_ct32_block_count(const u32 fbw, const u32 fbh)
+{
+	const u32 block_cols = fbw * GS_PSM_CT32_PAGE_COLS;
+	const u32 block_rows = (fbh + GS_PSM_CT32_BLOCK_HEIGHT - 1) /
+		GS_PSM_CT32_BLOCK_HEIGHT;
+
+	return block_cols * block_rows;
+}
+EXPORT_SYMBOL_GPL(gs_psm_ct32_block_count);
+
+/**
+ * gs_psm_ct16_block_address - 16-bit block address given a block index
+ * @fbw: buffer width/64
+ * @block_index: block index starting at the top left corner
+ *
+ * Return: block address for a given block index
+ */
+u32 gs_psm_ct16_block_address(const u32 fbw, const u32 block_index)
+{
+	static const u32 block[GS_PSM_CT16_PAGE_ROWS][GS_PSM_CT16_PAGE_COLS] = {
+		{  0,  2,  8, 10 },
+		{  1,  3,  9, 11 },
+		{  4,  6, 12, 14 },
+		{  5,  7, 13, 15 },
+		{ 16, 18, 24, 26 },
+		{ 17, 19, 25, 27 },
+		{ 20, 22, 28, 30 },
+		{ 21, 23, 29, 31 }
+	};
+
+	const u32 fw = GS_PSM_CT16_PAGE_COLS * fbw;
+	const u32 fc = block_index % fw;
+	const u32 fr = block_index / fw;
+	const u32 bc = fc % GS_PSM_CT16_PAGE_COLS;
+	const u32 br = fr % GS_PSM_CT16_PAGE_ROWS;
+	const u32 pc = fc / GS_PSM_CT16_PAGE_COLS;
+	const u32 pr = fr / GS_PSM_CT16_PAGE_ROWS;
+
+	return GS_BLOCKS_PER_PAGE * (fbw * pr + pc) + block[br][bc];
+}
+EXPORT_SYMBOL_GPL(gs_psm_ct16_block_address);
+
+/**
+ * gs_psm_ct32_block_address - 32-bit block address given a block index
+ * @fbw: buffer width/64
+ * @block_index: block index starting at the top left corner
+ *
+ * Return: block address for a given block index
+ */
+u32 gs_psm_ct32_block_address(const u32 fbw, const u32 block_index)
+{
+	static const u32 block[GS_PSM_CT32_PAGE_ROWS][GS_PSM_CT32_PAGE_COLS] = {
+		{  0,  1,  4,  5, 16, 17, 20, 21 },
+		{  2,  3,  6,  7, 18, 19, 22, 23 },
+		{  8,  9, 12, 13, 24, 25, 28, 29 },
+		{ 10, 11, 14, 15, 26, 27, 30, 31 }
+	};
+
+	const u32 fw = GS_PSM_CT32_PAGE_COLS * fbw;
+	const u32 fc = block_index % fw;
+	const u32 fr = block_index / fw;
+	const u32 bc = fc % GS_PSM_CT32_PAGE_COLS;
+	const u32 br = fr % GS_PSM_CT32_PAGE_ROWS;
+	const u32 pc = fc / GS_PSM_CT32_PAGE_COLS;
+	const u32 pr = fr / GS_PSM_CT32_PAGE_ROWS;
+
+	return GS_BLOCKS_PER_PAGE * (fbw * pr + pc) + block[br][bc];
+}
+EXPORT_SYMBOL_GPL(gs_psm_ct32_block_address);
+
 static u32 div_round_ps(u32 a, u32 b)
 {
 	return DIV_ROUND_CLOSEST_ULL(a * 1000000000000ll, b);

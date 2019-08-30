@@ -38,6 +38,14 @@ u32 gs_video_clock(const u32 t1248, const u32 lc, const u32 rc);
 
 u32 gs_video_clock_for_smode1(const struct gs_smode1 smode1);
 
+u32 gs_psm_ct16_block_count(const u32 fbw, const u32 fbh);
+
+u32 gs_psm_ct32_block_count(const u32 fbw, const u32 fbh);
+
+u32 gs_psm_ct32_block_address(const u32 fbw, const u32 block_index);
+
+u32 gs_psm_ct16_block_address(const u32 fbw, const u32 block_index);
+
 struct gs_synch_gen gs_synch_gen_for_vck(const u32 vck);
 
 u32 gs_rfsh_from_synch_gen(const struct gs_synch_gen sg);
