@@ -46,6 +46,28 @@ u32 gs_psm_ct32_block_address(const u32 fbw, const u32 block_index);
 
 u32 gs_psm_ct16_block_address(const u32 fbw, const u32 block_index);
 
+/**
+ * gs_fbcs_to_pcs - frame buffer coordinate to primitive coordinate
+ * @c: frame buffer coordinate
+ *
+ * Return: primitive coordinate
+ */
+static inline int gs_fbcs_to_pcs(const int c)
+{
+	return c * 16;	/* The 4 least significant bits are fractional. */
+}
+
+/**
+ * gs_pxcs_to_tcs - pixel coordinate to texel coordinate
+ * @c: pixel coordinate
+ *
+ * Return: texel coordinate
+ */
+static inline int gs_pxcs_to_tcs(const int c)
+{
+	return c * 16 + 8;  /* The 4 least significant bits are fractional. */
+}
+
 struct gs_synch_gen gs_synch_gen_for_vck(const u32 vck);
 
 u32 gs_rfsh_from_synch_gen(const struct gs_synch_gen sg);
