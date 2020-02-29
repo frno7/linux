@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: GPL-2.0-only
+config DRM_GS
+	tristate "Graphics Synthesizer DRM for the PlayStation 2"
+	depends on DRM && SONY_PS2
+        select FW_LOADER
+	select DRM_KMS_HELPER
+	select DRM_TTM
+	select PS2_GS
+	select FB_TILEBLITTING
+	default y
+	help
+	  Direct Rendering Manager driver for the PlayStation 2 Graphics
+	  Synthesizer.

@@ -239,7 +239,7 @@ EXPORT_SYMBOL(drm_simple_display_pipe_attach_bridge);
  * @funcs: callbacks for the display pipe (optional)
  * @formats: array of supported formats (DRM_FORMAT\_\*)
  * @format_count: number of elements in @formats
- * @format_modifiers: array of formats modifiers
+ * @format_modifiers: array of formats modifiers (optional)
  * @connector: connector to attach and register (optional)
  *
  * Sets up a display pipeline which consist of a really simple
