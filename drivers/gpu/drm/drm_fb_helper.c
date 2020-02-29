@@ -1495,7 +1495,7 @@ EXPORT_SYMBOL(drm_fb_helper_pan_display);
  * Allocates the backing storage and sets up the fbdev info structure through
  * the ->fb_probe callback.
  */
-static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper,
+int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper,
 					 int preferred_bpp)
 {
 	struct drm_client_dev *client = &fb_helper->client;
@@ -1663,6 +1663,7 @@ static int drm_fb_helper_single_fb_probe(struct drm_fb_helper *fb_helper,
 	strcpy(fb_helper->fb->comm, "[fbcon]");
 	return 0;
 }
+EXPORT_SYMBOL(drm_fb_helper_single_fb_probe);
 
 static void drm_fb_helper_fill_fix(struct fb_info *info, uint32_t pitch,
 				   uint32_t depth)
@@ -1741,7 +1742,7 @@ EXPORT_SYMBOL(drm_fb_helper_fill_info);
  * So, any setup that touches those fields needs to be done here instead of in
  * drm_setup_crtcs().
  */
-static void drm_setup_crtcs_fb(struct drm_fb_helper *fb_helper)
+void drm_setup_crtcs_fb(struct drm_fb_helper *fb_helper)
 {
 	struct drm_client_dev *client = &fb_helper->client;
 	struct drm_connector_list_iter conn_iter;
@@ -1799,6 +1800,7 @@ static void drm_setup_crtcs_fb(struct drm_fb_helper *fb_helper)
 		info->fbcon_rotate_hint = FB_ROTATE_UR;
 	}
 }
+EXPORT_SYMBOL(drm_setup_crtcs_fb);
 
 /* Note: Drops fb_helper->lock before returning. */
 static int

@@ -161,7 +161,7 @@ done:
  * @formats: array of supported formats (DRM_FORMAT\_\*)
  * @format_count: number of elements in @formats
  * @format_modifiers: array of struct drm_format modifiers terminated by
- *                    DRM_FORMAT_MOD_INVALID
+ *                    DRM_FORMAT_MOD_INVALID (optional)
  * @type: type of plane (overlay, primary, cursor)
  * @name: printf style format string for the plane name, or NULL for default name
  *
@@ -254,8 +254,9 @@ int drm_universal_plane_init(struct drm_device *dev, struct drm_plane *plane,
 
 	memcpy(plane->format_types, formats, format_count * sizeof(uint32_t));
 	plane->format_count = format_count;
-	memcpy(plane->modifiers, format_modifiers,
-	       format_modifier_count * sizeof(format_modifiers[0]));
+	if (format_modifier_count)
+		memcpy(plane->modifiers, format_modifiers,
+		       format_modifier_count * sizeof(format_modifiers[0]));
 	plane->possible_crtcs = possible_crtcs;
 	plane->type = type;
 
