@@ -78,6 +78,11 @@ static struct platform_device gs_device = {
 	.resource	= gs_resources,
 };
 
+static struct platform_device gs_drm_device = {
+	.name           = "gs-drm",
+	.id		= -1,
+};
+
 static struct platform_device rtc_device = {
 	.name		= "rtc-ps2",
 	.id		= -1,
@@ -87,6 +92,7 @@ static struct platform_device *ps2_platform_devices[] __initdata = {
 	&iop_device,
 	&ohci_device,
 	&gs_device,
+	&gs_drm_device,	/* FIXME */
 	&rtc_device,
 };
 
