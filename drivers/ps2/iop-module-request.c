@@ -62,6 +62,7 @@
 #include <asm/mach-ps2/iop-heap.h>
 #include <asm/mach-ps2/iop-memory.h>
 #include <asm/mach-ps2/iop-module.h>
+#include <asm/mach-ps2/iop-module-patch.h>
 #include <asm/mach-ps2/rom.h>
 #include <asm/mach-ps2/sif.h>
 
@@ -919,6 +920,10 @@ static void cmd_printk(const struct sif_cmd_header *header,
 static int __init iop_module_init(void)
 {
 	int err;
+
+	err = iop_module_patch();
+	if (err)
+		pr_warn("sif: Failed to patch IOP with %d\n", err);
 
 	iop_module_device = root_device_register("iop-module");
 	if (!iop_module_device) {
