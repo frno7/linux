@@ -10,3 +10,5 @@ obj-m				+= iop-memory.o
 obj-m				+= iop-module.o
 obj-m				+= iop-registers.o
 obj-m				+= sif.o
+
+iop-module-objs			+= iop-module-request.o iop-module-patch.o
