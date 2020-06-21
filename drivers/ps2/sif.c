@@ -46,7 +46,7 @@
 #include <asm/mach-ps2/irq.h>
 #include <asm/mach-ps2/sif.h>
 
-#define IOP_RESET_ARGS "rom0:UDNL rom0:OSDCNF"
+#define IOP_RESET_ARGS ""
 
 #define SIF0_BUFFER_SIZE	PAGE_SIZE
 #define SIF1_BUFFER_SIZE	PAGE_SIZE
