@@ -90,6 +90,7 @@
 #include <asm/fpu_emulator.h>
 #include <asm/inst.h>
 #include <asm/mmu_context.h>
+#include <asm/traps.h>
 #include <linux/uaccess.h>
 
 #define STR(x)	__STR(x)
@@ -934,7 +935,45 @@ static void emulate_load_store_insn(struct pt_regs *regs,
 		 * interest.
 		 */
 	case spec3_op:
-		if (insn.dsp_format.func == lx_op) {
+		if (IS_ENABLED(CONFIG_CPU_R5900)) {
+			/*
+			 * On the R5900, a valid RDHWR instruction
+			 *
+			 *     +--------+-------+----+----+-------+--------+
+			 *     | 011111 | 00000 | rt | rd | 00000 | 111011 |
+			 *     +--------+-------+----+----+-------+--------+
+			 *          6       5      5    5     5        6
+			 *
+			 * having rd $29 (MIPS_HWR_ULR) is interpreted as
+			 * the R5900 specific SQ instruction
+			 *
+			 *     +--------+-------+----+---------------------+
+			 *     | 011111 |  base | rt |        offset       |
+			 *     +--------+-------+----+---------------------+
+			 *          6       5      5            16
+			 *
+			 * being (where rd usually is $3)
+			 *
+			 *     sq v1,-6085(zero)
+			 *
+			 * that asserts an address exception since -6085(zero)
+			 * always resolves to 0xffffe83b in 32-bit KSEG2.
+			 *
+			 * Other legacy values of rd, such as MIPS_HWR_CPUNUM,
+			 * are ignored.
+			 */
+			if (insn.r_format.func == rdhwr_op &&
+			    insn.r_format.rd == MIPS_HWR_ULR &&
+			    insn.r_format.rs == 0 &&
+			    insn.r_format.re == 0) {
+				if (compute_return_epc(regs) < 0 ||
+				    simulate_rdhwr(regs, insn.r_format.rd,
+						   insn.r_format.rt) < 0)
+					goto sigill;
+				return;
+			}
+			goto sigbus;
+		} else if (insn.dsp_format.func == lx_op) {
 			switch (insn.dsp_format.op) {
 			case lwx_op:
 				if (!access_ok(addr, 4))
