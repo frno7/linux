@@ -625,7 +625,7 @@ static int simulate_llsc(struct pt_regs *regs, unsigned int opcode)
  * Simulate trapping 'rdhwr' instructions to provide user accessible
  * registers not implemented in hardware.
  */
-static int simulate_rdhwr(struct pt_regs *regs, int rd, int rt)
+int simulate_rdhwr(struct pt_regs *regs, int rd, int rt)
 {
 	struct thread_info *ti = task_thread_info(current);
 
