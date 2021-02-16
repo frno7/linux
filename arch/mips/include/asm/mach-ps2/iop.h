@@ -12,6 +12,7 @@
 #define IOP_RAM_SIZE	0x200000
 
 #define IOP_OHCI_BASE	0x1f801600
+#define IOP_PATA_BASE	0x14000040
 
 /**
  * iop_addr_t - I/O processor (IOP) bus address

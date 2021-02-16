@@ -1047,6 +1047,14 @@ config PATA_PLATFORM
 
 	  If unsure, say N.
 
+config PATA_PS2
+	tristate "PlayStation 2 PATA support"
+	depends on SONY_PS2
+	help
+	  This option enables support for PATA interface harddisks, found
+	  on PlayStation 2 models SCPH 10000-500xx having an appropriate
+	  network adapter accessory.
+
 config PATA_OF_PLATFORM
 	tristate "OpenFirmware platform device PATA support"
 	depends on PATA_PLATFORM && OF

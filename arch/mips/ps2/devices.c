@@ -52,6 +52,27 @@ static struct platform_device ohci_device = {
 	.resource	= ohci_resources,
 };
 
+static struct resource pata_resources[] = {	/* FIXME: Subresource to IOP */
+	[0] = {
+		.name	= "PATA",
+		.start	= IOP_PATA_BASE,
+		.end	= IOP_PATA_BASE + 0x1f,
+		.flags	= IORESOURCE_MEM,
+	},
+	[1] = {
+		.start	= IRQ_IOP_SPD_ATA0,
+		.end	= IRQ_IOP_SPD_ATA0,
+		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_SHAREABLE,
+	},
+};
+
+static struct platform_device pata_device = {
+	.name		= "pata-ps2",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(pata_resources),
+	.resource	= pata_resources,
+};
+
 static struct resource gs_resources[] = {
 	[0] = {
 		.name	= "Graphics Synthesizer",
@@ -91,6 +112,7 @@ static struct platform_device rtc_device = {
 static struct platform_device *ps2_platform_devices[] __initdata = {
 	&iop_device,
 	&ohci_device,
+	&pata_device,
 	&gs_device,
 	&gs_drm_device,	/* FIXME */
 	&rtc_device,
