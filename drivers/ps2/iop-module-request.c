@@ -80,6 +80,12 @@ enum iop_module_rpc_ops {
 	rpo_search_mod_by_address = 10
 };
 
+enum iop_value_type {
+	iop_value_u8  = 0,
+	iop_value_u16 = 1,
+	iop_value_u32 = 2
+};
+
 /** The @iop_module_lock must be taken for all IOP module linking operations */
 static DEFINE_MUTEX(iop_module_lock);
 
@@ -892,6 +898,99 @@ int iop_module_request(const char *name, int version, const char *arg)
 	return err;
 }
 EXPORT_SYMBOL_GPL(iop_module_request);
+
+static int iop_rpc_read(u32 * const data,
+	const iop_addr_t addr, const enum iop_value_type type)
+{
+	const struct {
+		u32 addr;
+		u32 type;
+	} arg = {
+		.addr = addr,
+		.type = type
+	};
+	int err;
+
+	err = sif_rpc(&load_file_rpc_client, rpo_get_addr,
+		&arg, sizeof(arg), data, sizeof(*data));
+
+	return err;
+}
+
+static int iop_rpc_write(const u32 data,
+	const iop_addr_t addr, const enum iop_value_type type)
+{
+	const struct {
+		u32 addr;
+		u32 type;
+		u32 data;
+	} arg = {
+		.addr = addr,
+		.type = type,
+		.data = data
+	};
+	s32 status;
+	int err;
+
+	err = sif_rpc(&load_file_rpc_client, rpo_get_addr,
+		&arg, sizeof(arg), &status, sizeof(status));
+
+	return err < 0 ? err : status;
+}
+
+int iop_readb(u8 * const data, const iop_addr_t addr)
+{
+	u32 raw;
+	const int err = iop_rpc_read(&raw, addr, iop_value_u8);
+
+	if (err >= 0)
+		*data = raw & 0xff;
+
+	return err;
+}
+EXPORT_SYMBOL_GPL(iop_readb);
+
+int iop_readw(u16 * const data, const iop_addr_t addr)
+{
+	u32 raw;
+	const int err = iop_rpc_read(&raw, addr, iop_value_u16);
+
+	if (err >= 0)
+		*data = raw & 0xffff;
+
+	return err;
+}
+EXPORT_SYMBOL_GPL(iop_readw);
+
+int iop_readl(u32 * const data, const iop_addr_t addr)
+{
+	u32 raw;
+	const int err = iop_rpc_read(&raw, addr, iop_value_u32);
+
+	if (err >= 0)
+		*data = raw;
+
+	return err;
+}
+EXPORT_SYMBOL_GPL(iop_readl);
+
+int iop_writeb(const u8 data, const iop_addr_t addr)
+{
+	return iop_rpc_write(data, addr, iop_value_u8);
+}
+EXPORT_SYMBOL_GPL(iop_writeb);
+
+int iop_writew(const u16 data, const iop_addr_t addr)
+{
+	return iop_rpc_write(data, addr, iop_value_u16);
+}
+EXPORT_SYMBOL_GPL(iop_writew);
+
+int iop_writel(const u32 data, const iop_addr_t addr)
+{
+	return iop_rpc_write(data, addr, iop_value_u32);
+}
+EXPORT_SYMBOL_GPL(iop_writel);
 
 /**
  * cmd_printk - IOP module kernel log printk command

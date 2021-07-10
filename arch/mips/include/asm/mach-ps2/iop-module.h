@@ -46,4 +46,12 @@ static inline const char *iop_module_name(const struct iop_module_info *module)
 
 int iop_module_request(const char *name, int version, const char *arg);
 
+int iop_readb(u8 * const data, const iop_addr_t addr);
+int iop_readw(u16 * const data, const iop_addr_t addr);
+int iop_readl(u32 * const data, const iop_addr_t addr);
+
+int iop_writeb(const u8 data, const iop_addr_t addr);
+int iop_writew(const u16 data, const iop_addr_t addr);
+int iop_writel(const u32 data, const iop_addr_t addr);
+
 #endif /* __ASM_MACH_PS2_IOP_MODULE_H */
