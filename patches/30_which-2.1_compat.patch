@@ -1,0 +1,38 @@
+diff -Naur which-2.1_orig/bash.c which-2.1_edited/bash.c
+--- which-2.1_orig/bash.c	1999-04-10 04:10:12.000000000 +0400
++++ which-2.1_edited/bash.c	2018-12-27 14:57:12.307809500 +0300
+@@ -23,7 +23,6 @@
+ #include <unistd.h>
+ #include <stdlib.h>
+ #include <string.h>
+-#include <libiberty.h>
+ #include "bash.h"
+ 
+ extern int skip_tilde, skip_dot;
+diff -Naur which-2.1_orig/Makefile which-2.1_edited/Makefile
+--- which-2.1_orig/Makefile	1999-04-10 04:10:12.000000000 +0400
++++ which-2.1_edited/Makefile	2018-12-27 14:56:33.309138960 +0300
+@@ -1,9 +1,9 @@
+-CC=gcc
++CC=mipsr5900el-unknown-linux-gnu-gcc
+ CFLAGS=-Wall -g
+-prefix=/usr
++prefix=/usr/local/ps2/mipsr5900el-unknown-linux-gnu
+ 
+ which: which.o bash.o
+-	$(CC) -o which which.o bash.o /usr/lib/libreadline.a /usr/lib/libiberty.a
++	$(CC) -o which which.o bash.o /usr/local/ps2/mipsr5900el-unknown-linux-gnu/lib/libreadline.a
+ 
+ install:
+ 	install -d -o root -m 755 -g bin       $(prefix)/bin
+diff -Naur which-2.1_orig/which.c which-2.1_edited/which.c
+--- which-2.1_orig/which.c	1999-04-10 04:10:11.000000000 +0400
++++ which-2.1_edited/which.c	2018-12-27 14:57:03.126887060 +0300
+@@ -22,7 +22,6 @@
+ #include <unistd.h>
+ #include <getopt.h>
+ #include <string.h>
+-#include <libiberty.h>
+ #include <readline/tilde.h>
+ #include "bash.h"
+ 
