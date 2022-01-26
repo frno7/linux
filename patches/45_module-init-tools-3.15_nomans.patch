@@ -1,0 +1,12 @@
+diff -Naur module-init-tools-3.15_orig/Makefile.in module-init-tools-3.15_edited/Makefile.in
+--- module-init-tools-3.15_orig/Makefile.in	2011-06-02 21:43:15.000000000 +0400
++++ module-init-tools-3.15_edited/Makefile.in	2018-12-28 12:44:34.426370506 +0300
+@@ -866,7 +866,7 @@
+ 	       exit 1; } >&2
+ check-am: all-am
+ check: check-am
+-all-am: Makefile $(LIBRARIES) $(PROGRAMS) $(MANS)
++all-am: Makefile $(LIBRARIES) $(PROGRAMS) #$(MANS)
+ installdirs:
+ 	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(man5dir)" "$(DESTDIR)$(man8dir)"; do \
+ 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
