@@ -1,0 +1,20 @@
+diff -Naur zlib-1.2.10_orig/configure zlib-1.2.10_edited/configure
+--- zlib-1.2.10_orig/configure	2016-12-31 21:06:40.000000000 +0300
++++ zlib-1.2.10_edited/configure	2018-12-28 15:37:50.117794304 +0300
+@@ -715,16 +715,6 @@
+ }
+ EOF
+ 
+-    if try $CC -c $CFLAGS $test.c; then
+-      echo "Checking for return value of vsprintf()... Yes." | tee -a configure.log
+-    else
+-      CFLAGS="$CFLAGS -DHAS_vsprintf_void"
+-      SFLAGS="$SFLAGS -DHAS_vsprintf_void"
+-      echo "Checking for return value of vsprintf()... No." | tee -a configure.log
+-      echo "  WARNING: apparently vsprintf() does not return a value. zlib" | tee -a configure.log
+-      echo "  can build but will be open to possible string-format security" | tee -a configure.log
+-      echo "  vulnerabilities." | tee -a configure.log
+-    fi
+   fi
+ else
+   echo "Checking whether to use vs[n]printf() or s[n]printf()... using s[n]printf()." | tee -a configure.log
