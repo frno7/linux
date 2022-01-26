@@ -1,0 +1,13 @@
+--- inetutils-1.9.4_orig/ifconfig/system/linux.c	2015-05-12 15:09:01.000000000 +0300
++++ inetutils-1.9.4_edited/ifconfig/system/linux.c	2018-12-28 09:25:02.840552547 +0300
+@@ -50,6 +50,10 @@
+ #include "../ifconfig.h"
+ 
+ 
++#ifndef PATH_PROCNET_DEV
++  #define PATH_PROCNET_DEV "/proc/net/dev"
++#endif
++
+ /* ARPHRD stuff.  */
+ 
+ static void
