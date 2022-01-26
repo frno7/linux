@@ -1,0 +1,40 @@
+--- openssh-7.6p1_orig/sshd_config	2017-10-02 22:34:26.000000000 +0300
++++ openssh-7.6p1_edited/sshd_config	2018-12-29 16:26:31.868928978 +0300
+@@ -15,22 +15,23 @@
+ #ListenAddress 0.0.0.0
+ #ListenAddress ::
+ 
+-#HostKey /etc/ssh/ssh_host_rsa_key
+-#HostKey /etc/ssh/ssh_host_dsa_key
+-#HostKey /etc/ssh/ssh_host_ecdsa_key
+-#HostKey /etc/ssh/ssh_host_ed25519_key
++HostKey /etc/ssh/ssh_host_rsa_key
++HostKey /etc/ssh/ssh_host_dsa_key
++HostKey /etc/ssh/ssh_host_ecdsa_key
++HostKey /etc/ssh/ssh_host_ed25519_key
+ 
+ # Ciphers and keying
+ #RekeyLimit default none
+ 
+ # Logging
+ #SyslogFacility AUTH
++SyslogFacility AUTHPRIV
+ #LogLevel INFO
+ 
+ # Authentication:
+ 
+ #LoginGraceTime 2m
+-#PermitRootLogin prohibit-password
++PermitRootLogin yes
+ #StrictModes yes
+ #MaxAuthTries 6
+ #MaxSessions 10
+@@ -59,7 +60,7 @@
+ #PermitEmptyPasswords no
+ 
+ # Change to no to disable s/key passwords
+-#ChallengeResponseAuthentication yes
++ChallengeResponseAuthentication yes
+ 
+ # Kerberos options
+ #KerberosAuthentication no
