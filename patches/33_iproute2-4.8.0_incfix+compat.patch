@@ -1,0 +1,183 @@
+diff -Naur iproute2-4.8.0_orig/include/namespace.h iproute2-4.8.0_edited/include/namespace.h
+--- iproute2-4.8.0_orig/include/namespace.h	2016-10-10 05:00:11.000000000 +0300
++++ iproute2-4.8.0_edited/include/namespace.h	2018-12-27 16:47:59.153752278 +0300
+@@ -1,7 +1,7 @@
+ #ifndef __NAMESPACE_H__
+ #define __NAMESPACE_H__ 1
+ 
+-#include <sched.h>
++//#include <sched.h>
+ #include <sys/mount.h>
+ #include <unistd.h>
+ #include <sys/syscall.h>
+@@ -14,6 +14,10 @@
+ #define CLONE_NEWNET 0x40000000	/* New network namespace (lo, device, names sockets, etc) */
+ #endif
+ 
++#ifndef CLONE_NEWNS
++#define CLONE_NEWNS   0x00020000 /* Set to create new namespace.  */
++#endif
++
+ #ifndef MNT_DETACH
+ #define MNT_DETACH	0x00000002	/* Just detach from the tree */
+ #endif /* MNT_DETACH */
+diff -Naur iproute2-4.8.0_orig/include/utils.h iproute2-4.8.0_edited/include/utils.h
+--- iproute2-4.8.0_orig/include/utils.h	2016-10-10 05:00:11.000000000 +0300
++++ iproute2-4.8.0_edited/include/utils.h	2018-12-27 16:49:08.607167064 +0300
+@@ -209,7 +209,9 @@
+ 
+ #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+ 
++#ifndef BUILD_BUG_ON
+ #define BUILD_BUG_ON(cond) ((void)sizeof(char[1 - 2 * !!(cond)]))
++#endif
+ 
+ #ifndef offsetof
+ # define offsetof(type, member) ((size_t) &((type *)0)->member)
+diff -Naur iproute2-4.8.0_orig/include/xtables.h iproute2-4.8.0_edited/include/xtables.h
+--- iproute2-4.8.0_orig/include/xtables.h	2016-10-10 05:00:11.000000000 +0300
++++ iproute2-4.8.0_edited/include/xtables.h	2018-12-27 16:48:23.351548387 +0300
+@@ -31,7 +31,7 @@
+ #define IPPROTO_UDPLITE	136
+ #endif
+ 
+-#include <xtables-version.h>
++//#include <xtables-version.h>
+ 
+ struct in_addr;
+ 
+diff -Naur iproute2-4.8.0_orig/ip/ipnetns.c iproute2-4.8.0_edited/ip/ipnetns.c
+--- iproute2-4.8.0_orig/ip/ipnetns.c	2016-10-10 05:00:11.000000000 +0300
++++ iproute2-4.8.0_edited/ip/ipnetns.c	2018-12-27 16:45:10.969169400 +0300
+@@ -7,7 +7,7 @@
+ #include <sys/syscall.h>
+ #include <stdio.h>
+ #include <string.h>
+-#include <sched.h>
++//#include <sched.h>
+ #include <fcntl.h>
+ #include <dirent.h>
+ #include <errno.h>
+diff -Naur iproute2-4.8.0_orig/lib/utils.c iproute2-4.8.0_edited/lib/utils.c
+--- iproute2-4.8.0_orig/lib/utils.c	2016-10-10 05:00:11.000000000 +0300
++++ iproute2-4.8.0_edited/lib/utils.c	2018-12-27 16:46:54.107300359 +0300
+@@ -35,6 +35,10 @@
+ #include "utils.h"
+ #include "namespace.h"
+ 
++#ifndef ULLONG_MAX
++#define ULLONG_MAX 18446744073709551615ULL
++#endif
++
+ int timestamp_short = 0;
+ 
+ int get_hex(char c)
+diff -Naur iproute2-4.8.0_orig/Makefile iproute2-4.8.0_edited/Makefile
+--- iproute2-4.8.0_orig/Makefile	2016-10-10 05:00:11.000000000 +0300
++++ iproute2-4.8.0_edited/Makefile	2018-12-27 16:51:18.258074626 +0300
+@@ -2,10 +2,10 @@
+ MAKEFLAGS += --no-print-directory
+ endif
+ 
+-PREFIX?=/usr
++PREFIX?=/usr/local/ps2/mipsr5900el-unknown-linux-gnu
+ LIBDIR?=$(PREFIX)/lib
+-SBINDIR?=/sbin
+-CONFDIR?=/etc/iproute2
++SBINDIR?=/usr/local/ps2/mipsr5900el-unknown-linux-gnu/sbin
++CONFDIR?=/usr/local/ps2/mipsr5900el-unknown-linux-gnu/etc/iproute2
+ DATADIR?=$(PREFIX)/share
+ DOCDIR?=$(DATADIR)/doc/iproute2
+ MANDIR?=$(DATADIR)/man
+@@ -34,8 +34,8 @@
+ #options for mpls
+ ADDLIB+=mpls_ntop.o mpls_pton.o
+ 
+-CC := gcc
+-HOSTCC ?= $(CC)
++CC := mipsr5900el-unknown-linux-gnu-gcc
++HOSTCC ?= mipsr5900el-unknown-linux-gnu-gcc
+ DEFINES += -D_GNU_SOURCE
+ # Turn on transparent support for LFS
+ DEFINES += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE
+diff -Naur iproute2-4.8.0_orig/misc/lnstat.h iproute2-4.8.0_edited/misc/lnstat.h
+--- iproute2-4.8.0_orig/misc/lnstat.h	2016-10-10 05:00:11.000000000 +0300
++++ iproute2-4.8.0_edited/misc/lnstat.h	2018-12-27 16:46:20.843580639 +0300
+@@ -2,6 +2,7 @@
+ #define _LNSTAT_H
+ 
+ #include <limits.h>
++#include <linux/limits.h>
+ #include <sys/select.h>
+ 
+ #define LNSTAT_VERSION "0.02 041002"
+diff -Naur iproute2-4.8.0_orig/netem/Makefile iproute2-4.8.0_edited/netem/Makefile
+--- iproute2-4.8.0_orig/netem/Makefile	2016-10-10 05:00:11.000000000 +0300
++++ iproute2-4.8.0_edited/netem/Makefile	2018-12-27 16:53:59.308717615 +0300
+@@ -8,7 +8,7 @@
+ all: $(DISTGEN) $(DISTDATA)
+ 
+ $(DISTGEN):
+-	$(HOSTCC) $(CCOPTS) -I../include -o $@ $@.c -lm
++	gcc $(CCOPTS) -I../include -o $@ $@.c -lm
+ 
+ %.dist: %
+ 	./$* > $@
+diff -Naur iproute2-4.8.0_orig/tc/tc_core.c iproute2-4.8.0_edited/tc/tc_core.c
+--- iproute2-4.8.0_orig/tc/tc_core.c	2016-10-10 05:00:11.000000000 +0300
++++ iproute2-4.8.0_edited/tc/tc_core.c	2018-12-27 16:45:52.585818739 +0300
+@@ -12,6 +12,7 @@
+ 
+ #include <stdio.h>
+ #include <stdlib.h>
++#include <stdint.h>
+ #include <unistd.h>
+ #include <syslog.h>
+ #include <fcntl.h>
+diff -Naur iproute2-4.8.0_orig/tc/tc_bpf.c iproute2-4.8.0_edited/tc/tc_bpf.c
+--- iproute2-4.8.0_orig/tc/tc_bpf.c	2016-10-10 05:00:11.000000000 +0300
++++ iproute2-4.8.0_edited/tc/tc_bpf.c	2018-12-27 16:45:52.585818739 +0300
+@@ -31,7 +31,7 @@
+ #include <sys/stat.h>
+ #include <sys/un.h>
+ #include <sys/vfs.h>
+-#include <sys/mount.h>
++#include <linux/fs.h>
+ #include <sys/syscall.h>
+ #include <sys/sendfile.h>
+ #include <sys/resource.h>
+diff -Naur iproute2-4.8.0_orig/Config iproute2-4.8.0_edited/Config
+--- iproute2-4.8.0_orig/Config	1970-01-01 03:00:00.000000000 +0300
++++ iproute2-4.8.0_edited/Config	2018-12-27 16:56:13.363588068 +0300
+@@ -0,0 +1,31 @@
++# Generated config based on --prefix=/usr/local/ps3/mipsr5900el-unknown-linux-uclibc
++# user can control verbosity similar to kernel builds (e.g., V=1)
++ifeq ("$(origin V)", "command line")
++  VERBOSE = $(V)
++endif
++ifndef VERBOSE
++  VERBOSE = 0
++endif
++ifeq ($(VERBOSE),1)
++  Q =
++else
++  Q = @
++endif
++
++ifeq ($(VERBOSE), 0)
++    QUIET_CC       = @echo '    CC       '$@;
++    QUIET_AR       = @echo '    AR       '$@;
++    QUIET_LINK     = @echo '    LINK     '$@;
++    QUIET_YACC     = @echo '    YACC     '$@;
++    QUIET_LEX      = @echo '    LEX      '$@;
++endif
++PKG_CONFIG:=mipsr5900el-unknown-linux-gnu-pkg-config
++AR:=mipsr5900el-unknown-linux-gnu-ar
++CC:=mipsr5900el-unknown-linux-gnu-gcc
++TC_CONFIG_IPSET:=y
++IPT_LIB_DIR:=/lib/xtables
++IP_CONFIG_SETNS:=n
++TC_CONFIG_ELF:=n
++
++%.o: %.c
++	$(QUIET_CC)$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o $@ $<
