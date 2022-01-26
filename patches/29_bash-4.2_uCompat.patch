@@ -1,0 +1,46 @@
+diff -Naur bash-4.2_orig/configure bash-4.2_edited/configure
+--- bash-4.2_orig/configure	2011-02-08 01:03:22.000000000 +0300
++++ bash-4.2_edited/configure	2018-12-27 14:06:11.509667026 +0300
+@@ -31160,7 +31160,7 @@
+ TERMCAP_LIB=
+ TERMCAP_DEP=
+ else
+-TERMCAP_LIB=-lcurses
++TERMCAP_LIB=-lncursesw
+ TERMCAP_DEP=
+ fi
+ 
+diff -Naur bash-4.2_orig/execute_cmd.c bash-4.2_edited/execute_cmd.c
+--- bash-4.2_orig/execute_cmd.c	2011-02-10 01:32:25.000000000 +0300
++++ bash-4.2_edited/execute_cmd.c	2018-12-27 14:05:34.870976549 +0300
+@@ -2202,7 +2202,11 @@
+   /* If the `lastpipe' option is set with shopt, and job control is not
+      enabled, execute the last element of non-async pipelines in the
+      current shell environment. */
++#if defined (JOB_CONTROL)
+   if (lastpipe_opt && job_control == 0 && asynchronous == 0 && pipe_out == NO_PIPE && prev > 0)
++#else
++if (lastpipe_opt && asynchronous == 0 && pipe_out == NO_PIPE && prev > 0)
++#endif
+     {
+       lstdin = move_to_high_fd (0, 0, 255);
+       if (lstdin > 0)
+diff -Naur bash-4.2_orig/lib/sh/getenv.c bash-4.2_edited/lib/sh/getenv.c
+--- bash-4.2_orig/lib/sh/getenv.c	2008-08-12 19:53:20.000000000 +0400
++++ bash-4.2_edited/lib/sh/getenv.c	2018-12-27 14:04:27.834542870 +0300
+@@ -46,6 +46,7 @@
+    that we care about is HOME, and that is already defined.  */
+ static char *last_tempenv_value = (char *)NULL;
+ 
++#ifndef __UCLIBC__
+ char *
+ getenv (name)
+      const char *name;
+@@ -87,6 +88,7 @@
+ 
+   return ((char *)NULL);
+ }
++#endif
+ 
+ /* Some versions of Unix use _getenv instead. */
+ char *
