@@ -1,0 +1,24 @@
+diff -Naur texinfo-6.3_orig/configure texinfo-6.3_edited/configure
+--- texinfo-6.3_orig/configure	2016-09-10 22:30:01.000000000 +0300
++++ texinfo-6.3_edited/configure	2018-12-27 13:50:04.444836759 +0300
+@@ -22707,7 +22707,7 @@
+ # rather ncurses.  So we check for it.
+ TERMLIBS=
+ # Check for termlib before termcap because Solaris termcap needs libucb.
+-TERMLIB_VARIANTS="tinfo ncurses curses termlib termcap terminfo"
++TERMLIB_VARIANTS="tinfo ncurses curses termlib termcap terminfo ncursesw"
+ for termlib in ${TERMLIB_VARIANTS}; do
+   as_ac_Lib=`$as_echo "ac_cv_lib_${termlib}''_tgetent" | $as_tr_sh`
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking for tgetent in -l${termlib}" >&5
+diff -Naur texinfo-6.3_orig/info/Makefile.am texinfo-6.3_edited/info/Makefile.am
+--- texinfo-6.3_orig/info/Makefile.am	2016-09-07 03:43:16.000000000 +0300
++++ texinfo-6.3_edited/info/Makefile.am	2018-12-27 13:51:03.920334313 +0300
+@@ -69,7 +69,7 @@
+ # more than once.
+ funs.h: makedoc$(EXEEXT) $(cmd_sources)
+ 	rm -f $(generated_sources)
+-	$(top_builddir)/$(native_tools)/info/makedoc $(cmd_sources)
++	makedoc $(cmd_sources)
+ 
+ # The following hack is necessary to hint make before the automatic
+ # dependencies are built.
