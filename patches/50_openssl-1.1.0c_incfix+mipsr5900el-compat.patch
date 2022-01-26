@@ -1,0 +1,35 @@
+diff -Naur openssl-1.1.0c_orig/Configurations/10-main.conf openssl-1.1.0c_edited/Configurations/10-main.conf
+--- openssl-1.1.0c_orig/Configurations/10-main.conf	2016-11-10 17:03:43.000000000 +0300
++++ openssl-1.1.0c_edited/Configurations/10-main.conf	2018-12-28 18:19:51.947983983 +0300
+@@ -709,9 +709,10 @@
+         # Configure script adds minimally required -march for assembly
+         # support, if no -march was specified at command line.
+         inherit_from     => [ "linux-generic32", asm("mips32_asm") ],
+-        cflags           => add("-mabi=32 -DBN_DIV3W"),
++#        cflags           => add("-mabi=32 -DBN_DIV3W"),
++        cflags           => add("-DBN_DIV3W"),
+         perlasm_scheme   => "o32",
+-        shared_ldflag    => add("-mabi=32"),
++#        shared_ldflag    => add("-mabi=32"),
+     },
+     # mips32 and mips64 below refer to contemporary MIPS Architecture
+     # specifications, MIPS32 and MIPS64, rather than to kernel bitness.
+diff -Naur openssl-1.1.0c_orig/Configure openssl-1.1.0c_edited/Configure
+--- openssl-1.1.0c_orig/Configure	2016-11-10 17:03:43.000000000 +0300
++++ openssl-1.1.0c_edited/Configure	2018-12-28 18:27:31.507167034 +0300
+@@ -995,11 +995,11 @@
+ 	$config{shared_ldflag} .= " -mno-cygwin";
+ 	}
+ 
+-if ($target =~ /linux.*-mips/ && !$disabled{asm} && $user_cflags !~ /-m(ips|arch=)/) {
++#if ($target =~ /linux.*-mips/ && !$disabled{asm} && $user_cflags !~ /-m(ips|arch=)/) {
+ 	# minimally required architecture flags for assembly modules
+-	$config{cflags}="-mips2 $config{cflags}" if ($target =~ /mips32/);
+-	$config{cflags}="-mips3 $config{cflags}" if ($target =~ /mips64/);
+-}
++#	$config{cflags}="-mips2 $config{cflags}" if ($target =~ /mips32/);
++#	$config{cflags}="-mips3 $config{cflags}" if ($target =~ /mips64/);
++#}
+ 
+ my $no_shared_warn=0;
+ my $no_user_cflags=0;diff -Naur openssl-1.1.0c_orig/include/openssl/e_os2.h openssl-1.1.0c_edited/include/openssl/e_os2.h
