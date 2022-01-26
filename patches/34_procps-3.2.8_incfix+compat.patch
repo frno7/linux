@@ -1,0 +1,32 @@
+diff -Naur procps-3.2.8_orig/Makefile procps-3.2.8_edited/Makefile
+--- procps-3.2.8_orig/Makefile	2009-05-10 22:50:48.000000000 +0400
++++ procps-3.2.8_edited/Makefile	2018-12-28 08:46:33.674768916 +0300
+@@ -67,7 +67,7 @@
+ # plus the top-level Makefile to make it work stand-alone.
+ _TARFILES := Makefile
+ 
+-CURSES := -lncurses
++CURSES := -lncursesw
+ 
+ # This seems about right for the dynamic library stuff.
+ # Something like this is probably needed to make the SE Linux
+@@ -174,7 +174,7 @@
+ # want this rule first, use := on ALL, and ALL not filled in yet
+ all: do_all
+ 
+--include */module.mk
++-include proc/module.mk ps/module.mk
+ 
+ do_all:    $(ALL)
+ 
+diff -Naur procps-3.2.8_orig/pwdx.c procps-3.2.8_edited/pwdx.c
+--- procps-3.2.8_orig/pwdx.c	2006-06-17 13:29:06.000000000 +0400
++++ procps-3.2.8_edited/pwdx.c	2018-12-28 08:44:50.505718220 +0300
+@@ -14,6 +14,7 @@
+ #include <sys/types.h>
+ #include <regex.h>
+ #include <limits.h>
++#include <linux/limits.h>
+ #include <unistd.h>
+ #include <errno.h>
+ 
