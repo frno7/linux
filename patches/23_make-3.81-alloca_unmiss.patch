@@ -1,0 +1,11 @@
+--- make-3.81/glob/glob.c	2006-03-10 05:20:45.000000000 +0300
++++ make-3.81_unmiss/glob/glob.c	2018-09-18 10:16:03.860886356 +0000
+@@ -207,7 +207,7 @@
+ #endif /* __GNU_LIBRARY__ */
+ 
+ 
+-#if !defined __alloca && !defined __GNU_LIBRARY__
++#if !defined __alloca && defined __GNU_LIBRARY__
+ 
+ # ifdef	__GNUC__
+ #  undef alloca
