@@ -1,0 +1,19 @@
+diff -Naur pkg-config-0.29.1_orig/glib/glib/gdate.c pkg-config-0.29.1_edited/glib/glib/gdate.c
+--- pkg-config-0.29.1_orig/glib/glib/gdate.c	2016-01-25 00:51:38.000000000 +0300
++++ pkg-config-0.29.1_edited/glib/glib/gdate.c	2018-12-27 15:13:13.393690277 +0300
+@@ -2439,6 +2439,9 @@
+  *
+  * Returns: number of characters written to the buffer, or 0 the buffer was too small
+  */
++#pragma GCC diagnostic push
++#pragma GCC diagnostic ignored "-Wformat-nonliteral"
++
+ gsize     
+ g_date_strftime (gchar       *s, 
+                  gsize        slen, 
+@@ -2549,3 +2552,5 @@
+   return retval;
+ #endif
+ }
++
++#pragma GCC diagnostic pop
