@@ -1,0 +1,34 @@
+diff -Naur sysvinit-2.88dsf_orig/src/Makefile sysvinit-2.88dsf_edited/src/Makefile
+--- sysvinit-2.88dsf_orig/src/Makefile	2010-04-11 13:30:27.000000000 +0400
++++ sysvinit-2.88dsf_edited/src/Makefile	2018-12-28 13:23:37.500027291 +0300
+@@ -78,7 +78,7 @@
+ endif
+ 
+ # Additional libs for GNU libc.
+-ifneq ($(wildcard /usr/lib*/libcrypt.a),)
++ifneq ($(wildcard /usr/local/ps2/mipsr5900el-unknown-linux-gnu/lib/libcrypt.a),)
+   SULOGINLIBS	+= -lcrypt
+ endif
+ 
+diff -Naur sysvinit-2.88dsf_orig/src/bootlogd.c sysvinit-2.88dsf_edited/src/bootlogd.c
+--- sysvinit-2.88dsf_orig/src/bootlogd.c	2010-03-23 17:37:01.000000000 +0300
++++ sysvinit-2.88dsf_edited/src/bootlogd.c	2018-12-28 13:23:37.500027291 +0300
+@@ -37,6 +37,7 @@
+ #include <sys/stat.h>
+ #include <sys/ioctl.h>
+ #include <sys/utsname.h>
++#include <sys/sysmacros.h>
+ #include <time.h>
+ #include <stdio.h>
+ #include <errno.h>
+diff -Naur sysvinit-2.88dsf_orig/src/mountpoint.c sysvinit-2.88dsf_edited/src/mountpoint.c
+--- sysvinit-2.88dsf_orig/src/mountpoint.c	2009-09-10 12:28:49.000000000 +0400
++++ sysvinit-2.88dsf_edited/src/mountpoint.c	2018-12-28 13:23:37.500027291 +0300
+@@ -24,6 +24,7 @@
+  */
+ 
+ #include <sys/stat.h>
++#include <sys/sysmacros.h>
+ #include <unistd.h>
+ #include <stdlib.h>
+ #include <string.h>
