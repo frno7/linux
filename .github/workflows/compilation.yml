@@ -1,0 +1,102 @@
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: ghcr.io/frno7/gentoo-mipsr5900el:main
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Archive tag
+        run: |
+          echo "ARCHIVE_TAG=${GITHUB_REF_NAME}-${GITHUB_SHA:0:8}" >> $GITHUB_ENV
+
+      - name: Compile IOP modules
+        run: |
+          emaint sync -r frno7
+          ACCEPT_KEYWORDS="**" USE="modules -tools" mipsr5900el-unknown-linux-musl-emerge -v sys-firmware/iopmod
+          rm -rf /srv/initramfs/lib/firmware/ps2
+          mkdir /srv/initramfs/lib/firmware/ps2
+          cp /usr/mipsr5900el-unknown-linux-musl/lib/firmware/ps2/* /srv/initramfs/lib/firmware/ps2/
+
+      - name: Compile kernel and initramfs archive
+        env:
+          ARCH: mips
+          CROSS_COMPILE: mipsr5900el-unknown-linux-musl-
+          INSTALL_MOD_PATH: /srv/initramfs
+          INSTALL_MOD_STRIP: 1
+        run: |
+          JOBS="$(getconf _NPROCESSORS_ONLN)"
+          reconfig() { sed -i "/$1[ =]/"'s#^.*$'"#$1=$2#" .config; }
+          unconfig() { sed -i "/^$1=/"'s/^.*$'"/# $1 is not set/" .config; }
+          make -j "$JOBS" ps2_defconfig
+          reconfig CONFIG_INITRAMFS_SOURCE '"/srv/initramfs"'
+          # Enable EXPERT mode.
+          # reconfig CONFIG_EMBEDDED y
+          # Disable 640x512i early printk.
+          # unconfig CONFIG_EARLY_PRINTK
+          make -j "$JOBS" olddefconfig
+          make -j "$JOBS" vmlinux
+          make -j "$JOBS" modules
+          make -j "$JOBS" modules_install
+          # Reduce initramfs size by removing incompatible kernel module files.
+          # Busybox will make the files it needs anyway.
+          rm /srv/initramfs/lib/modules/*/{build,modules.*,source}
+          make_vmlinuz()
+          {
+            local variant="$1"
+            local vidmode="$2"
+            sed -i "/^modprobe ps2fb/s/mode_option=[^[:space:]]\+/mode_option=$vidmode/" /srv/initramfs/sbin/init
+            make -j "$JOBS" vmlinuz
+            ln vmlinuz vmlinuz-"$variant"-${{ env.ARCHIVE_TAG }}.elf
+            # Exclude kernel modules that won't work with other kernels anyway.
+            tar cvzf usr/initramfs-"$variant".tar.gz -C /srv --exclude initramfs/lib/modules initramfs
+          }
+          make_vmlinuz ntsc 640x448i@60
+          make_vmlinuz pal  640x512i@50
+
+      - name: Publish NTSC kernel
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: "vmlinuz-ntsc-${{ env.ARCHIVE_TAG }}"
+          path: vmlinuz-ntsc-${{ env.ARCHIVE_TAG }}.elf
+
+      - name: Publish PAL kernel
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: "vmlinuz-pal-${{ env.ARCHIVE_TAG }}"
+          path: vmlinuz-pal-${{ env.ARCHIVE_TAG }}.elf
+
+      - name: Publish NTSC initramfs archive
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: "initramfs-ntsc-${{ env.ARCHIVE_TAG }}"
+          path: usr/initramfs-ntsc.tar.gz
+
+      - name: Publish PAL initramfs archive
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: "initramfs-pal-${{ env.ARCHIVE_TAG }}"
+          path: usr/initramfs-pal.tar.gz
+
+      - name: Publish PAL kernel and PAL initramfs archive as a prerelease package
+        if: ${{ success() && github.ref == 'refs/heads/ps2-main' }}
+        uses: marvinpinto/action-automatic-releases@latest
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: true
+          automatic_release_tag: "${{ github.ref_name }}-package"
+          title: Linux kernel and initramfs archive package
+          files: |
+            vmlinuz-pal-${{ env.ARCHIVE_TAG }}.elf
+            vmlinuz-ntsc-${{ env.ARCHIVE_TAG }}.elf
+            usr/initramfs-pal.tar.gz
+            usr/initramfs-ntsc.tar.gz
