@@ -1,0 +1,50 @@
+name: CI-compile
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # container: ghcr.io/${{ github.repository_owner }}/mipsr5900el-gentoo-linux-gnu:main
+    container: ghcr.io/AKuHAK/mipsr5900el-gentoo-linux-gnu:main
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Compile project
+        env:
+          INSTALL_MOD_PATH: ../initramfs/ps2/
+          INSTALL_MOD_STRIP: 1
+        run: |
+          mv -rf ../svr/iniramfs ../
+          make -j $(getconf _NPROCESSORS_ONLN) ps2_defconfig
+          make -j $(getconf _NPROCESSORS_ONLN) oldconfig
+          make -j $(getconf _NPROCESSORS_ONLN) vmlinux
+          make -j $(getconf _NPROCESSORS_ONLN) modules
+          make -j $(getconf _NPROCESSORS_ONLN) modules_install
+          make -j $(getconf _NPROCESSORS_ONLN) vmlinuz
+          cp vmlinuz PS2Linux5.4-${{ github.sha }}.ELF
+
+      - name: Upload initramfs as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: initramfs
+          path: initramfs
+
+      - name: Upload kernel as artifact
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: "PS2Linux5.4-${{ github.sha }}.ELF"
+          path: linux/PS2Linux5.4-${{ github.sha }}.ELF
+
+      - name: Upload kernel as pre-release
+        if: github.ref == 'refs/heads/ps2-main'
+        uses: marvinpinto/action-automatic-releases@latest
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: true
+          automatic_release_tag: "latest"
+          title: PS2Linux5.4-${{ github.sha }}.ELF
+          files: linux/PS2Linux5.4-${{ github.sha }}.ELF
