@@ -30,14 +30,14 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: initramfs
-          path: initramfs
+          path: ../initramfs
 
       - name: Upload kernel as artifact
         if: ${{ success() }}
         uses: actions/upload-artifact@v3
         with:
           name: "PS2Linux5.4-${{ github.sha }}.ELF"
-          path: linux/PS2Linux5.4-${{ github.sha }}.ELF
+          path: PS2Linux5.4-${{ github.sha }}.ELF
 
       - name: Upload kernel as pre-release
         if: github.ref == 'refs/heads/ps2-main'
@@ -47,4 +47,4 @@ jobs:
           prerelease: true
           automatic_release_tag: "latest"
           title: PS2Linux5.4-${{ github.sha }}.ELF
-          files: linux/PS2Linux5.4-${{ github.sha }}.ELF
+          files: PS2Linux5.4-${{ github.sha }}.ELF
