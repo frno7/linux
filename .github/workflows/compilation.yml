@@ -30,7 +30,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: "PS2Linux5.4-${{ github.sha }}.ELF"
-          path: PS2Linux5.4-${{ github.sha }}.ELF
+          path: PS2Linux-${{ github.ref_name }}-${{ github.sha }}.ELF
 
       - name: Upload initramfs as artifact
         if: ${{ success() }}
