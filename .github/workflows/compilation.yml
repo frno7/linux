@@ -30,34 +30,63 @@ jobs:
           INSTALL_MOD_STRIP: 1
         run: |
           JOBS="$(getconf _NPROCESSORS_ONLN)"
+          reconfig() { sed -i "/$1[ =]/"'s#^.*$'"#$1=$2#" .config; }
+          unconfig() { sed -i "/^$1=/"'s/^.*$'"/# $1 is not set/" .config; }
           make -j "$JOBS" ps2_defconfig
-          sed -i '/^CONFIG_INITRAMFS_SOURCE=/s#=.*$#="/srv/initramfs"#' .config
-          make -j "$JOBS" oldconfig
+          reconfig CONFIG_INITRAMFS_SOURCE '"/srv/initramfs"'
+          # Enable EXPERT mode.
+          reconfig CONFIG_EMBEDDED y
+          # Disable 1920x1080p early printk for hardware compatibility.
+          unconfig CONFIG_EARLY_PRINTK
+          make -j "$JOBS" olddefconfig
           make -j "$JOBS" vmlinux
           make -j "$JOBS" modules
           make -j "$JOBS" modules_install
           # Reduce initramfs size by removing incompatible kernel module files.
           # Busybox will make the files it needs anyway.
           rm /srv/initramfs/lib/modules/*/{build,modules.*,source}
-          make -j "$JOBS" vmlinuz
-          ln vmlinuz vmlinuz-${{ env.ARCHIVE_TAG }}.elf
-          tar cvzf usr/initramfs_data.tar.gz -C /srv --exclude initramfs/lib/modules initramfs
+          make_vmlinuz()
+          {
+            local variant="$1"
+            local vidmode="$2"
+            sed -i "/^modprobe ps2fb/s/mode_option=[^[:space:]]\+/mode_option=$vidmode/" /srv/initramfs/sbin/init
+            make -j "$JOBS" vmlinuz
+            ln vmlinuz vmlinuz-"$variant"-${{ env.ARCHIVE_TAG }}.elf
+            # Exclude kernel modules that won't work with other kernels anyway.
+            tar cvzf usr/initramfs-"$variant".tar.gz -C /srv --exclude initramfs/lib/modules initramfs
+          }
+          make_vmlinuz ntsc 640x448i@60
+          make_vmlinuz pal  640x512i@50
 
-      - name: Publish kernel
+      - name: Publish NTSC kernel
         if: ${{ success() }}
         uses: actions/upload-artifact@v3
         with:
-          name: "vmlinuz-${{ env.ARCHIVE_TAG }}"
-          path: vmlinuz-${{ env.ARCHIVE_TAG }}.elf
+          name: "vmlinuz-ntsc-${{ env.ARCHIVE_TAG }}"
+          path: vmlinuz-ntsc-${{ env.ARCHIVE_TAG }}.elf
 
-      - name: Publish initramfs archive
+      - name: Publish PAL kernel
         if: ${{ success() }}
         uses: actions/upload-artifact@v3
         with:
-          name: "initramfs-${{ env.ARCHIVE_TAG }}"
-          path: usr/initramfs_data.tar.gz
+          name: "vmlinuz-pal-${{ env.ARCHIVE_TAG }}"
+          path: vmlinuz-pal-${{ env.ARCHIVE_TAG }}.elf
 
-      - name: Publish kernel and initramfs archive as a prerelease package
+      - name: Publish NTSC initramfs archive
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: "initramfs-ntsc-${{ env.ARCHIVE_TAG }}"
+          path: usr/initramfs-ntsc.tar.gz
+
+      - name: Publish PAL initramfs archive
+        if: ${{ success() }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: "initramfs-pal-${{ env.ARCHIVE_TAG }}"
+          path: usr/initramfs-pal.tar.gz
+
+      - name: Publish PAL kernel and PAL initramfs archive as a prerelease package
         if: ${{ success() && github.ref == 'refs/heads/ps2-main' }}
         uses: marvinpinto/action-automatic-releases@latest
         with:
@@ -66,5 +95,5 @@ jobs:
           automatic_release_tag: "${{ github.ref_name }}-package"
           title: Linux kernel and initramfs archive package
           files: |
-            vmlinuz-${{ env.ARCHIVE_TAG }}.elf
-            usr/initramfs_data.tar.gz
+            vmlinuz-pal-${{ env.ARCHIVE_TAG }}.elf
+            usr/initramfs-pal.tar.gz
