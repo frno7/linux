@@ -410,8 +410,8 @@ static void clear(int xres, int yres)
 
 static void set_env(void)
 {
-	const u32 xres = 1920;
-	const u32 yres = 1080;
+	const u32 xres = 640;
+	const u32 yres = 512;
 
 	const u32 fbw = xres / 64;
 	const u32 fbp = 0;
@@ -646,7 +646,7 @@ static void set_res(void)
 	 * syscnt 0x0
 	 */
 
-	const u64 smode1_ = 0x13422004b1;
+	const u64 smode1_ = 0x740806504;
 	struct gs_smode1 smode1;
 
 	memcpy(&smode1, &smode1_, sizeof(smode1));
@@ -655,15 +655,15 @@ static void set_res(void)
 	smode1.prst = 0;
 
 	gs_write_smode1(smode1);
-	gs_writeq_smode2(0x0);
-	gs_writeq_srfsh(0x2);
-	gs_writeq_synch1(0x2c4d0160509d7);
-	gs_writeq_synch2(0x240300);
-	gs_writeq_syncv(0xb0e00002400004);
-	gs_writeq_display1(0x43777f000280f8);
+	gs_writeq_smode2(0x1);
+	gs_writeq_srfsh(0x8);
+	gs_writeq_synch1(0x7f5c21fc83030);
+	gs_writeq_synch2(0x3484bc);
+	gs_writeq_syncv(0xa9000502101401);
+	gs_writeq_display1(0x1c79ff0184a2a9);
 
 	gs_write_dispfb1((struct gs_dispfb) {
-		.fbw = 1920 / 64,
+		.fbw = 640 / 64,
 		.psm = gs_psm_ct16,
 		.dbx = 0,
 		.dby = 0,

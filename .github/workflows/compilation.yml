@@ -37,7 +37,7 @@ jobs:
           # Enable EXPERT mode.
           reconfig CONFIG_EMBEDDED y
           # Disable 1920x1080p early printk for hardware compatibility.
-          unconfig CONFIG_EARLY_PRINTK
+          # unconfig CONFIG_EARLY_PRINTK
           make -j "$JOBS" olddefconfig
           make -j "$JOBS" vmlinux
           make -j "$JOBS" modules
