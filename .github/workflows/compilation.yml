@@ -1,15 +1,16 @@
-name: build
+name: Compile PlayStation 2 Linux
 
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     container: ghcr.io/frno7/gentoo-mipsr5900el:main
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Archive tag
         run: |
@@ -61,30 +62,34 @@ jobs:
 
       - name: Publish NTSC kernel
         if: ${{ success() }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: "vmlinuz-ntsc-${{ env.ARCHIVE_TAG }}"
+          if-no-files-found: error
           path: vmlinuz-ntsc-${{ env.ARCHIVE_TAG }}.elf
 
       - name: Publish PAL kernel
         if: ${{ success() }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: "vmlinuz-pal-${{ env.ARCHIVE_TAG }}"
+          if-no-files-found: error
           path: vmlinuz-pal-${{ env.ARCHIVE_TAG }}.elf
 
       - name: Publish NTSC initramfs archive
         if: ${{ success() }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: "initramfs-ntsc-${{ env.ARCHIVE_TAG }}"
+          if-no-files-found: error
           path: usr/initramfs-ntsc.tar.gz
 
       - name: Publish PAL initramfs archive
         if: ${{ success() }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: "initramfs-pal-${{ env.ARCHIVE_TAG }}"
+          if-no-files-found: error
           path: usr/initramfs-pal.tar.gz
 
       - name: Publish PAL kernel and PAL initramfs archive as a prerelease package
