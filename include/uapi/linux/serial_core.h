@@ -293,4 +293,7 @@
 /* Freescale Linflex UART */
 #define PORT_LINFLEXUART	122
 
+/* PS2 EE UART */
+#define PORT_PS2_UART   123
+
 #endif /* _UAPILINUX_SERIAL_CORE_H */
