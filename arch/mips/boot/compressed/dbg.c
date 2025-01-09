@@ -17,6 +17,7 @@
 
 #include <asm/mach-ps2/gs.h>
 #include <asm/mach-ps2/gs-registers.h>
+#include <asm/mach-ps2/sio-registers.h>
 #include <uapi/asm/gif.h>
 
 #define D2_CHCR		0x1000a000	/* Channel 2 control */
@@ -292,6 +293,12 @@ static inline u32 rdl(unsigned long addr)
 void wrlX(u32 value, unsigned long addr)
 {
 	__raw_writel(value, (void __iomem *)KSEG1ADDR(addr));
+	wmb();
+}
+
+static inline void wrb(u8 value, unsigned long addr)
+{
+	__raw_writeb(value, (void __iomem *)KSEG1ADDR(addr));
 	wmb();
 }
 
@@ -692,6 +699,9 @@ void putc(char c)
 
 	if (!IS_ENABLED(CONFIG_EARLY_PRINTK))
 		return;
+
+	if (IS_ENABLED(CONFIG_SERIAL_PS2_UART_CONSOLE))
+		wrb(c, SIO_TXFIFO);	/* Send to EE UART */
 
 	if (!initialized) {
 		set_res();

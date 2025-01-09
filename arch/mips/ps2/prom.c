@@ -17,6 +17,7 @@
 #include <asm/sections.h>
 
 #include <asm/mach-ps2/gs.h>
+#include <asm/mach-ps2/sio-registers.h>
 
 #include <uapi/asm/gif.h>
 
@@ -301,6 +302,12 @@ static inline u32 rdl(unsigned long addr)
 	return __raw_readl((void __iomem *)KSEG1ADDR(addr));
 }
 
+static inline void wrb(u8 value, unsigned long addr)
+{
+	__raw_writeb(value, (void __iomem *)KSEG1ADDR(addr));
+	wmb();
+}
+
 static inline void wrl(u32 value, unsigned long addr)
 {
 	__raw_writel(value, (void __iomem *)KSEG1ADDR(addr));
@@ -428,6 +435,9 @@ void prom_putchar(char c)
 
 	if (!IS_ENABLED(CONFIG_EARLY_PRINTK))
 		return;
+
+	if (IS_ENABLED(CONFIG_SERIAL_PS2_UART_CONSOLE))
+		wrb(c, SIO_TXFIFO);	/* Send to EE UART */
 
 	if (c == '\r') {
 		col = 0;

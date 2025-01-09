@@ -1573,6 +1573,25 @@ config SERIAL_MILBEAUT_USIO_CONSOLE
 	  receives all kernel messages and warnings and which allows logins in
 	  single user mode).
 
+config SERIAL_PS2_UART
+	tristate "PS2 serial port"
+	depends on SONY_PS2
+	select SERIAL_CORE
+	default n
+	help
+	  Driver for the PlayStation 2 UART/SIO port. You can see the output
+	  with a serial cable connected to the internal serial pins of the
+	  PlayStation 2. To use it as system console, specify the kernel
+	  parameter "console=ttyS0".
+
+config SERIAL_PS2_UART_CONSOLE
+	bool "PS2 serial port console"
+	depends on SERIAL_PS2_UART=y
+	select SERIAL_CORE_CONSOLE
+	select SERIAL_EARLYCON
+	help
+	  Enable the PlayStation 2 UART/SIO port for the system console.
+
 endmenu
 
 config SERIAL_MCTRL_GPIO
