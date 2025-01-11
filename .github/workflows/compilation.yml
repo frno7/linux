@@ -14,7 +14,7 @@ jobs:
 
       - name: Archive tag
         run: |
-          echo "ARCHIVE_TAG=${GITHUB_REF_NAME}-${GITHUB_SHA:0:8}" >> $GITHUB_ENV
+          echo "ARCHIVE_TAG=${GITHUB_REF_NAME}-${GITHUB_SHA:0:8}" | sed 's#/#-#g' >> $GITHUB_ENV
 
       - name: Compile IOP modules
         run: |
@@ -51,7 +51,7 @@ jobs:
           {
             local variant="$1"
             local vidmode="$2"
-            sed -i "/^modprobe ps2fb/s/mode_option=[^[:space:]]\+/mode_option=$vidmode/" /srv/initramfs/sbin/init
+            sed -i "/^modprobe ps2fb/s/mode_option=[^[:space:]]\+/mode_option=$vidmode/" /srv/initramfs/etc/init.d/rcS
             make -j "$JOBS" vmlinuz
             ln vmlinuz vmlinuz-"$variant"-${{ env.ARCHIVE_TAG }}.elf
             # Exclude kernel modules that won't work with other kernels anyway.
@@ -99,7 +99,7 @@ jobs:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           prerelease: true
           automatic_release_tag: "${{ github.ref_name }}-package"
-          title: Linux kernel and initramfs archive package
+          title: PlayStation 2 Linux kernel and initramfs archive package
           files: |
             vmlinuz-pal-${{ env.ARCHIVE_TAG }}.elf
             vmlinuz-ntsc-${{ env.ARCHIVE_TAG }}.elf
