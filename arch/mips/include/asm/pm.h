@@ -19,6 +19,19 @@
 .macro SUSPEND_SAVE_REGS
 	subu	sp, PT_SIZE
 	/* Call preserved GPRs */
+#ifdef CONFIG_CPU_R5900
+	QUAD_S	$16, PT_R16(sp)
+	QUAD_S	$17, PT_R17(sp)
+	QUAD_S	$18, PT_R18(sp)
+	QUAD_S	$19, PT_R19(sp)
+	QUAD_S	$20, PT_R20(sp)
+	QUAD_S	$21, PT_R21(sp)
+	QUAD_S	$22, PT_R22(sp)
+	QUAD_S	$23, PT_R23(sp)
+	QUAD_S	$28, PT_R28(sp)
+	QUAD_S	$30, PT_R30(sp)
+	QUAD_S	$31, PT_R31(sp)
+#else
 	LONG_S	$16, PT_R16(sp)
 	LONG_S	$17, PT_R17(sp)
 	LONG_S	$18, PT_R18(sp)
@@ -30,6 +43,7 @@
 	LONG_S	$28, PT_R28(sp)
 	LONG_S	$30, PT_R30(sp)
 	LONG_S	$31, PT_R31(sp)
+#endif
 	/* A couple of CP0 registers with space in pt_regs */
 	mfc0	k0, CP0_STATUS
 	LONG_S	k0, PT_STATUS(sp)

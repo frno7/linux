@@ -249,6 +249,11 @@ symbol		=	value
 #define LONGLOG		3
 #endif
 
+#ifdef CONFIG_CPU_R5900
+#define QUAD_L		lq	/* 128-bit multimedia register load */
+#define QUAD_S		sq	/* 128-bit multimedia register store */
+#endif
+
 /*
  * How to add/sub/load/store/shift pointers.
  */
