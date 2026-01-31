@@ -27,7 +27,11 @@
 	.endm
 
 	.macro cfi_st reg offset=0 docfi=0
+#ifdef CONFIG_CPU_R5900
+	QUAD_S	\reg, \offset(sp)
+#else
 	LONG_S	\reg, \offset(sp)
+#endif
 	cfi_rel_offset \reg, \offset, \docfi
 	.endm
 
