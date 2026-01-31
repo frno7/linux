@@ -450,14 +450,14 @@ extern const char *__elf_platform;
  * on the MIPS.
  */
 #define ELF_PLAT_INIT(_r, load_addr)	do { \
-	_r->regs[1] = _r->regs[2] = _r->regs[3] = _r->regs[4] = 0;	\
-	_r->regs[5] = _r->regs[6] = _r->regs[7] = _r->regs[8] = 0;	\
-	_r->regs[9] = _r->regs[10] = _r->regs[11] = _r->regs[12] = 0;	\
-	_r->regs[13] = _r->regs[14] = _r->regs[15] = _r->regs[16] = 0;	\
-	_r->regs[17] = _r->regs[18] = _r->regs[19] = _r->regs[20] = 0;	\
-	_r->regs[21] = _r->regs[22] = _r->regs[23] = _r->regs[24] = 0;	\
-	_r->regs[25] = _r->regs[26] = _r->regs[27] = _r->regs[28] = 0;	\
-	_r->regs[30] = _r->regs[31] = 0;				\
+	_r->gprs(1) = _r->gprs(2) = _r->gprs(3) = _r->gprs(4) = 0;	\
+	_r->gprs(5) = _r->gprs(6) = _r->gprs(7) = _r->gprs(8) = 0;	\
+	_r->gprs(9) = _r->gprs(10) = _r->gprs(11) = _r->gprs(12) = 0;	\
+	_r->gprs(13) = _r->gprs(14) = _r->gprs(15) = _r->gprs(16) = 0;	\
+	_r->gprs(17) = _r->gprs(18) = _r->gprs(19) = _r->gprs(20) = 0;	\
+	_r->gprs(21) = _r->gprs(22) = _r->gprs(23) = _r->gprs(24) = 0;	\
+	_r->gprs(25) = _r->gprs(26) = _r->gprs(27) = _r->gprs(28) = 0;	\
+	_r->gprs(30) = _r->gprs(31) = 0;				\
 } while (0)
 
 /* This is the location that an ET_DYN program is loaded if exec'ed.  Typical

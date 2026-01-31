@@ -42,9 +42,9 @@ static void save_raw_perf_callchain(struct perf_callchain_entry_ctx *entry,
 void perf_callchain_kernel(struct perf_callchain_entry_ctx *entry,
 			   struct pt_regs *regs)
 {
-	unsigned long sp = regs->regs[29];
+	unsigned long sp = regs->gprs(29);
 #ifdef CONFIG_KALLSYMS
-	unsigned long ra = regs->regs[31];
+	unsigned long ra = regs->gprs(31);
 	unsigned long pc = regs->cp0_epc;
 
 	if (raw_show_trace || !__kernel_text_address(pc)) {

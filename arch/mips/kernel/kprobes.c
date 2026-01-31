@@ -476,10 +476,10 @@ void kretprobe_trampoline(void);
 void __kprobes arch_prepare_kretprobe(struct kretprobe_instance *ri,
 				      struct pt_regs *regs)
 {
-	ri->ret_addr = (kprobe_opcode_t *) regs->regs[31];
+	ri->ret_addr = (kprobe_opcode_t *) regs->gprs(31);
 
 	/* Replace the return addr with trampoline addr */
-	regs->regs[31] = (unsigned long)kretprobe_trampoline;
+	regs->gprs(31) = (unsigned long)kretprobe_trampoline;
 }
 
 /*

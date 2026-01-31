@@ -382,7 +382,7 @@ unsigned long get_wchan(struct task_struct *p);
 			 THREAD_SIZE - 32 - sizeof(struct pt_regs))
 #define task_pt_regs(tsk) ((struct pt_regs *)__KSTK_TOS(tsk))
 #define KSTK_EIP(tsk) (task_pt_regs(tsk)->cp0_epc)
-#define KSTK_ESP(tsk) (task_pt_regs(tsk)->regs[29])
+#define KSTK_ESP(tsk) (task_pt_regs(tsk)->gprs(29))
 #define KSTK_STATUS(tsk) (task_pt_regs(tsk)->cp0_status)
 
 #ifdef CONFIG_CPU_LOONGSON3

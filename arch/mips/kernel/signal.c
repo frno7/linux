@@ -445,7 +445,7 @@ int setup_sigcontext(struct pt_regs *regs, struct sigcontext __user *sc)
 
 	err |= __put_user(0, &sc->sc_regs[0]);
 	for (i = 1; i < 32; i++)
-		err |= __put_user(regs->regs[i], &sc->sc_regs[i]);
+		err |= __put_user(regs->gprs(i), &sc->sc_regs[i]);
 
 #ifdef CONFIG_CPU_HAS_SMARTMIPS
 	err |= __put_user(regs->acx, &sc->sc_acx);
@@ -540,7 +540,7 @@ int restore_sigcontext(struct pt_regs *regs, struct sigcontext __user *sc)
 	}
 
 	for (i = 1; i < 32; i++)
-		err |= __get_user(regs->regs[i], &sc->sc_regs[i]);
+		err |= __get_user(regs->gprs(i), &sc->sc_regs[i]);
 
 	return err ?: protected_restore_fp_context(sc);
 }
@@ -554,7 +554,7 @@ void __user *get_sigframe(struct ksignal *ksig, struct pt_regs *regs,
 	frame_size += extcontext_max_size();
 
 	/* Default to using normal stack */
-	sp = regs->regs[29];
+	sp = regs->gprs(29);
 
 	/*
 	 * FPU emulator may have it's own trampoline active just
@@ -629,7 +629,7 @@ asmlinkage void sys_sigreturn(void)
 	int sig;
 
 	regs = current_pt_regs();
-	frame = (struct sigframe __user *)regs->regs[29];
+	frame = (struct sigframe __user *)regs->gprs(29);
 	if (!access_ok(frame, sizeof(*frame)))
 		goto badframe;
 	if (__copy_from_user(&blocked, &frame->sf_mask, sizeof(blocked)))
@@ -666,7 +666,7 @@ asmlinkage void sys_rt_sigreturn(void)
 	int sig;
 
 	regs = current_pt_regs();
-	frame = (struct rt_sigframe __user *)regs->regs[29];
+	frame = (struct rt_sigframe __user *)regs->gprs(29);
 	if (!access_ok(frame, sizeof(*frame)))
 		goto badframe;
 	if (__copy_from_user(&set, &frame->rs_uc.uc_sigmask, sizeof(set)))
@@ -723,16 +723,16 @@ static int setup_frame(void *sig_return, struct ksignal *ksig,
 	 * $25 and c0_epc point to the signal handler, $29 points to the
 	 * struct sigframe.
 	 */
-	regs->regs[ 4] = ksig->sig;
-	regs->regs[ 5] = 0;
-	regs->regs[ 6] = (unsigned long) &frame->sf_sc;
-	regs->regs[29] = (unsigned long) frame;
-	regs->regs[31] = (unsigned long) sig_return;
-	regs->cp0_epc = regs->regs[25] = (unsigned long) ksig->ka.sa.sa_handler;
+	regs->gprs( 4) = ksig->sig;
+	regs->gprs( 5) = 0;
+	regs->gprs( 6) = (unsigned long) &frame->sf_sc;
+	regs->gprs(29) = (unsigned long) frame;
+	regs->gprs(31) = (unsigned long) sig_return;
+	regs->cp0_epc = regs->gprs(25) = (unsigned long) ksig->ka.sa.sa_handler;
 
 	DEBUGP("SIG deliver (%s:%d): sp=0x%p pc=0x%lx ra=0x%lx\n",
 	       current->comm, current->pid,
-	       frame, regs->cp0_epc, regs->regs[31]);
+	       frame, regs->cp0_epc, regs->gprs(31));
 	return 0;
 }
 #endif
@@ -753,7 +753,7 @@ static int setup_rt_frame(void *sig_return, struct ksignal *ksig,
 	/* Create the ucontext.	 */
 	err |= __put_user(0, &frame->rs_uc.uc_flags);
 	err |= __put_user(NULL, &frame->rs_uc.uc_link);
-	err |= __save_altstack(&frame->rs_uc.uc_stack, regs->regs[29]);
+	err |= __save_altstack(&frame->rs_uc.uc_stack, regs->gprs(29));
 	err |= setup_sigcontext(regs, &frame->rs_uc.uc_mcontext);
 	err |= __copy_to_user(&frame->rs_uc.uc_sigmask, set, sizeof(*set));
 
@@ -770,16 +770,16 @@ static int setup_rt_frame(void *sig_return, struct ksignal *ksig,
 	 * $25 and c0_epc point to the signal handler, $29 points to
 	 * the struct rt_sigframe.
 	 */
-	regs->regs[ 4] = ksig->sig;
-	regs->regs[ 5] = (unsigned long) &frame->rs_info;
-	regs->regs[ 6] = (unsigned long) &frame->rs_uc;
-	regs->regs[29] = (unsigned long) frame;
-	regs->regs[31] = (unsigned long) sig_return;
-	regs->cp0_epc = regs->regs[25] = (unsigned long) ksig->ka.sa.sa_handler;
+	regs->gprs( 4) = ksig->sig;
+	regs->gprs( 5) = (unsigned long) &frame->rs_info;
+	regs->gprs( 6) = (unsigned long) &frame->rs_uc;
+	regs->gprs(29) = (unsigned long) frame;
+	regs->gprs(31) = (unsigned long) sig_return;
+	regs->cp0_epc = regs->gprs(25) = (unsigned long) ksig->ka.sa.sa_handler;
 
 	DEBUGP("SIG deliver (%s:%d): sp=0x%p pc=0x%lx ra=0x%lx\n",
 	       current->comm, current->pid,
-	       frame, regs->cp0_epc, regs->regs[31]);
+	       frame, regs->cp0_epc, regs->gprs(31));
 
 	return 0;
 }
@@ -813,25 +813,25 @@ static void handle_signal(struct ksignal *ksig, struct pt_regs *regs)
 	 */
 	dsemul_thread_rollback(regs);
 
-	if (regs->regs[0]) {
-		switch(regs->regs[2]) {
+	if (regs->gprs(0)) {
+		switch(regs->gprs(2)) {
 		case ERESTART_RESTARTBLOCK:
 		case ERESTARTNOHAND:
-			regs->regs[2] = EINTR;
+			regs->gprs(2) = EINTR;
 			break;
 		case ERESTARTSYS:
 			if (!(ksig->ka.sa.sa_flags & SA_RESTART)) {
-				regs->regs[2] = EINTR;
+				regs->gprs(2) = EINTR;
 				break;
 			}
 		/* fallthrough */
 		case ERESTARTNOINTR:
-			regs->regs[7] = regs->regs[26];
-			regs->regs[2] = regs->regs[0];
+			regs->gprs(7) = regs->gprs(26);
+			regs->gprs(2) = regs->gprs(0);
 			regs->cp0_epc -= 4;
 		}
 
-		regs->regs[0] = 0;		/* Don't deal with this again.	*/
+		regs->gprs(0) = 0;		/* Don't deal with this again.	*/
 	}
 
 	rseq_signal_deliver(ksig, regs);
@@ -856,23 +856,23 @@ static void do_signal(struct pt_regs *regs)
 		return;
 	}
 
-	if (regs->regs[0]) {
-		switch (regs->regs[2]) {
+	if (regs->gprs(0)) {
+		switch (regs->gprs(2)) {
 		case ERESTARTNOHAND:
 		case ERESTARTSYS:
 		case ERESTARTNOINTR:
-			regs->regs[2] = regs->regs[0];
-			regs->regs[7] = regs->regs[26];
+			regs->gprs(2) = regs->gprs(0);
+			regs->gprs(7) = regs->gprs(26);
 			regs->cp0_epc -= 4;
 			break;
 
 		case ERESTART_RESTARTBLOCK:
-			regs->regs[2] = current->thread.abi->restart;
-			regs->regs[7] = regs->regs[26];
+			regs->gprs(2) = current->thread.abi->restart;
+			regs->gprs(7) = regs->gprs(26);
 			regs->cp0_epc -= 4;
 			break;
 		}
-		regs->regs[0] = 0;	/* Don't deal with this again.	*/
+		regs->gprs(0) = 0;	/* Don't deal with this again.	*/
 	}
 
 	/*
