@@ -32,7 +32,12 @@ struct pt_regs {
 #endif
 
 	/* Saved main processor registers. */
-	unsigned long regs[32];
+	union {
+		unsigned long gpr;	/* General purpose register */
+#ifdef CONFIG_CPU_R5900
+		uint32_t mmr[4];	/* 128-bit multimedia register */
+#endif
+	} regs[32];
 
 	/* Saved special registers. */
 	unsigned long cp0_status;
@@ -51,7 +56,7 @@ struct pt_regs {
 	unsigned long __last[0];
 } __aligned(8);
 
-#define gprs(i) regs[i]
+#define gprs(i) regs[i].gpr
 
 static inline unsigned long kernel_stack_pointer(struct pt_regs *regs)
 {
