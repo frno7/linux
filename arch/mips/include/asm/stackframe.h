@@ -248,6 +248,11 @@
 		.set	at=k1
 #endif
 		PTR_SUBU sp, PT_SIZE
+#ifdef CONFIG_CPU_R5900
+		/* Align struct pt_regs on 16-byte boundary for SQ/LQ MMI. */
+		srl      sp, 4
+		sll      sp, 4
+#endif
 #ifdef CONFIG_CPU_DADDI_WORKAROUNDS
 		.set	noat
 #endif

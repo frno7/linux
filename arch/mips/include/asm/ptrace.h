@@ -49,7 +49,7 @@ struct pt_regs {
 	unsigned long long mtp[6];        /* MTP{0-5} */
 #endif
 	unsigned long __last[0];
-} __aligned(8);
+} __aligned(16);
 
 #define gprs(i) regs[i]
 
