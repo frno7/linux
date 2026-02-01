@@ -1637,8 +1637,8 @@ union thread_union {
 #ifndef CONFIG_THREAD_INFO_IN_TASK
 	struct thread_info thread_info;
 #endif
-	unsigned long stack[THREAD_SIZE/sizeof(long)];
-};
+	unsigned long __aligned(16) stack[THREAD_SIZE/sizeof(long)];
+} __aligned(16);
 
 #ifndef CONFIG_THREAD_INFO_IN_TASK
 extern struct thread_info init_thread_info;

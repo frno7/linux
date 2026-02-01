@@ -35,9 +35,10 @@ struct pt_regs {
 	union {
 		unsigned long gpr;	/* General purpose register */
 #ifdef CONFIG_CPU_R5900
-		uint32_t mmr[4];	/* 128-bit multimedia register */
+		/* 128-bit multimedia register */
+		uint32_t mmr[4] __aligned(16);
 #endif
-	} regs[32];
+	} regs[32] __aligned(16);
 
 	/* Saved special registers. */
 	unsigned long cp0_status;
@@ -54,7 +55,7 @@ struct pt_regs {
 	unsigned long long mtp[6];        /* MTP{0-5} */
 #endif
 	unsigned long __last[0];
-} __aligned(8);
+} __aligned(16);
 
 #define gprs(i) regs[i].gpr
 
