@@ -100,6 +100,14 @@
 		 */
 		jal     octeon_mult_save
 #endif
+#ifdef CONFIG_CPU_R5900
+		mfsa	v1
+		sd	v1, PT_SA(sp)
+		mfhi1	v1
+		sd	v1, PT_HI1(sp)
+		mflo1	v1
+		sd	v1, PT_LO1(sp)
+#endif
 		.endm
 
 		.macro	SAVE_STATIC docfi=0
@@ -340,6 +348,14 @@
 		.endm
 
 		.macro	RESTORE_TEMP docfi=0
+#ifdef CONFIG_CPU_R5900
+		ld	v1, PT_LO1(sp)
+		mtlo1	v1
+		ld	v1, PT_HI1(sp)
+		mthi1	v1
+		ld	v1, PT_SA(sp)
+		mtsa	v1
+#endif
 #ifdef CONFIG_CPU_CAVIUM_OCTEON
 		/* Restore the Octeon multiplier state */
 		jal	octeon_mult_restore

@@ -54,6 +54,11 @@ struct pt_regs {
 	unsigned long long mpl[6];        /* MTM{0-5} */
 	unsigned long long mtp[6];        /* MTP{0-5} */
 #endif
+#ifdef CONFIG_CPU_R5900
+	uint64_t sa;			/* Shift amount MMI register */
+	uint64_t hi1;			/* HI1 register */
+	uint64_t lo1;			/* LO1 register */
+#endif
 	unsigned long __last[0];
 } __aligned(16);
 

@@ -71,6 +71,11 @@ void output_ptreg_defines(void)
 	OFFSET(PT_MPL, pt_regs, mpl);
 	OFFSET(PT_MTP, pt_regs, mtp);
 #endif /* CONFIG_CPU_CAVIUM_OCTEON */
+#ifdef CONFIG_CPU_R5900
+	OFFSET(PT_SA, pt_regs, sa);
+	OFFSET(PT_HI1, pt_regs, hi1);
+	OFFSET(PT_LO1, pt_regs, lo1);
+#endif
 	DEFINE(PT_SIZE, sizeof(struct pt_regs));
 	BLANK();
 }

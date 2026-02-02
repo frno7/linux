@@ -992,6 +992,11 @@ static const struct pt_regs_offset regoffset_table[] = {
 	REG_OFFSET_NAME(mtp1, mtp[1]),
 	REG_OFFSET_NAME(mtp2, mtp[2]),
 #endif
+#ifdef CONFIG_CPU_R5900
+	REG_OFFSET_NAME(sa, sa),
+	REG_OFFSET_NAME(hi1, hi1),
+	REG_OFFSET_NAME(lo1, lo1),
+#endif
 	REG_OFFSET_END,
 };
 
