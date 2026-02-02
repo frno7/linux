@@ -57,6 +57,19 @@
 	LONG_L	k0, PT_STATUS(sp)
 	mtc0	k0, CP0_STATUS
 	/* Call preserved GPRs */
+#ifdef CONFIG_CPU_R5900
+	QUAD_L	$16, PT_R16(sp)
+	QUAD_L	$17, PT_R17(sp)
+	QUAD_L	$18, PT_R18(sp)
+	QUAD_L	$19, PT_R19(sp)
+	QUAD_L	$20, PT_R20(sp)
+	QUAD_L	$21, PT_R21(sp)
+	QUAD_L	$22, PT_R22(sp)
+	QUAD_L	$23, PT_R23(sp)
+	QUAD_L	$28, PT_R28(sp)
+	QUAD_L	$30, PT_R30(sp)
+	QUAD_L	$31, PT_R31(sp)
+#else
 	LONG_L	$16, PT_R16(sp)
 	LONG_L	$17, PT_R17(sp)
 	LONG_L	$18, PT_R18(sp)
@@ -68,6 +81,7 @@
 	LONG_L	$28, PT_R28(sp)
 	LONG_L	$30, PT_R30(sp)
 	LONG_L	$31, PT_R31(sp)
+#endif
 	/* Pop and return */
 	jr	ra
 	 addiu	sp, PT_SIZE
