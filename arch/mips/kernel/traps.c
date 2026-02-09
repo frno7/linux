@@ -140,8 +140,8 @@ __setup("raw_show_trace", set_raw_show_trace);
 
 static void show_backtrace(struct task_struct *task, const struct pt_regs *regs)
 {
-	unsigned long sp = regs->gprs(29);
-	unsigned long ra = regs->gprs(31);
+	unsigned long sp = regs->regs[29];
+	unsigned long ra = regs->regs[31];
 	unsigned long pc = regs->cp0_epc;
 
 	if (!task)
@@ -169,7 +169,7 @@ static void show_stacktrace(struct task_struct *task,
 	const int field = 2 * sizeof(unsigned long);
 	long stackdata;
 	int i;
-	unsigned long __user *sp = (unsigned long __user *)regs->gprs(29);
+	unsigned long __user *sp = (unsigned long __user *)regs->regs[29];
 
 	printk("Stack :");
 	i = 0;
@@ -202,13 +202,13 @@ void show_stack(struct task_struct *task, unsigned long *sp)
 
 	regs.cp0_status = KSU_KERNEL;
 	if (sp) {
-		regs.gprs(29) = (unsigned long)sp;
-		regs.gprs(31) = 0;
+		regs.regs[29] = (unsigned long)sp;
+		regs.regs[31] = 0;
 		regs.cp0_epc = 0;
 	} else {
 		if (task && task != current) {
-			regs.gprs(29) = task->thread.reg29;
-			regs.gprs(31) = 0;
+			regs.regs[29] = task->thread.reg29;
+			regs.regs[31] = 0;
 			regs.cp0_epc = task->thread.reg31;
 #ifdef CONFIG_KGDB_KDB
 		} else if (atomic_read(&kgdb_active) != -1 &&
@@ -268,7 +268,7 @@ static void __show_regs(const struct pt_regs *regs)
 		else if (i == 26 || i == 27)
 			pr_cont(" %*s", field, "");
 		else
-			pr_cont(" %0*lx", field, regs->gprs(i));
+			pr_cont(" %0*lx", field, regs->regs[i]);
 
 		i++;
 		if ((i % 4) == 0)
@@ -288,8 +288,8 @@ static void __show_regs(const struct pt_regs *regs)
 	 */
 	printk("epc   : %0*lx %pS\n", field, regs->cp0_epc,
 	       (void *) regs->cp0_epc);
-	printk("ra    : %0*lx %pS\n", field, regs->gprs(31),
-	       (void *) regs->gprs(31));
+	printk("ra    : %0*lx %pS\n", field, regs->regs[31],
+	       (void *) regs->regs[31]);
 
 	printk("Status: %08x	", (uint32_t) regs->cp0_status);
 
@@ -476,7 +476,7 @@ asmlinkage void do_be(struct pt_regs *regs)
 	 */
 	printk(KERN_ALERT "%s bus error, epc == %0*lx, ra == %0*lx\n",
 	       data ? "Data" : "Instruction",
-	       field, regs->cp0_epc, field, regs->gprs(31));
+	       field, regs->cp0_epc, field, regs->regs[31]);
 	if (notify_die(DIE_OOPS, "bus error", regs, 0, current->thread.trap_nr,
 		       SIGBUS) == NOTIFY_STOP)
 		goto out;
@@ -534,7 +534,7 @@ static inline int simulate_ll(struct pt_regs *regs, unsigned int opcode)
 	offset >>= 16;
 
 	vaddr = (unsigned long __user *)
-		((unsigned long)(regs->gprs((opcode & BASE) >> 21)) + offset);
+		((unsigned long)(regs->regs[(opcode & BASE) >> 21]) + offset);
 
 	if ((unsigned long)vaddr & 3)
 		return SIGBUS;
@@ -552,7 +552,7 @@ static inline int simulate_ll(struct pt_regs *regs, unsigned int opcode)
 
 	preempt_enable();
 
-	regs->gprs((opcode & RT) >> 16) = value;
+	regs->regs[(opcode & RT) >> 16] = value;
 
 	return 0;
 }
@@ -574,7 +574,7 @@ static inline int simulate_sc(struct pt_regs *regs, unsigned int opcode)
 	offset >>= 16;
 
 	vaddr = (unsigned long __user *)
-		((unsigned long)(regs->gprs((opcode & BASE) >> 21)) + offset);
+		((unsigned long)(regs->regs[(opcode & BASE) >> 21]) + offset);
 	reg = (opcode & RT) >> 16;
 
 	if ((unsigned long)vaddr & 3)
@@ -583,17 +583,17 @@ static inline int simulate_sc(struct pt_regs *regs, unsigned int opcode)
 	preempt_disable();
 
 	if (ll_bit == 0 || ll_task != current) {
-		regs->gprs(reg) = 0;
+		regs->regs[reg] = 0;
 		preempt_enable();
 		return 0;
 	}
 
 	preempt_enable();
 
-	if (put_user(regs->gprs(reg), vaddr))
+	if (put_user(regs->regs[reg], vaddr))
 		return SIGSEGV;
 
-	regs->gprs(reg) = 1;
+	regs->regs[reg] = 1;
 
 	return 0;
 }
@@ -633,27 +633,27 @@ int simulate_rdhwr(struct pt_regs *regs, int rd, int rt)
 			1, regs, 0);
 	switch (rd) {
 	case MIPS_HWR_CPUNUM:		/* CPU number */
-		regs->gprs(rt) = smp_processor_id();
+		regs->regs[rt] = smp_processor_id();
 		return 0;
 	case MIPS_HWR_SYNCISTEP:	/* SYNCI length */
-		regs->gprs(rt) = min(current_cpu_data.dcache.linesz,
+		regs->regs[rt] = min(current_cpu_data.dcache.linesz,
 				     current_cpu_data.icache.linesz);
 		return 0;
 	case MIPS_HWR_CC:		/* Read count register */
-		regs->gprs(rt) = read_c0_count();
+		regs->regs[rt] = read_c0_count();
 		return 0;
 	case MIPS_HWR_CCRES:		/* Count register resolution */
 		switch (current_cpu_type()) {
 		case CPU_20KC:
 		case CPU_25KF:
-			regs->gprs(rt) = 1;
+			regs->regs[rt] = 1;
 			break;
 		default:
-			regs->gprs(rt) = 2;
+			regs->regs[rt] = 2;
 		}
 		return 0;
 	case MIPS_HWR_ULR:		/* Read UserLocal register */
-		regs->gprs(rt) = ti->tp_value;
+		regs->regs[rt] = ti->tp_value;
 		return 0;
 	default:
 		return -1;
@@ -797,7 +797,7 @@ static int simulate_fp(struct pt_regs *regs, unsigned int opcode,
 	 * that for the FPU emulator.
 	 */
 	regs->cp0_epc = old_epc;
-	regs->gprs(31) = old_ra;
+	regs->regs[31] = old_ra;
 
 	/* Run the emulator */
 	sig = fpu_emulator_cop1Handler(regs, &current->thread.fpu, 1,
@@ -1113,7 +1113,7 @@ asmlinkage void do_ri(struct pt_regs *regs)
 {
 	unsigned int __user *epc = (unsigned int __user *)exception_epc(regs);
 	unsigned long old_epc = regs->cp0_epc;
-	unsigned long old31 = regs->gprs(31);
+	unsigned long old31 = regs->regs[31];
 	enum ctx_state prev_state;
 	unsigned int opcode = 0;
 	int status = -1;
@@ -1190,7 +1190,7 @@ no_r2_instr:
 
 	if (unlikely(status > 0)) {
 		regs->cp0_epc = old_epc;		/* Undo skip-over.  */
-		regs->gprs(31) = old31;
+		regs->regs[31] = old31;
 		force_sig(status);
 	}
 
@@ -1374,7 +1374,7 @@ asmlinkage void do_cpu(struct pt_regs *regs)
 	case 0:
 		epc = (unsigned int __user *)exception_epc(regs);
 		old_epc = regs->cp0_epc;
-		old31 = regs->gprs(31);
+		old31 = regs->regs[31];
 		opcode = 0;
 		status = -1;
 
@@ -1394,7 +1394,7 @@ asmlinkage void do_cpu(struct pt_regs *regs)
 
 		if (unlikely(status > 0)) {
 			regs->cp0_epc = old_epc;	/* Undo skip-over.  */
-			regs->gprs(31) = old31;
+			regs->regs[31] = old31;
 			force_sig(status);
 		}
 
@@ -1891,12 +1891,12 @@ void ejtag_exception_handler(struct pt_regs *regs)
 		 * calculation.
 		 */
 		old_epc = regs->cp0_epc;
-		old_ra = regs->gprs(31);
+		old_ra = regs->regs[31];
 		regs->cp0_epc = depc;
 		compute_return_epc(regs);
 		depc = regs->cp0_epc;
 		regs->cp0_epc = old_epc;
-		regs->gprs(31) = old_ra;
+		regs->regs[31] = old_ra;
 	} else
 		depc += 4;
 	write_c0_depc(depc);

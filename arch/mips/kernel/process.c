@@ -78,7 +78,7 @@ void start_thread(struct pt_regs * regs, unsigned long pc, unsigned long sp)
 	atomic_set(&current->thread.bd_emu_frame, BD_EMUFRAME_NONE);
 	init_dsp();
 	regs->cp0_epc = pc;
-	regs->gprs(29) = sp;
+	regs->regs[29] = sp;
 }
 
 void exit_thread(struct task_struct *tsk)
@@ -153,10 +153,10 @@ int copy_thread_tls(unsigned long clone_flags, unsigned long usp,
 
 	/* user thread */
 	*childregs = *regs;
-	childregs->gprs(7) = 0; /* Clear error flag */
-	childregs->gprs(2) = 0; /* Child gets zero as return value */
+	childregs->regs[7] = 0; /* Clear error flag */
+	childregs->regs[2] = 0; /* Child gets zero as return value */
 	if (usp)
-		childregs->gprs(29) = usp;
+		childregs->regs[29] = usp;
 	ti->addr_limit = USER_DS;
 
 	p->thread.reg29 = (unsigned long) childregs;
@@ -553,8 +553,8 @@ unsigned long notrace unwind_stack_by_address(unsigned long stack_page,
 		regs = (struct pt_regs *)task_sp;
 		pc = regs->cp0_epc;
 		if (!user_mode(regs) && __kernel_text_address(pc)) {
-			*sp = regs->gprs(29);
-			*ra = regs->gprs(31);
+			*sp = regs->regs[29];
+			*ra = regs->regs[31];
 			return pc;
 		}
 		return 0;
@@ -840,7 +840,7 @@ void mips_dump_regs32(u32 *uregs, const struct pt_regs *regs)
 		if (i == MIPS32_EF_R26 || i == MIPS32_EF_R27)
 			uregs[i] = 0;
 		else
-			uregs[i] = regs->gprs(i - MIPS32_EF_R0);
+			uregs[i] = regs->regs[i - MIPS32_EF_R0];
 	}
 
 	uregs[MIPS32_EF_LO] = regs->lo;
@@ -862,7 +862,7 @@ void mips_dump_regs64(u64 *uregs, const struct pt_regs *regs)
 		if (i == MIPS64_EF_R26 || i == MIPS64_EF_R27)
 			uregs[i] = 0;
 		else
-			uregs[i] = regs->gprs(i - MIPS64_EF_R0);
+			uregs[i] = regs->regs[i - MIPS64_EF_R0];
 	}
 
 	uregs[MIPS64_EF_LO] = regs->lo;

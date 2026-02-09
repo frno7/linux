@@ -238,7 +238,7 @@ int mips_dsemul(struct pt_regs *regs, mips_instruction ir,
 			rs = (((insn.mm_a_format.rs + 0xe) & 0xf) + 2);
 			v = regs->cp0_epc & ~3;
 			v += insn.mm_a_format.simmediate << 2;
-			regs->gprs(rs) = (long)v;
+			regs->regs[rs] = (long)v;
 			return -1;
 		}
 	}

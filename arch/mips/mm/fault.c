@@ -218,8 +218,8 @@ bad_area_nosemaphore:
 			print_vma_addr(KERN_CONT " ", regs->cp0_epc);
 			pr_cont("\n");
 			pr_info("ra  = %0*lx in", field,
-				(unsigned long) regs->gprs(31));
-			print_vma_addr(KERN_CONT " ", regs->gprs(31));
+				(unsigned long) regs->regs[31]);
+			print_vma_addr(KERN_CONT " ", regs->regs[31]);
 			pr_cont("\n");
 		}
 		current->thread.trap_nr = (regs->cp0_cause >> 2) & 0x1f;
@@ -243,7 +243,7 @@ no_context:
 	printk(KERN_ALERT "CPU %d Unable to handle kernel paging request at "
 	       "virtual address %0*lx, epc == %0*lx, ra == %0*lx\n",
 	       raw_smp_processor_id(), field, address, field, regs->cp0_epc,
-	       field,  regs->gprs(31));
+	       field,  regs->regs[31]);
 	die("Oops", regs);
 
 out_of_memory:
@@ -275,7 +275,7 @@ do_sigbus:
 	       write ? "write access to" : "read access from",
 	       field, address,
 	       field, (unsigned long) regs->cp0_epc,
-	       field, (unsigned long) regs->gprs(31));
+	       field, (unsigned long) regs->regs[31]);
 #endif
 	current->thread.trap_nr = (regs->cp0_cause >> 2) & 0x1f;
 	tsk->thread.cp0_badvaddr = address;

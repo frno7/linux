@@ -53,7 +53,7 @@ asmlinkage int sysm_pipe(void)
 	int error = do_pipe_flags(fd, 0);
 	if (error)
 		return error;
-	current_pt_regs()->gprs(3) = fd[1];
+	current_pt_regs()->regs[3] = fd[1];
 	return fd[0];
 }
 
@@ -181,8 +181,8 @@ static inline int mips_atomic_set(unsigned long addr, unsigned long new)
 		return err;
 
 	regs = current_pt_regs();
-	regs->gprs(2) = old;
-	regs->gprs(7) = 0;	/* No error */
+	regs->regs[2] = old;
+	regs->regs[7] = 0;	/* No error */
 
 	/*
 	 * Don't let your children do this ...

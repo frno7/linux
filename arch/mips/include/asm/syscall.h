@@ -32,7 +32,7 @@ static inline bool mips_syscall_is_indirect(struct task_struct *task,
 	/* O32 ABI syscall() - Either 64-bit with O32 or 32-bit */
 	return (IS_ENABLED(CONFIG_32BIT) ||
 		test_tsk_thread_flag(task, TIF_32BIT_REGS)) &&
-		(regs->gprs(2) == __NR_syscall);
+		(regs->regs[2] == __NR_syscall);
 }
 
 static inline long syscall_get_nr(struct task_struct *task,
@@ -49,19 +49,19 @@ static inline void mips_syscall_update_nr(struct task_struct *task,
 	 * ends up in a0.
 	 */
 	if (mips_syscall_is_indirect(task, regs))
-		task_thread_info(task)->syscall = regs->gprs(4);
+		task_thread_info(task)->syscall = regs->regs[4];
 	else
-		task_thread_info(task)->syscall = regs->gprs(2);
+		task_thread_info(task)->syscall = regs->regs[2];
 }
 
 static inline void mips_get_syscall_arg(unsigned long *arg,
 	struct task_struct *task, struct pt_regs *regs, unsigned int n)
 {
-	unsigned long usp __maybe_unused = regs->gprs(29);
+	unsigned long usp __maybe_unused = regs->regs[29];
 
 	switch (n) {
 	case 0: case 1: case 2: case 3:
-		*arg = regs->gprs(4 + n);
+		*arg = regs->regs[4 + n];
 
 		return;
 
@@ -78,7 +78,7 @@ static inline void mips_get_syscall_arg(unsigned long *arg,
 			get_user(*arg, (int *)usp + n);
 		else
 #endif
-			*arg = regs->gprs(4 + n);
+			*arg = regs->regs[4 + n];
 
 		return;
 #endif
@@ -93,13 +93,13 @@ static inline void mips_get_syscall_arg(unsigned long *arg,
 static inline long syscall_get_error(struct task_struct *task,
 				     struct pt_regs *regs)
 {
-	return regs->gprs(7) ? -regs->gprs(2) : 0;
+	return regs->regs[7] ? -regs->regs[2] : 0;
 }
 
 static inline long syscall_get_return_value(struct task_struct *task,
 					    struct pt_regs *regs)
 {
-	return regs->gprs(2);
+	return regs->regs[2];
 }
 
 static inline void syscall_rollback(struct task_struct *task,
@@ -113,11 +113,11 @@ static inline void syscall_set_return_value(struct task_struct *task,
 					    int error, long val)
 {
 	if (error) {
-		regs->gprs(2) = -error;
-		regs->gprs(7) = 1;
+		regs->regs[2] = -error;
+		regs->regs[7] = 1;
 	} else {
-		regs->gprs(2) = val;
-		regs->gprs(7) = 0;
+		regs->regs[2] = val;
+		regs->regs[7] = 0;
 	}
 }
 

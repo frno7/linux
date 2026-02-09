@@ -32,13 +32,7 @@ struct pt_regs {
 #endif
 
 	/* Saved main processor registers. */
-	union {
-		unsigned long gpr;	/* General purpose register */
-#ifdef CONFIG_CPU_R5900
-		/* 128-bit multimedia register, 16-byte aligned for SQ/LQ */
-		uint32_t __aligned(16) mmr[4];
-#endif
-	} regs[32];
+	unsigned long regs[32];
 
 	/* Saved special registers. */
 	unsigned long cp0_status;
@@ -60,13 +54,11 @@ struct pt_regs {
 	uint64_t lo1;			/* LO1 register */
 #endif
 	unsigned long __last[0];
-} __aligned(16);
-
-#define gprs(i) regs[i].gpr
+} __aligned(8);
 
 static inline unsigned long kernel_stack_pointer(struct pt_regs *regs)
 {
-	return regs->gprs(31);
+	return regs->regs[31];
 }
 
 static inline void instruction_pointer_set(struct pt_regs *regs,
@@ -155,15 +147,15 @@ extern int ptrace_set_watch_regs(struct task_struct *child,
 
 static inline int is_syscall_success(struct pt_regs *regs)
 {
-	return !regs->gprs(7);
+	return !regs->regs[7];
 }
 
 static inline long regs_return_value(struct pt_regs *regs)
 {
 	if (is_syscall_success(regs) || !user_mode(regs))
-		return regs->gprs(2);
+		return regs->regs[2];
 	else
-		return -regs->gprs(2);
+		return -regs->regs[2];
 }
 
 #define instruction_pointer(regs) ((regs)->cp0_epc)
@@ -190,13 +182,13 @@ static inline void die_if_kernel(const char *str, struct pt_regs *regs)
 
 static inline unsigned long user_stack_pointer(struct pt_regs *regs)
 {
-	return regs->gprs(29);
+	return regs->regs[29];
 }
 
 static inline void user_stack_pointer_set(struct pt_regs *regs,
 	unsigned long val)
 {
-	regs->gprs(29) = val;
+	regs->regs[29] = val;
 }
 
 #endif /* _ASM_PTRACE_H */

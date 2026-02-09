@@ -77,7 +77,7 @@ int ptrace_getregs(struct task_struct *child, struct user_pt_regs __user *data)
 	regs = task_pt_regs(child);
 
 	for (i = 0; i < 32; i++)
-		__put_user((long)regs->gprs(i), (__s64 __user *)&data->regs[i]);
+		__put_user((long)regs->regs[i], (__s64 __user *)&data->regs[i]);
 	__put_user((long)regs->lo, (__s64 __user *)&data->lo);
 	__put_user((long)regs->hi, (__s64 __user *)&data->hi);
 	__put_user((long)regs->cp0_epc, (__s64 __user *)&data->cp0_epc);
@@ -104,7 +104,7 @@ int ptrace_setregs(struct task_struct *child, struct user_pt_regs __user *data)
 	regs = task_pt_regs(child);
 
 	for (i = 0; i < 32; i++)
-		__get_user(regs->gprs(i), (__s64 __user *)&data->regs[i]);
+		__get_user(regs->regs[i], (__s64 __user *)&data->regs[i]);
 	__get_user(regs->lo, (__s64 __user *)&data->lo);
 	__get_user(regs->hi, (__s64 __user *)&data->hi);
 	__get_user(regs->cp0_epc, (__s64 __user *)&data->cp0_epc);
@@ -252,7 +252,7 @@ static int gpr32_set(struct task_struct *target,
 		case MIPS32_EF_R1 ... MIPS32_EF_R25:
 			/* k0/k1 are ignored. */
 		case MIPS32_EF_R28 ... MIPS32_EF_R31:
-			regs->gprs(i - MIPS32_EF_R0) = (s32)uregs[i];
+			regs->regs[i - MIPS32_EF_R0] = (s32)uregs[i];
 			break;
 		case MIPS32_EF_LO:
 			regs->lo = (s32)uregs[i];
@@ -315,7 +315,7 @@ static int gpr64_set(struct task_struct *target,
 		case MIPS64_EF_R1 ... MIPS64_EF_R25:
 			/* k0/k1 are ignored. */
 		case MIPS64_EF_R28 ... MIPS64_EF_R31:
-			regs->gprs(i - MIPS64_EF_R0) = uregs[i];
+			regs->regs[i - MIPS64_EF_R0] = uregs[i];
 			break;
 		case MIPS64_EF_LO:
 			regs->lo = uregs[i];
@@ -1191,7 +1191,7 @@ long arch_ptrace(struct task_struct *child, long request,
 
 		switch (addr) {
 		case 0 ... 31:
-			tmp = regs->gprs(addr);
+			tmp = regs->regs[addr];
 			break;
 #ifdef CONFIG_MIPS_FP_SUPPORT
 		case FPR_BASE ... FPR_BASE + 31: {
@@ -1289,7 +1289,7 @@ long arch_ptrace(struct task_struct *child, long request,
 
 		switch (addr) {
 		case 0 ... 31:
-			regs->gprs(addr) = data;
+			regs->regs[addr] = data;
 			/* System call number may have been changed */
 			if (addr == 2)
 				mips_syscall_update_nr(child, regs);
@@ -1437,10 +1437,10 @@ asmlinkage long syscall_trace_enter(struct pt_regs *regs, long syscall)
 #endif
 
 	if (unlikely(test_thread_flag(TIF_SYSCALL_TRACEPOINT)))
-		trace_sys_enter(regs, regs->gprs(2));
+		trace_sys_enter(regs, regs->regs[2]);
 
-	audit_syscall_entry(syscall, regs->gprs(4), regs->gprs(5),
-			    regs->gprs(6), regs->gprs(7));
+	audit_syscall_entry(syscall, regs->regs[4], regs->regs[5],
+			    regs->regs[6], regs->regs[7]);
 
 	/*
 	 * Negative syscall numbers are mistaken for rejected syscalls, but

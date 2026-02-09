@@ -37,9 +37,9 @@ static void save_raw_context_stack(struct stack_trace *trace,
 static void save_context_stack(struct stack_trace *trace,
 	struct task_struct *tsk, struct pt_regs *regs, int savesched)
 {
-	unsigned long sp = regs->gprs(29);
+	unsigned long sp = regs->regs[29];
 #ifdef CONFIG_KALLSYMS
-	unsigned long ra = regs->gprs(31);
+	unsigned long ra = regs->regs[31];
 	unsigned long pc = regs->cp0_epc;
 
 	if (raw_show_trace || !__kernel_text_address(pc)) {
@@ -83,8 +83,8 @@ void save_stack_trace_tsk(struct task_struct *tsk, struct stack_trace *trace)
 	WARN_ON(trace->nr_entries || !trace->max_entries);
 
 	if (tsk != current) {
-		regs->gprs(29) = tsk->thread.reg29;
-		regs->gprs(31) = 0;
+		regs->regs[29] = tsk->thread.reg29;
+		regs->regs[31] = 0;
 		regs->cp0_epc = tsk->thread.reg31;
 	} else
 		prepare_frametrace(regs);
