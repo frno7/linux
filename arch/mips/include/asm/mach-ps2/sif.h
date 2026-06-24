@@ -39,9 +39,16 @@
 #define SIF_CMD_RPC_CALL	(SIF_CMD_ID_SYS | 0x0a)
 #define SIF_CMD_RPC_RDATA	(SIF_CMD_ID_SYS | 0x0c)
 #define SIF_CMD_ATA		(SIF_CMD_ID_SYS | 0x13)
+#define SIF_CMD_GAMEPAD		(SIF_CMD_ID_SYS | 0x14)
+/*
+ * Note: Numbers greater than 0x1f (31) cannot be sent from the kernel
+ * to the IOP. However, they can still be sent in the reverse direction,
+ * from the IOP to the kernel.
+ *
+ * So the following commands can only be sent from the IOP to the kernel:
+ */
 #define SIF_CMD_IRQ_RELAY	(SIF_CMD_ID_SYS | 0x20)
 #define SIF_CMD_PRINTK		(SIF_CMD_ID_SYS | 0x21)
-#define SIF_CMD_GAMEPAD		(SIF_CMD_ID_SYS | 0x22)
 
 #define	SIF_SID_ID_SYS		0x80000000
 #define	SIF_SID_ID_USR		0x00000000
