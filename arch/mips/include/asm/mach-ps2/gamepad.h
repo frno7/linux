@@ -14,6 +14,7 @@ enum { GAMEPAD_PORTS = 2 };
 
 #define GAMEPAD_DEVICES(d)						\
 	d(UNDEFINED,  "undefined")					\
+	d(DUALSHOCK,  "DualShock")					\
 	d(DUALSHOCK2, "DualShock 2")
 
 enum gamepad_device_id {

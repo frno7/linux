@@ -56,6 +56,16 @@ static bool gamepad_device_mode_is_analog(
 	       state->device.mode == 0x79;
 }
 
+static bool gamepad_device_is_dualshock(
+	const struct gamepad_controller_state *state)
+{
+	return (gamepad_device_mode_is_digital(state) ||
+		gamepad_device_mode_is_analog(state)) &&
+	       state->model.type == 1 &&
+	       state->model.modes == 2 &&
+	       state->model.actuators == 2;
+}
+
 static bool gamepad_device_is_dualshock2(
 	const struct gamepad_controller_state *state)
 {
@@ -69,10 +79,9 @@ static bool gamepad_device_is_dualshock2(
 static enum gamepad_device_id gamepad_device_id(
 	const struct gamepad_controller_state *state)
 {
-	if (gamepad_device_is_dualshock2(state))
-		return GAMEPAD_DEVICE_DUALSHOCK2;
-
-	return GAMEPAD_DEVICE_UNDEFINED;
+	return gamepad_device_is_dualshock(state)  ? GAMEPAD_DEVICE_DUALSHOCK  :
+	       gamepad_device_is_dualshock2(state) ? GAMEPAD_DEVICE_DUALSHOCK2 :
+						     GAMEPAD_DEVICE_UNDEFINED;
 }
 
 static const char *gamepad_device_name(
@@ -100,7 +109,7 @@ static int gamepad_rumble(struct input_dev *dev,
 	struct gamepad_controller *ctrl = rumble_data->ctrl;
 
 	switch (effect->type) {
-	case FF_RUMBLE:
+	case FF_RUMBLE: {
 		const struct gamepad_sif_opt opt = {
 			.op = gamepad_rop_rumble,
 			.data = (struct gamepad_cmd_rumble) {
@@ -114,13 +123,15 @@ static int gamepad_rumble(struct input_dev *dev,
 		if (err < 0)
 			pr_err("%s: sif_cmd_opt failed with %d\n", __func__, err);
 		break;
+	}
 	default:
+		break;
 	}
 
 	return 0;
 }
 
-static void register_dualshock2(struct gamepad_controller *ctrl)
+static void register_dualshock(struct gamepad_controller *ctrl)
 {
 	input_set_abs_params(ctrl->dev, ABS_X,  -128, 127, 0, 0);
 	input_set_abs_params(ctrl->dev, ABS_Y,  -128, 127, 0, 0);
@@ -178,8 +189,9 @@ static bool gamepad_register(struct gamepad_controller *ctrl)
 	for (k = 0; k < ARRAY_SIZE(ev_keys); k++)
 		input_set_capability(ctrl->dev, EV_KEY, ev_keys[k]);
 
-	if (gamepad_device_is_dualshock2(&ctrl->state))
-		register_dualshock2(ctrl);
+	if (gamepad_device_is_dualshock(&ctrl->state) ||
+	    gamepad_device_is_dualshock2(&ctrl->state))
+		register_dualshock(ctrl);
 
 	if (ctrl->state.model.actuators > 0)
 		register_rumble(ctrl);
