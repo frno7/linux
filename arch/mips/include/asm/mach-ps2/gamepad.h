@@ -113,12 +113,32 @@ struct gamepad_controller_state {
 	BTN_SOUTH,	/* cross */	\
 	BTN_WEST,	/* square */
 
+#define GAMEPAD_INPUT_EV_ABS		\
+	ABS_DPAD_RIGHT,			\
+	ABS_DPAD_LEFT,			\
+	ABS_DPAD_UP,			\
+	ABS_DPAD_DOWN,			\
+					\
+	ABS_NORTH,	/* triangle */	\
+	ABS_EAST,	/* circle */	\
+	ABS_SOUTH,	/* cross */	\
+	ABS_WEST,	/* square */	\
+					\
+	ABS_TL,				\
+	ABS_TR,				\
+	ABS_TL2,			\
+	ABS_TR2,
+
 /**
  * enum iop_gamepad_ops - IOP gamepad remote operations
- * @rop_rumble: activate rumble for a given controller
+ * @gamepad_rop_open: called when the very first user opens the device
+ * @gamepad_rop_close: called when the very last user closes the device
+ * @gamepad_rop_rumble: activate rumble for a given controller
  */
 enum iop_gamepad_rops {
-	gamepad_rop_rumble = 0,
+	gamepad_rop_open   = 0,
+	gamepad_rop_close  = 1,
+	gamepad_rop_rumble = 2,
 };
 
 struct gamepad_sif_opt {

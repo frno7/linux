@@ -785,8 +785,23 @@
 #define ABS_MT_TOOL_X		0x3c	/* Center X tool position */
 #define ABS_MT_TOOL_Y		0x3d	/* Center Y tool position */
 
+#define ABS_DPAD_UP		0x50
+#define ABS_DPAD_DOWN		0x51
+#define ABS_DPAD_LEFT		0x52
+#define ABS_DPAD_RIGHT		0x53
 
-#define ABS_MAX			0x3f
+#define ABS_GAMEPAD		0x60
+#define ABS_SOUTH		0x60
+#define ABS_EAST		0x61
+#define ABS_C			0x62
+#define ABS_NORTH		0x63
+#define ABS_WEST		0x64
+#define ABS_TL			0x65
+#define ABS_TR			0x66
+#define ABS_TL2			0x67
+#define ABS_TR2			0x68
+
+#define ABS_MAX			0x6f
 #define ABS_CNT			(ABS_MAX+1)
 
 /*
