@@ -252,8 +252,6 @@ static int __init iop_dev9_init(void)
 	if (err < 0)
 		return err;
 
-	return 0;
-
 	err = iop_dev9_read_rev(&dev9.rev);
 	if (err < 0) {
 		printk("iop_dev9_init: err %d\n", err);
