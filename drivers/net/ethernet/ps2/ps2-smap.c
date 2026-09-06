@@ -58,6 +58,7 @@
 #include <linux/mii.h>
 #include <linux/module.h>
 #include <linux/netdevice.h>
+#include <linux/rtnetlink.h>
 #include <linux/phy.h>
 #include <linux/platform_device.h>
 #include <linux/skbuff.h>
@@ -1622,8 +1623,28 @@ static int smap_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static void smap_shutdown(struct platform_device *pdev)
+{
+	struct net_device *ndev = platform_get_drvdata(pdev);
+
+	/*
+	 * Restarting the machine resets the IOP, and with it the expansion
+	 * bay: the register window stops answering and every access from the
+	 * EE raises a data bus error.  The driver's own timer would walk into
+	 * that half a second later, in interrupt context, and take the kernel
+	 * down with a panic on its way out.  Close the interface here, while
+	 * the hardware is still there to be closed.
+	 */
+	if (ndev && netif_running(ndev)) {
+		rtnl_lock();
+		dev_close(ndev);
+		rtnl_unlock();
+	}
+}
+
 static struct platform_driver smap_driver = {
 	.remove	= smap_remove,
+	.shutdown = smap_shutdown,
 	.driver	= {
 		.name	= DRV_NAME,
 	},
