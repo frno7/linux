@@ -932,7 +932,7 @@ static int iop_rpc_write(const u32 data,
 	s32 status;
 	int err;
 
-	err = sif_rpc(&load_file_rpc_client, rpo_get_addr,
+	err = sif_rpc(&load_file_rpc_client, rpo_set_addr,
 		&arg, sizeof(arg), &status, sizeof(status));
 
 	return err < 0 ? err : status;

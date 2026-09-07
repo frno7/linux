@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# PlayStation 2 network device configuration
+#
+
+config NET_VENDOR_PS2
+	bool "PlayStation 2 devices"
+	default y
+	depends on SONY_PS2
+	help
+	  If you have a network (Ethernet) card belonging to this class, say Y.
+
+	  Note that the answer to this question doesn't directly affect the
+	  kernel: saying N will just cause the configurator to skip all the
+	  questions about PlayStation 2 cards. If you say Y, you will be asked
+	  for your specific card in the following questions.
+
+if NET_VENDOR_PS2
+
+config PS2_SMAP
+	tristate "PlayStation 2 SMAP Ethernet"
+	depends on SONY_PS2
+	select PHYLIB
+	help
+	  Ethernet support for the SMAP part of the SPEED chip found in the
+	  PlayStation 2 expansion bay network adaptor and, on later models,
+	  soldered to the board. The chip combines an IBM EMAC3 MAC with a
+	  National DP83846 PHY and is reachable from the EE once the DEV9
+	  expansion bay is powered.
+
+	  Data is moved by programmed I/O; the IOP-side DMA of the original
+	  Sony driver is not implemented.
+
+	  To compile this driver as a module, choose M here. The module will
+	  be called ps2-smap.
+
+endif # NET_VENDOR_PS2
